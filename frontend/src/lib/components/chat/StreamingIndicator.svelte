@@ -29,15 +29,15 @@
 	aria-label="Generating response"
 >
 	<span
-		class="animate-bounce rounded-full bg-current opacity-75 {sizeClasses}"
+		class="animate-bounce rounded-full bg-slate-400 dark:bg-slate-500 {sizeClasses}"
 		style="animation-delay: 0ms; animation-duration: 1s;"
 	></span>
 	<span
-		class="animate-bounce rounded-full bg-current opacity-75 {sizeClasses}"
+		class="animate-bounce rounded-full bg-slate-400 dark:bg-slate-500 {sizeClasses}"
 		style="animation-delay: 150ms; animation-duration: 1s;"
 	></span>
 	<span
-		class="animate-bounce rounded-full bg-current opacity-75 {sizeClasses}"
+		class="animate-bounce rounded-full bg-slate-400 dark:bg-slate-500 {sizeClasses}"
 		style="animation-delay: 300ms; animation-duration: 1s;"
 	></span>
 	<span class="sr-only">Generating response...</span>

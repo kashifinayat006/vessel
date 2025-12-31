@@ -440,6 +440,205 @@ const fetchUrlHandler: BuiltinToolHandler<FetchUrlArgs> = async (args) => {
 };
 
 // ============================================================================
+// Get Location Tool
+// ============================================================================
+
+interface GetLocationArgs {
+	highAccuracy?: boolean;
+}
+
+interface LocationResult {
+	latitude: number;
+	longitude: number;
+	accuracy: number;
+	city?: string;
+	country?: string;
+}
+
+const getLocationDefinition: ToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'get_location',
+		description: 'Get the user\'s current location (city, country, coordinates). Call this IMMEDIATELY when you need location for weather, local info, or nearby places. Do NOT ask the user where they are - use this tool instead.',
+		parameters: {
+			type: 'object',
+			properties: {
+				highAccuracy: {
+					type: 'boolean',
+					description: 'Whether to request high accuracy GPS location (may take longer and use more battery). Default is false.'
+				}
+			}
+		}
+	}
+};
+
+const getLocationHandler: BuiltinToolHandler<GetLocationArgs> = async (args) => {
+	const { highAccuracy = false } = args;
+
+	// Check if geolocation is available
+	if (!navigator.geolocation) {
+		return { error: 'Geolocation is not supported by this browser' };
+	}
+
+	try {
+		const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+			navigator.geolocation.getCurrentPosition(resolve, reject, {
+				enableHighAccuracy: highAccuracy,
+				timeout: 30000, // 30 seconds - user needs time to accept permission prompt
+				maximumAge: 300000 // Cache for 5 minutes
+			});
+		});
+
+		const result: LocationResult = {
+			latitude: position.coords.latitude,
+			longitude: position.coords.longitude,
+			accuracy: Math.round(position.coords.accuracy)
+		};
+
+		// Try to get city/country via reverse geocoding (using a free service)
+		try {
+			const geoResponse = await fetch(
+				`https://nominatim.openstreetmap.org/reverse?lat=${result.latitude}&lon=${result.longitude}&format=json`,
+				{
+					headers: {
+						'User-Agent': 'OllamaWebUI/1.0'
+					}
+				}
+			);
+
+			if (geoResponse.ok) {
+				const geoData = await geoResponse.json();
+				if (geoData.address) {
+					result.city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality;
+					result.country = geoData.address.country;
+				}
+			}
+		} catch {
+			// Reverse geocoding failed, but we still have coordinates
+		}
+
+		return {
+			location: result,
+			message: result.city
+				? `User is located in ${result.city}${result.country ? ', ' + result.country : ''}`
+				: `User is at coordinates ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`
+		};
+	} catch (error) {
+		if (error instanceof GeolocationPositionError) {
+			switch (error.code) {
+				case error.PERMISSION_DENIED:
+					return {
+						error: 'Location permission denied',
+						suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
+					};
+				case error.POSITION_UNAVAILABLE:
+					return {
+						error: 'Location services unavailable on this device',
+						suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
+					};
+				case error.TIMEOUT:
+					return {
+						error: 'Location request timed out',
+						suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
+					};
+			}
+		}
+		return {
+			error: `Failed to get location: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
+		};
+	}
+};
+
+// ============================================================================
+// Web Search Tool
+// ============================================================================
+
+interface WebSearchArgs {
+	query: string;
+	maxResults?: number;
+}
+
+interface WebSearchResult {
+	title: string;
+	url: string;
+	snippet: string;
+}
+
+const webSearchDefinition: ToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'web_search',
+		description: 'Search the web for current information. You MUST call this tool immediately when the user asks about weather, news, current events, sports, stocks, prices, or any real-time information. Do NOT ask the user for clarification - just search. If no location is specified for weather, call get_location first.',
+		parameters: {
+			type: 'object',
+			properties: {
+				query: {
+					type: 'string',
+					description: 'The search query (e.g., "weather Berlin tomorrow", "latest news", "Bitcoin price")'
+				},
+				maxResults: {
+					type: 'number',
+					description: 'Maximum number of results to return (1-10, default 5)'
+				}
+			},
+			required: ['query']
+		}
+	}
+};
+
+const webSearchHandler: BuiltinToolHandler<WebSearchArgs> = async (args) => {
+	const { query, maxResults = 5 } = args;
+
+	if (!query || query.trim() === '') {
+		return { error: 'Search query is required' };
+	}
+
+	// Try backend proxy first
+	try {
+		const proxyResponse = await fetch('/api/v1/proxy/search', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ query, maxResults: Math.min(Math.max(1, maxResults), 10) })
+		});
+
+		if (proxyResponse.ok) {
+			const data = await proxyResponse.json();
+			const results = data.results as WebSearchResult[];
+
+			if (results.length === 0) {
+				return { message: 'No search results found for the query.', query };
+			}
+
+			// Format results for the AI
+			return {
+				query,
+				resultCount: results.length,
+				results: results.map((r, i) => ({
+					rank: i + 1,
+					title: r.title,
+					url: r.url,
+					snippet: r.snippet || '(no snippet available)'
+				}))
+			};
+		}
+
+		// If proxy returns an error, extract it
+		const errorData = await proxyResponse.json().catch(() => null);
+		if (errorData?.error) {
+			return { error: errorData.error };
+		}
+	} catch {
+		// Proxy not available
+	}
+
+	return {
+		error: 'Web search is not available. Please start the backend server to enable web search functionality.',
+		hint: 'Run the backend server with: cd backend && go run cmd/server/main.go'
+	};
+};
+
+// ============================================================================
 // Registry of Built-in Tools
 // ============================================================================
 
@@ -458,6 +657,16 @@ export const builtinTools: Map<string, ToolRegistryEntry> = new Map([
 		definition: fetchUrlDefinition,
 		handler: fetchUrlHandler as unknown as BuiltinToolHandler,
 		isBuiltin: true
+	}],
+	['get_location', {
+		definition: getLocationDefinition,
+		handler: getLocationHandler as unknown as BuiltinToolHandler,
+		isBuiltin: true
+	}],
+	['web_search', {
+		definition: webSearchDefinition,
+		handler: webSearchHandler as unknown as BuiltinToolHandler,
+		isBuiltin: true
 	}]
 ]);
 
@@ -465,3 +674,6 @@ export const builtinTools: Map<string, ToolRegistryEntry> = new Map([
 export function getBuiltinToolDefinitions(): ToolDefinition[] {
 	return Array.from(builtinTools.values()).map(entry => entry.definition);
 }
+
+// Log available builtin tools at startup
+console.log('[Builtin Tools] Available:', Array.from(builtinTools.keys()));

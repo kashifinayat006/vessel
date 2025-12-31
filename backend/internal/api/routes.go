@@ -39,6 +39,9 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string) {
 		// URL fetch proxy (for tools that need to fetch external URLs)
 		v1.POST("/proxy/fetch", URLFetchProxyHandler())
 
+		// Web search proxy (for web_search tool)
+		v1.POST("/proxy/search", WebSearchProxyHandler())
+
 		// Ollama proxy (optional)
 		v1.Any("/ollama/*path", OllamaProxyHandler(ollamaURL))
 	}

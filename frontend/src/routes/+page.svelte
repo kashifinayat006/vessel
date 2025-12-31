@@ -156,6 +156,7 @@
 
 			console.log('[NewChat] Tools enabled:', toolsState.toolsEnabled);
 			console.log('[NewChat] Tools count:', tools?.length ?? 0);
+			console.log('[NewChat] Tool names:', tools?.map(t => t.function.name) ?? []);
 			console.log('[NewChat] Using model:', chatModel, '(original:', model, ')');
 
 			await ollamaClient.streamChatWithCallbacks(
