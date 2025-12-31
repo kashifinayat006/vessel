@@ -4,7 +4,7 @@
 	 * Contains the app logo/title and "New Chat" button
 	 */
 	import { goto } from '$app/navigation';
-	import { uiState, chatState } from '$lib/stores';
+	import { uiState, chatState, promptsState } from '$lib/stores';
 
 	/**
 	 * Handle new chat - reset state and navigate
@@ -12,6 +12,7 @@
 	function handleNewChat(event: MouseEvent) {
 		event.preventDefault();
 		chatState.reset();
+		promptsState.clearTemporaryPrompt();
 		goto('/');
 	}
 </script>

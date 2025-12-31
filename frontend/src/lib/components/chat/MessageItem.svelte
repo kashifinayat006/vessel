@@ -110,9 +110,9 @@
 	<!-- Avatar for assistant -->
 	{#if isAssistant}
 		{#if isToolMessage}
-			<!-- Tool message avatar -->
+			<!-- Tool message avatar - subtle teal -->
 			<div
-				class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+				class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-500"
 				aria-hidden="true"
 			>
 				<svg
@@ -125,9 +125,9 @@
 				</svg>
 			</div>
 		{:else}
-			<!-- Normal assistant avatar -->
+			<!-- Normal assistant avatar - subtle violet -->
 			<div
-				class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white"
+				class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500"
 				aria-hidden="true"
 			>
 				<svg
@@ -136,7 +136,7 @@
 					fill="currentColor"
 					class="h-5 w-5"
 				>
-					<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2zM7.5 13a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm9 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" />
+					<path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
 				</svg>
 			</div>
 		{/if}
@@ -150,10 +150,10 @@
 		<!-- Message bubble with branch navigator -->
 		<div
 			class="relative rounded-2xl px-4 py-3 {isUser
-				? 'bg-blue-500 text-white rounded-br-md'
+				? 'bg-slate-700 text-slate-100'
 				: isToolMessage
-					? 'bg-emerald-950/30 border-l-2 border-emerald-500 rounded-bl-md'
-					: 'bg-gray-100 dark:bg-gray-800 rounded-bl-md'}"
+					? 'bg-slate-800/50 border-l-2 border-teal-500/50'
+					: 'bg-transparent'}"
 		>
 			{#if isEditing}
 				<!-- Edit mode -->
@@ -188,6 +188,7 @@
 					<MessageContent
 						content={node.message.content}
 						images={node.message.images}
+						{isStreaming}
 					/>
 				{/if}
 
@@ -238,7 +239,7 @@
 	<!-- Avatar for user -->
 	{#if isUser}
 		<div
-			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white"
+			class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-600 text-slate-300"
 			aria-hidden="true"
 		>
 			<svg

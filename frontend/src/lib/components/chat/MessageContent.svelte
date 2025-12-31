@@ -14,9 +14,10 @@
 	interface Props {
 		content: string;
 		images?: string[];
+		isStreaming?: boolean;
 	}
 
-	const { content, images }: Props = $props();
+	const { content, images, isStreaming = false }: Props = $props();
 
 	// Pattern to find fenced code blocks
 	const CODE_BLOCK_PATTERN = /```(\w+)?\n([\s\S]*?)```/g;
@@ -259,6 +260,7 @@
 				<CodeBlock
 					code={part.content}
 					language={part.language || 'text'}
+					{isStreaming}
 				/>
 				<!-- Show preview for HTML code blocks -->
 				{#if part.showPreview}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * MessageList - Scrollable container for chat messages
-	 * Auto-scrolls to bottom on new messages, but respects user scroll position
+	 * Uses CSS scroll anchoring for stable positioning during content changes
 	 */
 
 	import { chatState } from '$lib/stores';
@@ -15,16 +15,17 @@
 
 	const { onRegenerate, onEditMessage }: Props = $props();
 
-	// Reference to scroll container
+	// Reference to scroll container and anchor element
 	let scrollContainer: HTMLDivElement | null = $state(null);
+	let anchorElement: HTMLDivElement | null = $state(null);
 
-	// Track previous message count for auto-scroll
-	let previousMessageCount = $state(0);
+	// Track if user has scrolled away from bottom
+	let userScrolledAway = $state(false);
 
-	// Track if user is near bottom (should auto-scroll)
-	let userNearBottom = $state(true);
+	// Track previous streaming state to detect when streaming ends
+	let wasStreaming = $state(false);
 
-	// Threshold for "near bottom" detection (pixels from bottom)
+	// Threshold for "near bottom" detection
 	const SCROLL_THRESHOLD = 100;
 
 	/**
@@ -37,53 +38,78 @@
 	}
 
 	/**
-	 * Handle scroll events to detect user scroll intent
+	 * Handle scroll events - detect when user scrolls away
 	 */
 	function handleScroll(): void {
-		userNearBottom = isNearBottom();
+		if (!scrollContainer) return;
+
+		// User is considered "scrolled away" if not near bottom
+		userScrolledAway = !isNearBottom();
 	}
 
 	/**
-	 * Scroll to bottom (for button click)
+	 * Scroll to bottom smoothly (for button click)
 	 */
 	function scrollToBottom(): void {
-		if (scrollContainer) {
-			scrollContainer.scrollTop = scrollContainer.scrollHeight;
-			userNearBottom = true;
+		if (anchorElement) {
+			anchorElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+			userScrolledAway = false;
 		}
 	}
 
-	// Auto-scroll to bottom when new messages arrive (only if user was near bottom)
+	/**
+	 * Scroll to bottom instantly (for auto-scroll)
+	 */
+	function scrollToBottomInstant(): void {
+		if (anchorElement) {
+			anchorElement.scrollIntoView({ block: 'end' });
+			userScrolledAway = false;
+		}
+	}
+
+	// Auto-scroll when streaming starts (if user hasn't scrolled away)
+	$effect(() => {
+		const isStreaming = chatState.isStreaming;
+
+		// When streaming starts, scroll to bottom if user is near bottom
+		if (isStreaming && !wasStreaming) {
+			if (!userScrolledAway) {
+				// Small delay to let the new message element render
+				requestAnimationFrame(() => {
+					scrollToBottomInstant();
+				});
+			}
+		}
+
+		// When streaming ends, do a final scroll if user hasn't scrolled away
+		if (!isStreaming && wasStreaming) {
+			if (!userScrolledAway) {
+				requestAnimationFrame(() => {
+					scrollToBottomInstant();
+				});
+			}
+		}
+
+		wasStreaming = isStreaming;
+	});
+
+	// Scroll when new messages are added (user sends a message)
+	let previousMessageCount = $state(0);
 	$effect(() => {
 		const currentCount = chatState.visibleMessages.length;
 
-		// Scroll when new message added (if user was near bottom)
-		if (scrollContainer && currentCount > previousMessageCount) {
-			if (userNearBottom) {
-				scrollContainer.scrollTop = scrollContainer.scrollHeight;
-			}
+		if (currentCount > previousMessageCount && currentCount > 0) {
+			// New message added - always scroll to it
+			requestAnimationFrame(() => {
+				scrollToBottomInstant();
+			});
 		}
 
 		previousMessageCount = currentCount;
 	});
 
-	// Also scroll on streaming content updates (only if user was near bottom)
-	$effect(() => {
-		// Access streamBuffer to trigger reactivity
-		const _ = chatState.streamBuffer;
-
-		if (scrollContainer && chatState.isStreaming && userNearBottom) {
-			// Use requestAnimationFrame for smooth scrolling during streaming
-			requestAnimationFrame(() => {
-				if (scrollContainer && userNearBottom) {
-					scrollContainer.scrollTop = scrollContainer.scrollHeight;
-				}
-			});
-		}
-	});
-
-	// Show scroll-to-bottom button when streaming and user scrolled away
-	let showScrollButton = $derived(chatState.isStreaming && !userNearBottom);
+	// Show scroll button when user has scrolled away
+	let showScrollButton = $derived(userScrolledAway && chatState.visibleMessages.length > 0);
 
 	/**
 	 * Get branch info for a message
@@ -123,7 +149,8 @@
 	<div
 		bind:this={scrollContainer}
 		onscroll={handleScroll}
-		class="h-full overflow-y-auto scroll-smooth"
+		class="h-full overflow-y-auto"
+		style="overflow-anchor: none;"
 		role="log"
 		aria-live="polite"
 		aria-label="Chat messages"
@@ -140,6 +167,8 @@
 					onEdit={(newContent) => onEditMessage?.(node.id, newContent)}
 				/>
 			{/each}
+			<!-- Scroll anchor element -->
+			<div bind:this={anchorElement} class="h-0" aria-hidden="true"></div>
 		</div>
 	</div>
 

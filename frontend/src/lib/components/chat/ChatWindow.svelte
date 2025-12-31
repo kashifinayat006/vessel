@@ -615,7 +615,7 @@
 	}
 </script>
 
-<div class="flex h-full flex-col">
+<div class="flex h-full flex-col bg-slate-900">
 	{#if hasMessages}
 		<div class="flex-1 overflow-hidden">
 			<MessageList
@@ -629,24 +629,30 @@
 		</div>
 	{/if}
 
-	<div class="border-t border-gray-200 dark:border-gray-700">
-		<!-- Summary recommendation banner -->
-		<SummaryBanner onSummarize={handleSummarize} isLoading={isSummarizing} />
+	<!-- Input area with subtle gradient fade -->
+	<div class="relative">
+		<!-- Gradient fade at top -->
+		<div class="pointer-events-none absolute -top-8 left-0 right-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
 
-		<!-- Context usage indicator -->
-		{#if hasMessages}
-			<div class="px-4 pt-3">
-				<ContextUsageBar />
+		<div class="border-t border-slate-800/50 bg-slate-900/95 backdrop-blur-sm">
+			<!-- Summary recommendation banner -->
+			<SummaryBanner onSummarize={handleSummarize} isLoading={isSummarizing} />
+
+			<!-- Context usage indicator -->
+			{#if hasMessages}
+				<div class="px-4 pt-3">
+					<ContextUsageBar />
+				</div>
+			{/if}
+
+			<div class="px-4 pb-4 pt-2">
+				<ChatInput
+					onSend={handleSendMessage}
+					onStop={handleStopStreaming}
+					isStreaming={chatState.isStreaming}
+					disabled={!modelsState.selectedId}
+				/>
 			</div>
-		{/if}
-
-		<div class="p-4 pt-2">
-			<ChatInput
-				onSend={handleSendMessage}
-				onStop={handleStopStreaming}
-				isStreaming={chatState.isStreaming}
-				disabled={!modelsState.selectedId}
-			/>
 		</div>
 	</div>
 </div>

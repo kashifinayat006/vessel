@@ -113,7 +113,7 @@
 	});
 </script>
 
-<div class="relative space-y-3">
+<div class="relative space-y-2">
 	<!-- Image upload area (only shown for vision models) -->
 	{#if isVisionModel}
 		<ImageUpload
@@ -124,12 +124,12 @@
 	{/if}
 
 	<div
-		class="flex items-end gap-2 rounded-2xl border border-gray-300 bg-white p-2 shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+		class="flex items-end gap-3 rounded-2xl border border-slate-700/50 bg-slate-800/80 p-3 backdrop-blur transition-all focus-within:border-slate-600 focus-within:bg-slate-800"
 	>
-		<!-- Image indicator button (for vision models) -->
+		<!-- Image indicator badge (for vision models) -->
 		{#if isVisionModel && pendingImages.length > 0}
-			<div class="flex h-10 items-center justify-center px-2">
-				<span class="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+			<div class="flex h-9 items-center">
+				<span class="flex items-center gap-1.5 rounded-lg bg-violet-500/20 px-2.5 py-1 text-xs font-medium text-violet-300">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 20 20"
@@ -156,18 +156,18 @@
 			{placeholder}
 			disabled={disabled || isStreaming}
 			rows="1"
-			class="max-h-[200px] min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2 text-gray-900 placeholder-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:text-white dark:placeholder-gray-400"
+			class="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 			aria-label="Message input"
 		></textarea>
 
 		<!-- Action buttons -->
-		<div class="flex items-center gap-1">
+		<div class="flex items-center">
 			{#if showStopButton}
 				<!-- Stop button -->
 				<button
 					type="button"
 					onclick={handleStop}
-					class="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white transition-colors hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+					class="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/20 text-red-400 transition-colors hover:bg-red-500/30 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/50"
 					aria-label="Stop generating"
 					title="Stop generating"
 				>
@@ -186,7 +186,9 @@
 					type="button"
 					onclick={handleSend}
 					disabled={!canSend}
-					class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-white transition-colors hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-600"
+					class="flex h-9 w-9 items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50 {canSend
+						? 'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 hover:text-violet-300'
+						: 'text-slate-600 cursor-not-allowed'}"
 					aria-label="Send message"
 					title="Send message"
 				>
@@ -203,12 +205,14 @@
 		</div>
 	</div>
 
-	<!-- Helper text -->
-	<p class="mt-1.5 text-center text-xs text-gray-500 dark:text-gray-400">
-		Press <kbd class="rounded bg-gray-200 px-1 py-0.5 font-mono text-xs dark:bg-gray-700">Enter</kbd> to send,
-		<kbd class="rounded bg-gray-200 px-1 py-0.5 font-mono text-xs dark:bg-gray-700">Shift+Enter</kbd> for new line
+	<!-- Subtle helper text -->
+	<p class="text-center text-[11px] text-slate-600">
+		<kbd class="rounded bg-slate-800 px-1 py-0.5 font-mono">Enter</kbd> send
+		<span class="mx-1.5 text-slate-700">·</span>
+		<kbd class="rounded bg-slate-800 px-1 py-0.5 font-mono">Shift+Enter</kbd> new line
 		{#if isVisionModel}
-			<span class="ml-1">| Vision model: paste or drag images</span>
+			<span class="mx-1.5 text-slate-700">·</span>
+			<span class="text-violet-500/70">images supported</span>
 		{/if}
 	</p>
 </div>

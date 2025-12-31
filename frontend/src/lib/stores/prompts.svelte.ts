@@ -42,6 +42,9 @@ class PromptsState {
 	/** Currently selected prompt for new chats (null = no system prompt) */
 	activePromptId = $state<string | null>(null);
 
+	/** Temporary prompt content for session (overrides activePromptId when set) */
+	temporaryPrompt = $state<{ name: string; content: string } | null>(null);
+
 	/** Loading state */
 	isLoading = $state(false);
 
@@ -52,8 +55,12 @@ class PromptsState {
 	private _readyPromise: Promise<void> | null = null;
 	private _readyResolve: (() => void) | null = null;
 
-	/** Derived: active prompt content */
-	get activePrompt(): Prompt | null {
+	/** Derived: active prompt content (temporary takes precedence) */
+	get activePrompt(): Prompt | { name: string; content: string } | null {
+		// Temporary prompt takes precedence
+		if (this.temporaryPrompt) {
+			return this.temporaryPrompt;
+		}
 		if (!this.activePromptId) return null;
 		return this.prompts.find(p => p.id === this.activePromptId) ?? null;
 	}
@@ -254,6 +261,23 @@ class PromptsState {
 	 */
 	setActive(id: string | null): void {
 		this.activePromptId = id;
+		// Clear temporary prompt when explicitly setting active
+		this.temporaryPrompt = null;
+	}
+
+	/**
+	 * Set a temporary prompt for the current session (overrides stored prompts)
+	 * Use this for quick-start prompts from the suggestion cards
+	 */
+	setTemporaryPrompt(name: string, content: string): void {
+		this.temporaryPrompt = { name, content };
+	}
+
+	/**
+	 * Clear the temporary prompt
+	 */
+	clearTemporaryPrompt(): void {
+		this.temporaryPrompt = null;
 	}
 
 	/**

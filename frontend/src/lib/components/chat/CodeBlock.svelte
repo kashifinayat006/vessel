@@ -14,9 +14,11 @@
 		language?: string;
 		/** Whether to show the run button for executable code */
 		showRunButton?: boolean;
+		/** Skip syntax highlighting during streaming to prevent layout shifts */
+		isStreaming?: boolean;
 	}
 
-	const { code, language = 'text', showRunButton = true }: Props = $props();
+	const { code, language = 'text', showRunButton = true, isStreaming = false }: Props = $props();
 
 	// State for highlighted HTML and copy feedback
 	let highlightedHtml = $state('');
@@ -190,17 +192,26 @@
 	}
 
 	// Highlight code when component mounts or code/language changes
+	// Skip highlighting during streaming to prevent layout shifts
 	$effect(() => {
 		// Access reactive dependencies
-		const _ = [code, language];
+		const _ = [code, language, isStreaming];
+
+		if (isStreaming) {
+			// During streaming, just show plain code
+			isLoading = true;
+			return;
+		}
+
+		// Only highlight when not streaming
 		highlightCode();
 	});
 </script>
 
-<div class="group relative overflow-hidden rounded-lg">
+<div class="group relative overflow-hidden rounded-xl border border-slate-700/50" style="contain: layout;">
 	<!-- Header with language label, run button, and copy button -->
 	<div
-		class="flex items-center justify-between bg-gray-800 px-4 py-2 text-xs text-gray-400"
+		class="flex items-center justify-between border-b border-slate-700/50 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-400"
 	>
 		<span class="font-mono uppercase">{language}</span>
 		<div class="flex items-center gap-2">
@@ -270,47 +281,53 @@
 		</div>
 	</div>
 
-	<!-- Code content -->
-	<div class="overflow-x-auto bg-[#0d1117]">
+	<!-- Code content - use same styling for loading/loaded to prevent layout shift -->
+	<div class="code-block-content overflow-x-auto bg-slate-900/90">
 		{#if isLoading}
-			<pre class="p-4 font-mono text-sm text-gray-400"><code>{code}</code></pre>
+			<pre class="m-0 overflow-x-auto bg-transparent px-4 py-3" style="line-height: 1.5;"><code class="font-mono text-[13px] text-slate-300" style="line-height: inherit;">{code}</code></pre>
 		{:else}
-			<div class="code-block-content">
-				{@html highlightedHtml}
-			</div>
+			{@html highlightedHtml}
 		{/if}
 	</div>
 
 	<!-- Execution output -->
 	{#if showOutput && (isExecuting || executionResult)}
-		<div class="border-t border-gray-700 bg-[#161b22]">
+		<div class="border-t border-slate-700/50 bg-slate-950/50">
 			<!-- Output header -->
-			<div class="flex items-center justify-between px-4 py-2 text-xs">
+			<div class="flex items-center justify-between px-3 py-2">
 				<div class="flex items-center gap-2">
-					<span class="font-medium text-gray-400">Output</span>
+					<!-- Terminal icon -->
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 text-slate-500">
+						<path fill-rule="evenodd" d="M3.25 3A2.25 2.25 0 001 5.25v9.5A2.25 2.25 0 003.25 17h13.5A2.25 2.25 0 0019 14.75v-9.5A2.25 2.25 0 0016.75 3H3.25zm.943 8.752a.75.75 0 01.055-1.06L6.128 9l-1.88-1.693a.75.75 0 111.004-1.114l2.5 2.25a.75.75 0 010 1.114l-2.5 2.25a.75.75 0 01-1.06-.055zM9.75 10.25a.75.75 0 000 1.5h2.5a.75.75 0 000-1.5h-2.5z" clip-rule="evenodd" />
+					</svg>
+					<span class="text-xs font-medium text-slate-400">Output</span>
+
 					{#if isExecuting}
-						<span class="flex items-center gap-1 text-blue-400">
+						<span class="flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-400">
 							<svg class="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
 								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
 							</svg>
-							Running...
+							Running
 						</span>
 					{:else if executionResult}
-						<span class="text-gray-500">
-							{executionResult.duration}ms
-						</span>
 						{#if executionResult.status === 'success'}
-							<span class="text-green-500">Success</span>
-						{:else if executionResult.status === 'error'}
-							<span class="text-red-500">Error</span>
+							<span class="text-[11px] text-slate-500">Completed</span>
+						{:else}
+							<span class="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] text-red-400">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="h-3 w-3">
+									<path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14ZM8 4a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+								</svg>
+								Error
+							</span>
 						{/if}
+						<span class="text-[11px] text-slate-600">{executionResult.duration}ms</span>
 					{/if}
 				</div>
 				<button
 					type="button"
 					onclick={clearOutput}
-					class="rounded px-2 py-1 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+					class="rounded-md px-2 py-1 text-[11px] text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-300"
 					aria-label="Clear output"
 				>
 					Clear
@@ -318,12 +335,11 @@
 			</div>
 
 			<!-- Output content -->
-			<div class="max-h-64 overflow-auto px-4 pb-4">
+			<div class="max-h-48 overflow-auto border-t border-slate-800/50 bg-slate-950/30 px-3 py-2">
 				{#if executionResult?.outputs.length}
-					<pre class="font-mono text-sm">{#each executionResult.outputs as output}<span class={getOutputClass(output.type)}>{output.content}</span>
-{/each}</pre>
+					<pre class="font-mono text-[12px] leading-relaxed">{#each executionResult.outputs as output}<span class={getOutputClass(output.type)}>{output.content}</span>{/each}</pre>
 				{:else if !isExecuting}
-					<p class="text-sm italic text-gray-500">No output</p>
+					<p class="text-[12px] italic text-slate-600">No output</p>
 				{/if}
 			</div>
 		</div>
@@ -331,33 +347,36 @@
 </div>
 
 <style>
-	/* Override Shiki styles for consistent appearance */
+	/* Override Shiki styles for compact, polished appearance */
 	.code-block-content :global(pre) {
-		@apply m-0 overflow-x-auto bg-transparent p-4;
+		@apply m-0 overflow-x-auto bg-transparent px-4 py-3;
+		line-height: 1.5;
 	}
 
 	.code-block-content :global(code) {
-		@apply font-mono text-sm leading-relaxed;
+		@apply font-mono text-[13px];
+		line-height: inherit;
 	}
 
+	/* Shiki wraps each line - make them inline to prevent double spacing */
 	.code-block-content :global(.line) {
-		@apply block min-h-[1.5em];
+		display: inline;
 	}
 
 	/* Scrollbar styling for code blocks */
 	.code-block-content :global(pre)::-webkit-scrollbar {
-		height: 8px;
+		height: 6px;
 	}
 
 	.code-block-content :global(pre)::-webkit-scrollbar-track {
-		@apply bg-gray-800;
+		@apply bg-transparent;
 	}
 
 	.code-block-content :global(pre)::-webkit-scrollbar-thumb {
-		@apply rounded bg-gray-600;
+		@apply rounded-full bg-slate-600/50;
 	}
 
 	.code-block-content :global(pre)::-webkit-scrollbar-thumb:hover {
-		@apply bg-gray-500;
+		@apply bg-slate-500/70;
 	}
 </style>
