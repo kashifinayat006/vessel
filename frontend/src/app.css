@@ -8,6 +8,15 @@ body {
 	@apply h-full;
 }
 
+/* Text selection styling for dark theme */
+::selection {
+	@apply bg-violet-500/40 text-white;
+}
+
+::-moz-selection {
+	@apply bg-violet-500/40 text-white;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
 	@apply w-2;

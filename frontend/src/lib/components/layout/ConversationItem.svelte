@@ -4,7 +4,8 @@
 	 * Shows title, model, and hover actions (pin, delete)
 	 */
 	import type { Conversation } from '$lib/types/conversation.js';
-	import { conversationsState, uiState } from '$lib/stores';
+	import { goto } from '$app/navigation';
+	import { conversationsState, uiState, chatState } from '$lib/stores';
 	import { deleteConversation } from '$lib/storage';
 
 	interface Props {
@@ -40,11 +41,20 @@
 	async function handleDelete(e: MouseEvent) {
 		e.preventDefault();
 		e.stopPropagation();
+
+		const isCurrentChat = chatState.conversationId === conversation.id;
+
 		// Delete from IndexedDB first
 		const result = await deleteConversation(conversation.id);
 		if (result.success) {
 			// Then remove from state
 			conversationsState.remove(conversation.id);
+
+			// If deleting the active chat, navigate home
+			if (isCurrentChat) {
+				chatState.reset();
+				goto('/');
+			}
 		} else {
 			console.error('Failed to delete conversation:', result.error);
 		}
