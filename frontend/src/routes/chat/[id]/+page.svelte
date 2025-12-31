@@ -99,6 +99,10 @@
 	);
 </script>
 
+<svelte:head>
+	<title>{conversation?.title ?? 'Chat'} - Ollama WebUI</title>
+</svelte:head>
+
 <div class="flex h-full flex-col">
 	{#if isLoading}
 		<!-- Loading state -->

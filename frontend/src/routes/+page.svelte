@@ -95,6 +95,9 @@
 		// Add to conversations list
 		conversationsState.add(conversation);
 
+		// Update browser tab title
+		currentTitle = title;
+
 		// Set up chat state for the new conversation
 		chatState.conversationId = conversationId;
 
@@ -416,10 +419,14 @@
 		userMessage: string,
 		assistantMessage: string
 	): Promise<void> {
+		console.log('[NewChat] generateSmartTitle called:', { conversationId, userMessage: userMessage.substring(0, 50) });
 		try {
 			// Use a small, fast model for title generation if available, otherwise use selected
 			const model = modelsState.selectedId;
-			if (!model) return;
+			if (!model) {
+				console.log('[NewChat] No model selected, skipping title generation');
+				return;
+			}
 
 			// Strip thinking blocks from assistant message for cleaner title generation
 			const cleanedAssistant = assistantMessage
@@ -427,28 +434,44 @@
 				.replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
 				.trim();
 
+			console.log('[NewChat] cleanedAssistant length:', cleanedAssistant.length);
+
+			// Build prompt - use assistant content if available, otherwise just user message
+			const promptContent = cleanedAssistant.length > 0
+				? `User: ${userMessage.substring(0, 200)}\n\nAssistant: ${cleanedAssistant.substring(0, 300)}`
+				: `User message: ${userMessage.substring(0, 400)}`;
+
+			console.log('[NewChat] Generating title with model:', model);
+
 			const response = await ollamaClient.chat({
 				model,
 				messages: [
 					{
 						role: 'system',
-						content: 'Generate a very short, concise title (3-6 words max) for this conversation. Output ONLY the title, no quotes, no explanation.'
+						content: 'Generate a very short, concise title (3-6 words max) for this conversation. Output ONLY the title, no quotes, no explanation, no thinking.'
 					},
 					{
 						role: 'user',
-						content: `User: ${userMessage.substring(0, 200)}\n\nAssistant: ${cleanedAssistant.substring(0, 300)}`
+						content: promptContent
 					}
 				]
 			});
 
+			console.log('[NewChat] Title generation response:', response.message.content);
+
+			// Strip any thinking blocks from the title response and clean it up
 			const newTitle = response.message.content
+				.replace(/<think>[\s\S]*?<\/think>/g, '')
+				.replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
 				.trim()
 				.replace(/^["']|["']$/g, '') // Remove quotes
+				.replace(/^Title:\s*/i, '') // Remove "Title:" prefix if present
 				.substring(0, 50);
 
 			if (newTitle && newTitle.length > 0) {
 				await updateConversation(conversationId, { title: newTitle });
 				conversationsState.update(conversationId, { title: newTitle });
+				currentTitle = newTitle;
 				console.log('[NewChat] Updated title to:', newTitle);
 			}
 		} catch (error) {
@@ -456,7 +479,14 @@
 			// Silently fail - keep the original title
 		}
 	}
+
+	// Track current chat title for browser tab
+	let currentTitle = $state<string | null>(null);
 </script>
+
+<svelte:head>
+	<title>{currentTitle ? `${currentTitle} - Ollama WebUI` : 'Ollama WebUI'}</title>
+</svelte:head>
 
 <div class="flex h-full flex-col">
 	<ChatWindow mode="new" onFirstMessage={handleFirstMessage} bind:thinkingEnabled />
