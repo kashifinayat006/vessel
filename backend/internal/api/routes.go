@@ -42,6 +42,9 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string) {
 		// Web search proxy (for web_search tool)
 		v1.POST("/proxy/search", WebSearchProxyHandler())
 
+		// IP-based geolocation (fallback when browser geolocation fails)
+		v1.GET("/location", IPGeolocationHandler())
+
 		// Ollama proxy (optional)
 		v1.Any("/ollama/*path", OllamaProxyHandler(ollamaURL))
 	}

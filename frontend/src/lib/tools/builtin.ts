@@ -459,7 +459,7 @@ const getLocationDefinition: ToolDefinition = {
 	type: 'function',
 	function: {
 		name: 'get_location',
-		description: 'Gets the user\'s current city and country from their device GPS. Returns location that can be used with web_search. If this fails, ask user for their location.',
+		description: 'ALWAYS call this first when user asks about weather, local news, nearby places, or anything location-dependent WITHOUT specifying a city. Automatically detects user\'s city via GPS or IP. Only ask user for location if this tool returns an error.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -472,82 +472,101 @@ const getLocationDefinition: ToolDefinition = {
 	}
 };
 
+/**
+ * Try IP-based geolocation via backend as fallback
+ */
+async function tryIPGeolocation(): Promise<LocationResult | null> {
+	try {
+		const response = await fetch('/api/v1/location');
+		if (!response.ok) return null;
+
+		const data = await response.json();
+		if (!data.success) return null;
+
+		return {
+			latitude: data.latitude,
+			longitude: data.longitude,
+			accuracy: -1, // IP geolocation has no accuracy metric
+			city: data.city,
+			country: data.country
+		};
+	} catch {
+		return null;
+	}
+}
+
 const getLocationHandler: BuiltinToolHandler<GetLocationArgs> = async (args) => {
 	const { highAccuracy = false } = args;
 
-	// Check if geolocation is available
-	if (!navigator.geolocation) {
-		return { error: 'Geolocation is not supported by this browser' };
-	}
-
-	try {
-		const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-			navigator.geolocation.getCurrentPosition(resolve, reject, {
-				enableHighAccuracy: highAccuracy,
-				timeout: 30000, // 30 seconds - user needs time to accept permission prompt
-				maximumAge: 300000 // Cache for 5 minutes
-			});
-		});
-
-		const result: LocationResult = {
-			latitude: position.coords.latitude,
-			longitude: position.coords.longitude,
-			accuracy: Math.round(position.coords.accuracy)
-		};
-
-		// Try to get city/country via reverse geocoding (using a free service)
+	// Try browser geolocation first (most accurate)
+	if (navigator.geolocation) {
 		try {
-			const geoResponse = await fetch(
-				`https://nominatim.openstreetmap.org/reverse?lat=${result.latitude}&lon=${result.longitude}&format=json`,
-				{
-					headers: {
-						'User-Agent': 'OllamaWebUI/1.0'
+			const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+				navigator.geolocation.getCurrentPosition(resolve, reject, {
+					enableHighAccuracy: highAccuracy,
+					timeout: 15000, // 15 seconds for browser geolocation
+					maximumAge: 300000 // Cache for 5 minutes
+				});
+			});
+
+			const result: LocationResult = {
+				latitude: position.coords.latitude,
+				longitude: position.coords.longitude,
+				accuracy: Math.round(position.coords.accuracy)
+			};
+
+			// Try to get city/country via reverse geocoding (using a free service)
+			try {
+				const geoResponse = await fetch(
+					`https://nominatim.openstreetmap.org/reverse?lat=${result.latitude}&lon=${result.longitude}&format=json`,
+					{
+						headers: {
+							'User-Agent': 'OllamaWebUI/1.0'
+						}
+					}
+				);
+
+				if (geoResponse.ok) {
+					const geoData = await geoResponse.json();
+					if (geoData.address) {
+						result.city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality;
+						result.country = geoData.address.country;
 					}
 				}
-			);
-
-			if (geoResponse.ok) {
-				const geoData = await geoResponse.json();
-				if (geoData.address) {
-					result.city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality;
-					result.country = geoData.address.country;
-				}
+			} catch {
+				// Reverse geocoding failed, but we still have coordinates
 			}
+
+			return {
+				location: result,
+				source: 'gps',
+				message: result.city
+					? `User is located in ${result.city}${result.country ? ', ' + result.country : ''}`
+					: `User is at coordinates ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`
+			};
 		} catch {
-			// Reverse geocoding failed, but we still have coordinates
+			// Browser geolocation failed, try IP fallback
+			console.log('[get_location] Browser geolocation failed, trying IP fallback...');
 		}
+	}
 
+	// Fallback: IP-based geolocation via backend
+	const ipResult = await tryIPGeolocation();
+	if (ipResult) {
 		return {
-			location: result,
-			message: result.city
-				? `User is located in ${result.city}${result.country ? ', ' + result.country : ''}`
-				: `User is at coordinates ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`
-		};
-	} catch (error) {
-		if (error instanceof GeolocationPositionError) {
-			switch (error.code) {
-				case error.PERMISSION_DENIED:
-					return {
-						error: 'Location permission denied',
-						suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
-					};
-				case error.POSITION_UNAVAILABLE:
-					return {
-						error: 'Location services unavailable on this device',
-						suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
-					};
-				case error.TIMEOUT:
-					return {
-						error: 'Location request timed out',
-						suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
-					};
-			}
-		}
-		return {
-			error: `Failed to get location: ${error instanceof Error ? error.message : 'Unknown error'}`,
-			suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
+			location: ipResult,
+			source: 'ip',
+			message: ipResult.city
+				? `User is approximately located in ${ipResult.city}${ipResult.country ? ', ' + ipResult.country : ''} (based on IP address)`
+				: `Could not determine city from IP address`
 		};
 	}
+
+	// Both methods failed
+	return {
+		error: 'Could not determine location (browser geolocation unavailable and backend not reachable)',
+		suggestion: 'Ask the user for their city/location directly, then use web_search with that location.'
+	};
 };
 
 // ============================================================================
