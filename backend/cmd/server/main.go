@@ -1,0 +1,89 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+
+	"ollama-webui-backend/internal/api"
+	"ollama-webui-backend/internal/database"
+)
+
+func main() {
+	var (
+		port      = flag.String("port", "8080", "Server port")
+		dbPath    = flag.String("db", "./data/ollama-webui.db", "Database file path")
+		ollamaURL = flag.String("ollama-url", "http://localhost:11434", "Ollama API URL")
+	)
+	flag.Parse()
+
+	// Initialize database
+	db, err := database.OpenDatabase(*dbPath)
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	// Run migrations
+	if err := database.RunMigrations(db); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	// Setup Gin router
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+
+	// CORS configuration
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// Register routes
+	api.SetupRoutes(r, db, *ollamaURL)
+
+	// Create server
+	srv := &http.Server{
+		Addr:    ":" + *port,
+		Handler: r,
+	}
+
+	// Graceful shutdown handling
+	go func() {
+		log.Printf("Server starting on port %s", *port)
+		log.Printf("Ollama URL: %s", *ollamaURL)
+		log.Printf("Database: %s", *dbPath)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited")
+}

@@ -1,0 +1,166 @@
+<script lang="ts">
+	/**
+	 * SettingsModal - Application settings dialog
+	 * Handles theme, model defaults, and other preferences
+	 */
+
+	import { modelsState } from '$lib/stores';
+	import { getPrimaryModifierDisplay } from '$lib/utils';
+
+	interface Props {
+		isOpen: boolean;
+		onClose: () => void;
+	}
+
+	const { isOpen, onClose }: Props = $props();
+
+	// Settings state (mirrors global state for editing)
+	let defaultModel = $state<string | null>(null);
+
+	// Sync with global state when modal opens
+	$effect(() => {
+		if (isOpen) {
+			defaultModel = modelsState.selectedId;
+		}
+	});
+
+	/**
+	 * Save settings and close modal
+	 */
+	function handleSave(): void {
+		if (defaultModel) {
+			modelsState.select(defaultModel);
+		}
+		onClose();
+	}
+
+	/**
+	 * Handle backdrop click
+	 */
+	function handleBackdropClick(event: MouseEvent): void {
+		if (event.target === event.currentTarget) {
+			onClose();
+		}
+	}
+
+	/**
+	 * Handle escape key
+	 */
+	function handleKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			onClose();
+		}
+	}
+
+	const modifierKey = getPrimaryModifierDisplay();
+</script>
+
+{#if isOpen}
+	<!-- Backdrop -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+		onclick={handleBackdropClick}
+		onkeydown={handleKeydown}
+	>
+		<!-- Modal -->
+		<div
+			class="w-full max-w-lg rounded-xl bg-slate-800 shadow-2xl"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="settings-title"
+		>
+			<!-- Header -->
+			<div class="flex items-center justify-between border-b border-slate-700 px-6 py-4">
+				<h2 id="settings-title" class="text-lg font-semibold text-slate-100">Settings</h2>
+				<button
+					type="button"
+					onclick={onClose}
+					class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+					aria-label="Close settings"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+					</svg>
+				</button>
+			</div>
+
+			<!-- Content -->
+			<div class="space-y-6 p-6">
+				<!-- Model Section -->
+				<section>
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Default Model</h3>
+					<div class="space-y-4">
+						<div>
+							<select
+								bind:value={defaultModel}
+								class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+							>
+								{#each modelsState.chatModels as model}
+									<option value={model.name}>{model.name}</option>
+								{/each}
+							</select>
+							<p class="mt-1 text-sm text-slate-400">Model used for new conversations</p>
+						</div>
+					</div>
+				</section>
+
+				<!-- Keyboard Shortcuts Section -->
+				<section>
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Keyboard Shortcuts</h3>
+					<div class="space-y-2 text-sm">
+						<div class="flex justify-between text-slate-300">
+							<span>New Chat</span>
+							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">{modifierKey}+N</kbd>
+						</div>
+						<div class="flex justify-between text-slate-300">
+							<span>Search</span>
+							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">{modifierKey}+K</kbd>
+						</div>
+						<div class="flex justify-between text-slate-300">
+							<span>Toggle Sidebar</span>
+							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">{modifierKey}+B</kbd>
+						</div>
+						<div class="flex justify-between text-slate-300">
+							<span>Send Message</span>
+							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">Enter</kbd>
+						</div>
+						<div class="flex justify-between text-slate-300">
+							<span>New Line</span>
+							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">Shift+Enter</kbd>
+						</div>
+					</div>
+				</section>
+
+				<!-- About Section -->
+				<section>
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">About</h3>
+					<div class="rounded-lg bg-slate-700/50 p-4">
+						<p class="font-medium text-slate-200">Ollama Web UI</p>
+						<p class="mt-1 text-sm text-slate-400">
+							A feature-rich web interface for Ollama with chat, tools, and memory management.
+						</p>
+					</div>
+				</section>
+			</div>
+
+			<!-- Footer -->
+			<div class="flex justify-end gap-3 border-t border-slate-700 px-6 py-4">
+				<button
+					type="button"
+					onclick={onClose}
+					class="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					onclick={handleSave}
+					class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+				>
+					Save Changes
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

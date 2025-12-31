@@ -1,0 +1,331 @@
+<script lang="ts">
+	/**
+	 * MessageContent - Renders markdown content with code highlighting
+	 * Parses markdown, sanitizes HTML, extracts code blocks, and displays images
+	 */
+
+	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
+	import CodeBlock from './CodeBlock.svelte';
+	import HtmlPreview from './HtmlPreview.svelte';
+	import { base64ToDataUrl } from '$lib/ollama/image-processor';
+
+	interface Props {
+		content: string;
+		images?: string[];
+	}
+
+	const { content, images }: Props = $props();
+
+	// Pattern to find fenced code blocks
+	const CODE_BLOCK_PATTERN = /```(\w+)?\n([\s\S]*?)```/g;
+
+	// Languages that should show a preview
+	const PREVIEW_LANGUAGES = ['html', 'htm'];
+
+	interface ContentPart {
+		type: 'text' | 'code';
+		content: string;
+		language?: string;
+		showPreview?: boolean;
+	}
+
+	/** Check if a language should show preview */
+	function shouldShowPreview(language: string): boolean {
+		return PREVIEW_LANGUAGES.includes(language.toLowerCase());
+	}
+
+	/** Modal state for full-size image viewing */
+	let modalImage = $state<string | null>(null);
+
+	/**
+	 * Parse content into parts (text and code blocks)
+	 */
+	function parseContent(text: string): ContentPart[] {
+		const parts: ContentPart[] = [];
+		let lastIndex = 0;
+
+		// Reset regex state
+		CODE_BLOCK_PATTERN.lastIndex = 0;
+
+		// Find all code blocks
+		let match;
+		while ((match = CODE_BLOCK_PATTERN.exec(text)) !== null) {
+			// Add text before this code block
+			if (match.index > lastIndex) {
+				const textBefore = text.slice(lastIndex, match.index);
+				if (textBefore.trim()) {
+					parts.push({ type: 'text', content: textBefore });
+				}
+			}
+
+			// Add the code block
+			const language = match[1] || 'text';
+			parts.push({
+				type: 'code',
+				content: match[2].trim(),
+				language,
+				showPreview: shouldShowPreview(language)
+			});
+
+			lastIndex = match.index + match[0].length;
+		}
+
+		// Add remaining text after last code block
+		if (lastIndex < text.length) {
+			const remaining = text.slice(lastIndex);
+			if (remaining.trim()) {
+				parts.push({ type: 'text', content: remaining });
+			}
+		}
+
+		// If no code blocks found, return entire content as text
+		if (parts.length === 0 && text.trim()) {
+			parts.push({ type: 'text', content: text });
+		}
+
+		return parts;
+	}
+
+	/**
+	 * Render markdown to sanitized HTML
+	 */
+	function renderMarkdown(text: string): string {
+		// Configure marked for safe rendering
+		const html = marked.parse(text, {
+			async: false,
+			gfm: true,
+			breaks: true
+		}) as string;
+
+		// Sanitize the HTML
+		return DOMPurify.sanitize(html, {
+			USE_PROFILES: { html: true },
+			ALLOWED_TAGS: [
+				'p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'del',
+				'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+				'ul', 'ol', 'li',
+				'blockquote', 'hr',
+				'a', 'code', 'pre',
+				'table', 'thead', 'tbody', 'tr', 'th', 'td',
+				'img', 'span', 'div', 'sub', 'sup'
+			],
+			ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel']
+		});
+	}
+
+	/**
+	 * Get the data URL for an image
+	 */
+	function getImageUrl(image: string): string {
+		return base64ToDataUrl(image);
+	}
+
+	/**
+	 * Open the image modal
+	 */
+	function openImageModal(image: string): void {
+		modalImage = image;
+	}
+
+	/**
+	 * Close the image modal
+	 */
+	function closeImageModal(): void {
+		modalImage = null;
+	}
+
+	/**
+	 * Handle keyboard events on modal
+	 */
+	function handleModalKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			closeImageModal();
+		}
+	}
+
+	// Parse content into parts
+	const contentParts = $derived(parseContent(content));
+</script>
+
+<div class="message-content">
+	<!-- Render images if present -->
+	{#if images && images.length > 0}
+		<div class="mb-3 flex flex-wrap gap-2">
+			{#each images as image, index}
+				<button
+					type="button"
+					class="group relative block overflow-hidden rounded-lg border border-gray-200 bg-gray-100 transition-all hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-800"
+					onclick={() => openImageModal(image)}
+				>
+					<img
+						src={getImageUrl(image)}
+						alt={`Attached image ${index + 1}`}
+						class="max-h-48 max-w-full object-contain"
+					/>
+					<!-- Hover overlay with expand icon -->
+					<div class="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+							class="h-6 w-6 text-white opacity-0 drop-shadow transition-opacity group-hover:opacity-100"
+						>
+							<path d="M13.28 7.78l3.22-3.22v2.69a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.69l-3.22 3.22a.75.75 0 001.06 1.06zM2 17.25v-4.5a.75.75 0 011.5 0v2.69l3.22-3.22a.75.75 0 011.06 1.06L4.56 16.5h2.69a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75zM12.22 13.28l3.22 3.22h-2.69a.75.75 0 000 1.5h4.5a.75.75 0 00.75-.75v-4.5a.75.75 0 00-1.5 0v2.69l-3.22-3.22a.75.75 0 10-1.06 1.06zM3.5 4.56l3.22 3.22a.75.75 0 001.06-1.06L4.56 3.5h2.69a.75.75 0 000-1.5h-4.5a.75.75 0 00-.75.75v4.5a.75.75 0 001.5 0V4.56z" />
+						</svg>
+					</div>
+				</button>
+			{/each}
+		</div>
+	{/if}
+
+	<!-- Render content parts -->
+	{#each contentParts as part, index (index)}
+		{#if part.type === 'code'}
+			<div class="my-3 space-y-3">
+				<CodeBlock
+					code={part.content}
+					language={part.language || 'text'}
+				/>
+				<!-- Show preview for HTML code blocks -->
+				{#if part.showPreview}
+					<HtmlPreview
+						html={part.content}
+						title="HTML Preview"
+					/>
+				{/if}
+			</div>
+		{:else}
+			<div class="prose prose-sm prose-invert max-w-none">
+				{@html renderMarkdown(part.content)}
+			</div>
+		{/if}
+	{/each}
+</div>
+
+<!-- Full-size image modal -->
+{#if modalImage}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+		role="dialog"
+		tabindex="-1"
+		aria-modal="true"
+		aria-label="Full size image"
+		onclick={closeImageModal}
+		onkeydown={handleModalKeydown}
+	>
+		<!-- Close button -->
+		<button
+			type="button"
+			onclick={closeImageModal}
+			class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-white"
+			aria-label="Close preview"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				viewBox="0 0 20 20"
+				fill="currentColor"
+				class="h-6 w-6"
+			>
+				<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+			</svg>
+		</button>
+
+		<!-- Full-size image -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<img
+			src={getImageUrl(modalImage)}
+			alt="Full size view"
+			class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+		/>
+	</div>
+{/if}
+
+<style>
+	/* Prose styling overrides for chat context (dark theme) */
+	.message-content :global(.prose) {
+		@apply leading-relaxed text-slate-200;
+	}
+
+	.message-content :global(.prose p) {
+		@apply my-1;
+	}
+
+	.message-content :global(.prose p:first-child) {
+		@apply mt-0;
+	}
+
+	.message-content :global(.prose p:last-child) {
+		@apply mb-0;
+	}
+
+	.message-content :global(.prose pre) {
+		@apply my-2 rounded-lg;
+	}
+
+	.message-content :global(.prose code:not(pre code)) {
+		@apply rounded bg-slate-700 px-1.5 py-0.5 text-sm text-emerald-400;
+	}
+
+	.message-content :global(.prose a) {
+		@apply text-blue-400 hover:text-blue-300 hover:underline;
+	}
+
+	.message-content :global(.prose ul),
+	.message-content :global(.prose ol) {
+		@apply my-2 pl-4;
+	}
+
+	.message-content :global(.prose li) {
+		@apply my-0.5;
+	}
+
+	.message-content :global(.prose blockquote) {
+		@apply border-l-4 border-slate-600 pl-4 italic text-slate-400;
+	}
+
+	.message-content :global(.prose table) {
+		@apply my-2 w-full border-collapse text-sm;
+	}
+
+	.message-content :global(.prose th),
+	.message-content :global(.prose td) {
+		@apply border border-slate-600 px-3 py-2;
+	}
+
+	.message-content :global(.prose th) {
+		@apply bg-slate-700 font-semibold text-slate-200;
+	}
+
+	.message-content :global(.prose td) {
+		@apply bg-slate-800/50 text-slate-300;
+	}
+
+	.message-content :global(.prose tr:hover td) {
+		@apply bg-slate-700/50;
+	}
+
+	.message-content :global(.prose strong) {
+		@apply text-slate-100;
+	}
+
+	.message-content :global(.prose em) {
+		@apply text-slate-300;
+	}
+
+	.message-content :global(.prose h1),
+	.message-content :global(.prose h2),
+	.message-content :global(.prose h3),
+	.message-content :global(.prose h4),
+	.message-content :global(.prose h5),
+	.message-content :global(.prose h6) {
+		@apply text-slate-100;
+	}
+
+	.message-content :global(.prose hr) {
+		@apply border-slate-600;
+	}
+</style>

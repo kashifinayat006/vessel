@@ -1,0 +1,159 @@
+<script lang="ts">
+	/**
+	 * Root layout component
+	 * Sets up the main app structure with sidenav and top navigation
+	 */
+
+	import '../app.css';
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { chatState, conversationsState, modelsState, uiState } from '$lib/stores';
+	import { getAllConversations } from '$lib/storage';
+	import { syncManager } from '$lib/backend';
+	import { keyboardShortcuts, getShortcuts } from '$lib/utils';
+	import Sidenav from '$lib/components/layout/Sidenav.svelte';
+	import TopNav from '$lib/components/layout/TopNav.svelte';
+	import ModelSelect from '$lib/components/layout/ModelSelect.svelte';
+	import { ToastContainer } from '$lib/components/shared';
+
+	import type { LayoutData } from './$types';
+	import type { Snippet } from 'svelte';
+
+	interface Props {
+		data: LayoutData;
+		children: Snippet;
+	}
+
+	let { data, children }: Props = $props();
+
+	// Sidenav width constant
+	const SIDENAV_WIDTH = 280;
+
+	// Search modal state
+	let showSearchModal = $state(false);
+
+	onMount(() => {
+		// Initialize UI state (handles responsive detection, theme, etc.)
+		uiState.initialize();
+
+		// Initialize sync manager (backend communication)
+		syncManager.initialize();
+
+		// Initialize keyboard shortcuts
+		keyboardShortcuts.initialize();
+		registerKeyboardShortcuts();
+
+		// Load models from preloaded data
+		if (data.models && data.models.length > 0) {
+			modelsState.available = data.models;
+			// Try to load persisted model selection first
+			modelsState.loadPersistedSelection();
+			// Auto-select first chat model if none selected (chatModels filters out middleware)
+			if (!modelsState.selectedId && modelsState.chatModels.length > 0) {
+				modelsState.selectedId = modelsState.chatModels[0].name;
+			}
+		} else if (data.modelsError) {
+			modelsState.error = data.modelsError;
+		}
+
+		// Load conversations from IndexedDB
+		loadConversations();
+
+		return () => {
+			uiState.destroy();
+			syncManager.destroy();
+			keyboardShortcuts.destroy();
+		};
+	});
+
+	/**
+	 * Register keyboard shortcuts
+	 */
+	function registerKeyboardShortcuts(): void {
+		const SHORTCUTS = getShortcuts();
+
+		// New chat (Cmd/Ctrl + N)
+		keyboardShortcuts.register({
+			...SHORTCUTS.NEW_CHAT,
+			preventDefault: true,
+			handler: () => {
+				chatState.reset();
+				goto('/');
+			}
+		});
+
+		// Search (Cmd/Ctrl + K)
+		keyboardShortcuts.register({
+			...SHORTCUTS.SEARCH,
+			preventDefault: true,
+			handler: () => {
+				// Focus the search input in sidenav if open, otherwise open sidenav
+				if (!uiState.sidenavOpen) {
+					uiState.openSidenav();
+				}
+				// Focus search after a short delay to allow sidenav to open
+				setTimeout(() => {
+					const searchInput = document.querySelector('[data-search-input]') as HTMLInputElement;
+					searchInput?.focus();
+				}, 100);
+			}
+		});
+
+		// Toggle sidenav (Cmd/Ctrl + B)
+		keyboardShortcuts.register({
+			...SHORTCUTS.TOGGLE_SIDENAV,
+			preventDefault: true,
+			handler: () => {
+				uiState.toggleSidenav();
+			}
+		});
+	}
+
+	/**
+	 * Load conversations from IndexedDB storage
+	 */
+	async function loadConversations(): Promise<void> {
+		const result = await getAllConversations();
+		if (result.success) {
+			conversationsState.load(result.data);
+		} else {
+			console.error('Failed to load conversations:', result.error);
+			conversationsState.load([]);
+		}
+	}
+
+	/**
+	 * Navigate to home (used after delete/archive)
+	 */
+	function handleNavigateHome(): void {
+		goto('/');
+	}
+</script>
+
+<div class="h-screen w-full overflow-hidden bg-slate-900">
+	<!-- Sidenav - fixed position -->
+	<Sidenav />
+
+	<!-- Main content wrapper - shifts right when sidenav is open on desktop -->
+	<div
+		class="flex h-full flex-col bg-slate-900 transition-[margin-left] duration-300 ease-in-out"
+		style="margin-left: {!uiState.isMobile && uiState.sidenavOpen ? SIDENAV_WIDTH : 0}px"
+	>
+		<!-- Top navigation - fixed at top of content area -->
+		<header class="relative z-40 flex-shrink-0">
+			<TopNav onNavigateHome={handleNavigateHome}>
+				{#snippet modelSelect()}
+					<ModelSelect />
+				{/snippet}
+			</TopNav>
+		</header>
+
+		<!-- Page content - scrollable -->
+		<main class="flex-1 overflow-hidden">
+			{@render children()}
+		</main>
+	</div>
+</div>
+
+<!-- Toast notifications -->
+<ToastContainer />

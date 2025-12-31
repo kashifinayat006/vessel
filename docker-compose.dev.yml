@@ -1,0 +1,27 @@
+# Development docker-compose - uses host network for direct Ollama access
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    # Use host network to access localhost:11434 and backend directly
+    network_mode: host
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - OLLAMA_API_URL=http://localhost:11434
+      - BACKEND_URL=http://localhost:9090
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    network_mode: host
+    volumes:
+      - ./backend/data:/app/data
+    environment:
+      - GIN_MODE=release
+    command: ["./server", "-port", "9090", "-db", "/app/data/ollama-webui.db", "-ollama-url", "http://localhost:11434"]

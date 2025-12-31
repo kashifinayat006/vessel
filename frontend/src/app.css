@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+html,
+body {
+	@apply h-full;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+	@apply w-2;
+}
+
+::-webkit-scrollbar-track {
+	@apply bg-surface-800;
+}
+
+::-webkit-scrollbar-thumb {
+	@apply bg-surface-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	@apply bg-surface-500;
+}
+
+/* Prose customization for chat messages */
+.prose {
+	@apply max-w-none;
+}
+
+.prose pre {
+	@apply bg-surface-800 rounded-lg;
+}
+
+.prose code {
+	@apply text-primary-400;
+}
+
+.prose code::before,
+.prose code::after {
+	content: none;
+}
+
+/* Animation utilities */
+@keyframes bounce-dots {
+	0%, 80%, 100% {
+		transform: translateY(0);
+	}
+	40% {
+		transform: translateY(-6px);
+	}
+}
+
+.animate-bounce-dot {
+	animation: bounce-dots 1.4s infinite ease-in-out both;
+}
+
+.animate-bounce-dot:nth-child(1) {
+	animation-delay: -0.32s;
+}
+
+.animate-bounce-dot:nth-child(2) {
+	animation-delay: -0.16s;
+}
