@@ -6,6 +6,7 @@ export * from './types.js';
 export { builtinTools, getBuiltinToolDefinitions } from './builtin.js';
 export {
 	toolRegistry,
+	executeCustomTool,
 	parseToolCall,
 	runToolCall,
 	runToolCalls,

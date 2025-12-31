@@ -4,7 +4,7 @@
 	 * Handles theme, model defaults, and other preferences
 	 */
 
-	import { modelsState } from '$lib/stores';
+	import { modelsState, uiState } from '$lib/stores';
 	import { getPrimaryModifierDisplay } from '$lib/utils';
 
 	interface Props {
@@ -87,6 +87,43 @@
 
 			<!-- Content -->
 			<div class="space-y-6 p-6">
+				<!-- Appearance Section -->
+				<section>
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Appearance</h3>
+					<div class="space-y-4">
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-sm font-medium text-slate-200">Dark Mode</p>
+								<p class="text-xs text-slate-400">Toggle between light and dark theme</p>
+							</div>
+							<button
+								type="button"
+								onclick={() => uiState.toggleDarkMode()}
+								class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-800 {uiState.darkMode ? 'bg-emerald-600' : 'bg-slate-600'}"
+								role="switch"
+								aria-checked={uiState.darkMode}
+							>
+								<span
+									class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {uiState.darkMode ? 'translate-x-5' : 'translate-x-0'}"
+								></span>
+							</button>
+						</div>
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-sm font-medium text-slate-200">Use System Theme</p>
+								<p class="text-xs text-slate-400">Match your OS light/dark preference</p>
+							</div>
+							<button
+								type="button"
+								onclick={() => uiState.useSystemTheme()}
+								class="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-600"
+							>
+								Sync with System
+							</button>
+						</div>
+					</div>
+				</section>
+
 				<!-- Model Section -->
 				<section>
 					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Default Model</h3>

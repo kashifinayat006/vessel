@@ -15,7 +15,7 @@ export const PREFERRED_FUNCTION_MODEL = 'functiongemma:latest';
  * When true, functiongemma processes the request first to decide on tool usage
  * When false, tools are passed directly to the selected model
  */
-export const USE_FUNCTION_MODEL = true; // functiongemma routes tool calls for non-native models
+export const USE_FUNCTION_MODEL = false; // Set to true only if using functiongemma as middleware
 
 /**
  * Get the model to use for function calling

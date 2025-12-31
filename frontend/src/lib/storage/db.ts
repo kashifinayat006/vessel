@@ -123,6 +123,19 @@ export interface StoredChunk {
 }
 
 /**
+ * System prompt template
+ */
+export interface StoredPrompt {
+	id: string;
+	name: string;
+	content: string;
+	description: string;
+	isDefault: boolean;
+	createdAt: number;
+	updatedAt: number;
+}
+
+/**
  * Ollama WebUI database class
  * Manages all local storage tables
  */
@@ -133,6 +146,7 @@ class OllamaDatabase extends Dexie {
 	syncQueue!: Table<SyncQueueItem>;
 	documents!: Table<StoredDocument>;
 	chunks!: Table<StoredChunk>;
+	prompts!: Table<StoredPrompt>;
 
 	constructor() {
 		super('ollama-webui');
@@ -159,6 +173,18 @@ class OllamaDatabase extends Dexie {
 			documents: 'id, name, createdAt, updatedAt',
 			// Document chunks with embeddings
 			chunks: 'id, documentId'
+		});
+
+		// Version 3: System prompts
+		this.version(3).stores({
+			conversations: 'id, updatedAt, isPinned, isArchived',
+			messages: 'id, conversationId, parentId, createdAt',
+			attachments: 'id, messageId',
+			syncQueue: 'id, entityType, createdAt',
+			documents: 'id, name, createdAt, updatedAt',
+			chunks: 'id, documentId',
+			// System prompt templates
+			prompts: 'id, name, isDefault, updatedAt'
 		});
 	}
 }

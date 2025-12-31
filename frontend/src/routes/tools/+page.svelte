@@ -5,14 +5,44 @@
 	 */
 
 	import { toolsState } from '$lib/stores';
-	import type { ToolDefinition } from '$lib/tools';
+	import type { ToolDefinition, CustomTool } from '$lib/tools';
+	import { ToolEditor } from '$lib/components/tools';
+
+	// Editor state
+	let showEditor = $state(false);
+	let editingTool = $state<CustomTool | null>(null);
+
+	function openCreateEditor(): void {
+		editingTool = null;
+		showEditor = true;
+	}
+
+	function openEditEditor(tool: CustomTool): void {
+		editingTool = tool;
+		showEditor = true;
+	}
+
+	function handleSaveTool(tool: CustomTool): void {
+		if (editingTool) {
+			toolsState.updateCustomTool(tool.id, tool);
+		} else {
+			toolsState.addCustomTool(tool);
+		}
+		showEditor = false;
+		editingTool = null;
+	}
+
+	function handleDeleteTool(tool: CustomTool): void {
+		if (confirm(`Delete "${tool.name}"? This cannot be undone.`)) {
+			toolsState.removeCustomTool(tool.id);
+		}
+	}
 
 	// Get all tools with their state
 	const allTools = $derived(toolsState.getAllToolsWithState());
 
 	// Group tools by type
 	const builtinTools = $derived(allTools.filter(t => t.isBuiltin));
-	const customTools = $derived(allTools.filter(t => !t.isBuiltin));
 
 	/**
 	 * Toggle tool enabled state
@@ -138,6 +168,7 @@
 
 				<button
 					type="button"
+					onclick={openCreateEditor}
 					class="flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -147,7 +178,7 @@
 				</button>
 			</div>
 
-			{#if customTools.length === 0}
+			{#if toolsState.customTools.length === 0}
 				<div class="rounded-lg border border-dashed border-slate-700 bg-slate-800/50 p-8 text-center">
 					<svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
@@ -159,7 +190,7 @@
 				</div>
 			{:else}
 				<div class="space-y-3">
-					{#each customTools as tool (tool.definition.function.name)}
+					{#each toolsState.customTools as tool (tool.id)}
 						<div
 							class="rounded-lg border border-slate-700 bg-slate-800 p-4 transition-colors {tool.enabled ? '' : 'opacity-60'}"
 						>
@@ -167,20 +198,29 @@
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
 										<h3 class="font-medium text-white">
-											{tool.definition.function.name}
+											{tool.name}
 										</h3>
 										<span class="rounded bg-emerald-900 px-2 py-0.5 text-xs text-emerald-300">
 											custom
 										</span>
+										<span class="rounded bg-slate-700 px-2 py-0.5 text-xs text-slate-400">
+											{tool.implementation}
+										</span>
 									</div>
 									<p class="mt-1 text-sm text-slate-400">
-										{tool.definition.function.description}
+										{tool.description}
 									</p>
+									{#if Object.keys(tool.parameters.properties ?? {}).length > 0}
+										<p class="mt-1 font-mono text-xs text-slate-500">
+											Parameters: {Object.keys(tool.parameters.properties ?? {}).join(', ')}
+										</p>
+									{/if}
 								</div>
 
 								<div class="flex items-center gap-2">
 									<button
 										type="button"
+										onclick={() => openEditEditor(tool)}
 										class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
 										aria-label="Edit tool"
 									>
@@ -191,7 +231,18 @@
 
 									<button
 										type="button"
-										onclick={() => toggleTool(tool.definition.function.name)}
+										onclick={() => handleDeleteTool(tool)}
+										class="rounded p-1 text-slate-400 transition-colors hover:bg-red-900/30 hover:text-red-400"
+										aria-label="Delete tool"
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+										</svg>
+									</button>
+
+									<button
+										type="button"
+										onclick={() => toggleTool(tool.name)}
 										class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-800 {tool.enabled ? 'bg-emerald-600' : 'bg-slate-600'}"
 										role="switch"
 										aria-checked={tool.enabled}
@@ -230,3 +281,11 @@
 		</section>
 	</div>
 </div>
+
+<!-- Tool Editor Modal -->
+<ToolEditor
+	isOpen={showEditor}
+	editingTool={editingTool}
+	onClose={() => { showEditor = false; editingTool = null; }}
+	onSave={handleSaveTool}
+/>

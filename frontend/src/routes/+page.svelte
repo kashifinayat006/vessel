@@ -6,13 +6,18 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import { chatState, conversationsState, modelsState, toolsState } from '$lib/stores';
+	import { chatState, conversationsState, modelsState, toolsState, promptsState } from '$lib/stores';
 	import { createConversation as createStoredConversation, addMessage as addStoredMessage, updateConversation } from '$lib/storage';
 	import { ollamaClient } from '$lib/ollama';
 	import type { OllamaMessage, OllamaToolDefinition, OllamaToolCall } from '$lib/ollama';
 	import { getFunctionModel, USE_FUNCTION_MODEL, runToolCalls, formatToolResultsForChat } from '$lib/tools';
+	import { searchSimilar, formatResultsAsContext, getKnowledgeBaseStats } from '$lib/memory';
 	import ChatWindow from '$lib/components/chat/ChatWindow.svelte';
 	import type { Conversation } from '$lib/types/conversation';
+
+	// RAG state
+	let ragEnabled = $state(true);
+	let hasKnowledgeBase = $state(false);
 
 	/**
 	 * Get tool definitions for the API call
@@ -23,10 +28,31 @@
 		return tools.length > 0 ? tools as OllamaToolDefinition[] : undefined;
 	}
 
-	// Reset chat state when component mounts (new chat page loaded)
+	// Reset chat state and check knowledge base on mount
 	onMount(() => {
 		chatState.reset();
+		checkKnowledgeBase();
 	});
+
+	async function checkKnowledgeBase(): Promise<void> {
+		try {
+			const stats = await getKnowledgeBaseStats();
+			hasKnowledgeBase = stats.documentCount > 0;
+		} catch {
+			hasKnowledgeBase = false;
+		}
+	}
+
+	async function retrieveRagContext(query: string): Promise<string | null> {
+		if (!ragEnabled || !hasKnowledgeBase) return null;
+		try {
+			const results = await searchSimilar(query, 3, 0.5);
+			if (results.length === 0) return null;
+			return formatResultsAsContext(results);
+		} catch {
+			return null;
+		}
+	}
 
 	/**
 	 * Handle first message submission
@@ -83,11 +109,43 @@
 		let pendingToolCalls: OllamaToolCall[] | null = null;
 
 		try {
-			const messages: OllamaMessage[] = [{
+			let messages: OllamaMessage[] = [{
 				role: 'user',
 				content,
 				images
 			}];
+
+			// Build system prompt from active prompt + RAG context
+			const systemParts: string[] = [];
+
+			// Wait for prompts to be loaded, then add system prompt if active
+			await promptsState.ready();
+			const activePrompt = promptsState.activePrompt;
+			console.log('[NewChat] Prompts state:', {
+				promptsCount: promptsState.prompts.length,
+				activePromptId: promptsState.activePromptId,
+				activePrompt: activePrompt?.name ?? 'none'
+			});
+			if (activePrompt) {
+				systemParts.push(activePrompt.content);
+				console.log('[NewChat] Using system prompt:', activePrompt.name);
+			}
+
+			// Add RAG context if available
+			const ragContext = await retrieveRagContext(content);
+			if (ragContext) {
+				systemParts.push(`You have access to a knowledge base. Use the following relevant context to help answer the user's question. If the context isn't relevant, you can ignore it.\n\n${ragContext}`);
+				console.log('[NewChat] RAG context injected');
+			}
+
+			// Inject combined system message
+			if (systemParts.length > 0) {
+				const systemMessage: OllamaMessage = {
+					role: 'system',
+					content: systemParts.join('\n\n---\n\n')
+				};
+				messages = [systemMessage, ...messages];
+			}
 
 			const tools = getToolsForApi();
 
@@ -168,8 +226,8 @@
 				arguments: tc.function.arguments
 			}));
 
-			// Execute all tools
-			const results = await runToolCalls(convertedCalls);
+			// Execute all tools (including custom tools)
+			const results = await runToolCalls(convertedCalls, undefined, toolsState.customTools);
 
 			// Format results for chat
 			const toolResultContent = formatToolResultsForChat(results);
@@ -182,6 +240,12 @@
 			const assistantNode = chatState.messageTree.get(assistantMessageId);
 			if (assistantNode) {
 				assistantNode.message.content = toolCallInfo + '\n\n' + toolResultContent;
+				// Store structured tool call data for display
+				assistantNode.message.toolCalls = toolCalls.map(tc => ({
+					id: crypto.randomUUID(),
+					name: tc.function.name,
+					arguments: JSON.stringify(tc.function.arguments)
+				}));
 			}
 
 			// Persist tool call result

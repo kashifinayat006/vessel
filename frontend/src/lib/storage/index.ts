@@ -10,6 +10,7 @@ export type {
 	StoredMessage,
 	StoredAttachment,
 	SyncQueueItem,
+	StoredPrompt,
 	StorageResult
 } from './db.js';
 
@@ -71,3 +72,16 @@ export {
 	markMultipleForSync
 } from './sync.js';
 export type { SyncEntityType, SyncOperation } from './sync.js';
+
+// Prompt operations
+export {
+	getAllPrompts,
+	getDefaultPrompt,
+	getPrompt,
+	createPrompt,
+	updatePrompt,
+	deletePrompt,
+	setDefaultPrompt,
+	clearDefaultPrompt,
+	searchPrompts
+} from './prompts.js';

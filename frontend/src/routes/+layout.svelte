@@ -7,7 +7,7 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { chatState, conversationsState, modelsState, uiState } from '$lib/stores';
+	import { chatState, conversationsState, modelsState, uiState, promptsState } from '$lib/stores';
 	import { getAllConversations } from '$lib/storage';
 	import { syncManager } from '$lib/backend';
 	import { keyboardShortcuts, getShortcuts } from '$lib/utils';

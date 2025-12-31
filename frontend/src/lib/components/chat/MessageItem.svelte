@@ -9,6 +9,7 @@
 	import MessageActions from './MessageActions.svelte';
 	import BranchNavigator from './BranchNavigator.svelte';
 	import StreamingIndicator from './StreamingIndicator.svelte';
+	import ToolCallDisplay from './ToolCallDisplay.svelte';
 
 	interface Props {
 		node: MessageNode;
@@ -37,6 +38,7 @@
 	const isUser = $derived(node.message.role === 'user');
 	const isAssistant = $derived(node.message.role === 'assistant');
 	const hasContent = $derived(node.message.content.length > 0);
+	const hasToolCalls = $derived(node.message.toolCalls && node.message.toolCalls.length > 0);
 
 	/**
 	 * Start editing a message
@@ -149,6 +151,10 @@
 						content={node.message.content}
 						images={node.message.images}
 					/>
+				{/if}
+
+				{#if hasToolCalls && node.message.toolCalls}
+					<ToolCallDisplay toolCalls={node.message.toolCalls} />
 				{/if}
 
 				{#if isStreaming && !hasContent}

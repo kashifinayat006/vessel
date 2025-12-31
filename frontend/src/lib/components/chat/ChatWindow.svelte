@@ -4,7 +4,7 @@
 	 * Handles sending messages, streaming responses, and tool execution
 	 */
 
-	import { chatState, modelsState, conversationsState, toolsState } from '$lib/stores';
+	import { chatState, modelsState, conversationsState, toolsState, promptsState } from '$lib/stores';
 	import { ollamaClient } from '$lib/ollama';
 	import { addMessage as addStoredMessage, updateConversation, createConversation as createStoredConversation } from '$lib/storage';
 	import {
@@ -12,7 +12,10 @@
 		generateSummary,
 		selectMessagesForSummarization,
 		calculateTokenSavings,
-		formatSummaryAsContext
+		formatSummaryAsContext,
+		searchSimilar,
+		formatResultsAsContext,
+		getKnowledgeBaseStats
 	} from '$lib/memory';
 	import { runToolCalls, formatToolResultsForChat, getFunctionModel, USE_FUNCTION_MODEL } from '$lib/tools';
 	import type { OllamaMessage, OllamaToolCall, OllamaToolDefinition } from '$lib/ollama';
@@ -45,6 +48,47 @@
 
 	// Tool execution state
 	let isExecutingTools = $state(false);
+
+	// RAG (Retrieval-Augmented Generation) state
+	let ragEnabled = $state(true);
+	let hasKnowledgeBase = $state(false);
+	let lastRagContext = $state<string | null>(null);
+
+	// Check for knowledge base on mount
+	$effect(() => {
+		checkKnowledgeBase();
+	});
+
+	/**
+	 * Check if knowledge base has any documents
+	 */
+	async function checkKnowledgeBase(): Promise<void> {
+		try {
+			const stats = await getKnowledgeBaseStats();
+			hasKnowledgeBase = stats.documentCount > 0;
+		} catch {
+			hasKnowledgeBase = false;
+		}
+	}
+
+	/**
+	 * Retrieve relevant context from knowledge base for the query
+	 */
+	async function retrieveRagContext(query: string): Promise<string | null> {
+		if (!ragEnabled || !hasKnowledgeBase) return null;
+
+		try {
+			const results = await searchSimilar(query, 3, 0.5);
+			if (results.length === 0) return null;
+
+			const context = formatResultsAsContext(results);
+			console.log('[RAG] Retrieved', results.length, 'chunks for context');
+			return context;
+		} catch (error) {
+			console.error('[RAG] Failed to retrieve context:', error);
+			return null;
+		}
+	}
 
 	/**
 	 * Convert OllamaToolCall to the format expected by tool executor
@@ -211,7 +255,7 @@
 	}
 
 	/**
-	 * Stream assistant response with tool call handling
+	 * Stream assistant response with tool call handling and RAG context
 	 */
 	async function streamAssistantResponse(
 		model: string,
@@ -226,8 +270,39 @@
 		let pendingToolCalls: OllamaToolCall[] | null = null;
 
 		try {
-			const messages = getMessagesForApi();
+			let messages = getMessagesForApi();
 			const tools = getToolsForApi();
+
+			// Build system prompt from active prompt + RAG context
+			const systemParts: string[] = [];
+
+			// Wait for prompts to be loaded, then add system prompt if active
+			await promptsState.ready();
+			const activePrompt = promptsState.activePrompt;
+			if (activePrompt) {
+				systemParts.push(activePrompt.content);
+				console.log('[Chat] Using system prompt:', activePrompt.name);
+			}
+
+			// RAG: Retrieve relevant context for the last user message
+			const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+			if (lastUserMessage && ragEnabled && hasKnowledgeBase) {
+				const ragContext = await retrieveRagContext(lastUserMessage.content);
+				if (ragContext) {
+					lastRagContext = ragContext;
+					systemParts.push(`You have access to a knowledge base. Use the following relevant context to help answer the user's question. If the context isn't relevant, you can ignore it.\n\n${ragContext}`);
+					console.log('[RAG] Injected context into conversation');
+				}
+			}
+
+			// Inject combined system message
+			if (systemParts.length > 0) {
+				const systemMessage: OllamaMessage = {
+					role: 'system',
+					content: systemParts.join('\n\n---\n\n')
+				};
+				messages = [systemMessage, ...messages];
+			}
 
 			// Use function model for tool routing if enabled and tools are present
 			const chatModel = (tools && tools.length > 0 && USE_FUNCTION_MODEL)
@@ -316,8 +391,8 @@
 			// Convert tool calls to executor format
 			const convertedCalls = convertToolCalls(toolCalls);
 
-			// Execute all tools
-			const results = await runToolCalls(convertedCalls);
+			// Execute all tools (including custom tools)
+			const results = await runToolCalls(convertedCalls, undefined, toolsState.customTools);
 
 			// Format results for chat
 			const toolResultContent = formatToolResultsForChat(results);
@@ -327,10 +402,16 @@
 				.map(tc => `Called tool: ${tc.function.name}(${JSON.stringify(tc.function.arguments)})`)
 				.join('\n');
 
-			// Update the assistant message with tool call info
+			// Update the assistant message with tool call info and structured data
 			const assistantNode = chatState.messageTree.get(assistantMessageId);
 			if (assistantNode) {
 				assistantNode.message.content = toolCallInfo + '\n\n' + toolResultContent;
+				// Store structured tool call data for display
+				assistantNode.message.toolCalls = toolCalls.map(tc => ({
+					id: crypto.randomUUID(),
+					name: tc.function.name,
+					arguments: JSON.stringify(tc.function.arguments)
+				}));
 			}
 
 			// Persist the assistant message with tool info
