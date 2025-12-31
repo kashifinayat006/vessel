@@ -260,7 +260,7 @@
 			// Add tool results as a message
 			const toolMessageId = chatState.addMessage({
 				role: 'user',
-				content: `Tool execution results:\n${toolResultContent}\n\nPlease provide a response based on these results.`
+				content: `Tool execution results:\n${toolResultContent}\n\nBased on these results, either provide a helpful response OR call another tool if you need more information.`
 			});
 
 			await addStoredMessage(
@@ -270,7 +270,7 @@
 				toolMessageId
 			);
 
-			// Stream final response using original model
+			// Stream final response using original model - WITH tools so it can call more if needed
 			const finalMessageId = chatState.startStreaming();
 
 			const allMessages = chatState.visibleMessages.map(node => ({
@@ -279,14 +279,37 @@
 				images: node.message.images
 			})) as OllamaMessage[];
 
+			// Track if model wants to call more tools
+			let morePendingToolCalls: OllamaToolCall[] | null = null;
+
+			// Pass tools again so model can chain tool calls
+			const tools = getToolsForApi();
+
 			await ollamaClient.streamChatWithCallbacks(
-				{ model, messages: allMessages },
+				{ model, messages: allMessages, tools },
 				{
 					onToken: (token) => {
 						chatState.appendToStreaming(token);
 					},
+					onToolCall: (newToolCalls) => {
+						morePendingToolCalls = newToolCalls;
+						console.log('[NewChat] Additional tool calls received:', newToolCalls);
+					},
 					onComplete: async () => {
 						chatState.finishStreaming();
+
+						// If model wants to call more tools, recurse
+						if (morePendingToolCalls && morePendingToolCalls.length > 0) {
+							await executeToolsAndContinue(
+								model,
+								finalMessageId,
+								toolMessageId,
+								morePendingToolCalls,
+								conversationId
+							);
+							return;
+						}
+
 						const node = chatState.messageTree.get(finalMessageId);
 						if (node) {
 							await addStoredMessage(

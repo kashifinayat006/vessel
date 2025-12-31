@@ -217,10 +217,15 @@ export async function runToolCall(
 
 			// Check if result is an error object
 			if (result && typeof result === 'object' && 'error' in result) {
+				const errorObj = result as { error: unknown; suggestion?: string };
+				// Include suggestion in error message if present
+				const errorMsg = errorObj.suggestion
+					? `${String(errorObj.error)}. ${errorObj.suggestion}`
+					: String(errorObj.error);
 				return {
 					toolCallId: id,
 					success: false,
-					error: String((result as { error: unknown }).error)
+					error: errorMsg
 				};
 			}
 

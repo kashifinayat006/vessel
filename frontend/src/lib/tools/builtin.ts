@@ -17,17 +17,17 @@ const getTimeDefinition: ToolDefinition = {
 	type: 'function',
 	function: {
 		name: 'get_current_time',
-		description: 'Get the current date and time. Can optionally specify timezone and format.',
+		description: 'Returns the current date and time. Use when you need to know what time or date it is now.',
 		parameters: {
 			type: 'object',
 			properties: {
 				timezone: {
 					type: 'string',
-					description: 'IANA timezone name (e.g., "America/New_York", "Europe/London"). Defaults to local timezone.'
+					description: 'Optional IANA timezone (e.g., "America/New_York", "Europe/Berlin"). Defaults to local.'
 				},
 				format: {
 					type: 'string',
-					description: 'Output format: "iso" for ISO 8601, "locale" for localized string, "unix" for Unix timestamp.',
+					description: 'Output format: "iso" (default), "locale", or "unix" timestamp.',
 					enum: ['iso', 'locale', 'unix']
 				}
 			}
@@ -93,17 +93,17 @@ const calculateDefinition: ToolDefinition = {
 	type: 'function',
 	function: {
 		name: 'calculate',
-		description: 'Compute a mathematical expression. Supports basic arithmetic (+, -, *, /, ^), parentheses, and common functions (sqrt, sin, cos, tan, log, exp, abs, round, floor, ceil).',
+		description: 'Evaluates a math expression and returns the numeric result. Use for any calculations, unit conversions, or math problems.',
 		parameters: {
 			type: 'object',
 			properties: {
 				expression: {
 					type: 'string',
-					description: 'The mathematical expression to compute (e.g., "2 + 2", "sqrt(16)", "sin(3.14159/2)")'
+					description: 'Math expression to evaluate. Examples: "2+2", "sqrt(16)", "100*1.19", "sin(3.14/2)"'
 				},
 				precision: {
 					type: 'number',
-					description: 'Number of decimal places for the result (default: 10)'
+					description: 'Decimal places in result (default: 10)'
 				}
 			},
 			required: ['expression']
@@ -297,22 +297,22 @@ const fetchUrlDefinition: ToolDefinition = {
 	type: 'function',
 	function: {
 		name: 'fetch_url',
-		description: 'Fetch content from a URL and extract text, title, or links. Useful for retrieving web page content.',
+		description: 'Fetches and reads content from a specific URL. Use after web_search to read full content from a result URL, or when user provides a URL directly.',
 		parameters: {
 			type: 'object',
 			properties: {
 				url: {
 					type: 'string',
-					description: 'The URL to fetch (must be a valid HTTP/HTTPS URL)'
+					description: 'The URL to fetch (e.g., "https://example.com/page")'
 				},
 				extract: {
 					type: 'string',
-					description: 'What to extract: "text" for main content, "title" for page title, "links" for all links, "all" for everything',
+					description: 'What to extract: "text" (default), "title", "links", or "all"',
 					enum: ['text', 'title', 'links', 'all']
 				},
 				maxLength: {
 					type: 'number',
-					description: 'Maximum length of extracted text (default: 5000 characters)'
+					description: 'Max text length (default: 5000)'
 				}
 			},
 			required: ['url']
@@ -459,13 +459,13 @@ const getLocationDefinition: ToolDefinition = {
 	type: 'function',
 	function: {
 		name: 'get_location',
-		description: 'Get the user\'s current location (city, country, coordinates). Call this IMMEDIATELY when you need location for weather, local info, or nearby places. Do NOT ask the user where they are - use this tool instead.',
+		description: 'Gets the user\'s current city and country from their device GPS. Returns location that can be used with web_search. If this fails, ask user for their location.',
 		parameters: {
 			type: 'object',
 			properties: {
 				highAccuracy: {
 					type: 'boolean',
-					description: 'Whether to request high accuracy GPS location (may take longer and use more battery). Default is false.'
+					description: 'Request high accuracy GPS (slower). Default: false'
 				}
 			}
 		}
@@ -569,7 +569,7 @@ const webSearchDefinition: ToolDefinition = {
 	type: 'function',
 	function: {
 		name: 'web_search',
-		description: 'Search the web for current information. You MUST call this tool immediately when the user asks about weather, news, current events, sports, stocks, prices, or any real-time information. Do NOT ask the user for clarification - just search. If no location is specified for weather, call get_location first.',
+		description: 'Searches the internet and returns results with titles, URLs, and snippets. Use for weather, news, current events, facts, prices, or any real-time information. Include location in query for local results (e.g., "weather Munich" not just "weather"). Can call fetch_url on result URLs to get full content.',
 		parameters: {
 			type: 'object',
 			properties: {

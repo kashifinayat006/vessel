@@ -432,7 +432,7 @@
 			// Add tool results as a system/tool message to context
 			const toolMessageId = chatState.addMessage({
 				role: 'user', // Ollama expects tool results in a user-like message
-				content: `Tool execution results:\n${toolResultContent}\n\nPlease provide a response based on these results.`
+				content: `Tool execution results:\n${toolResultContent}\n\nBased on these results, either provide a helpful response OR call another tool if you need more information.`
 			});
 
 			if (conversationId) {
