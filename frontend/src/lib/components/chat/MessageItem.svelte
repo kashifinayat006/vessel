@@ -49,6 +49,15 @@
 		)
 	);
 
+	// Detect tool-related assistant messages (has tool calls or contains tool results)
+	const isToolMessage = $derived(
+		isAssistant && (
+			hasToolCalls ||
+			node.message.content.includes('Tool result:') ||
+			node.message.content.includes('Tool error:')
+		)
+	);
+
 	/**
 	 * Start editing a message
 	 */
@@ -100,19 +109,37 @@
 >
 	<!-- Avatar for assistant -->
 	{#if isAssistant}
-		<div
-			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white"
-			aria-hidden="true"
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				viewBox="0 0 24 24"
-				fill="currentColor"
-				class="h-5 w-5"
+		{#if isToolMessage}
+			<!-- Tool message avatar -->
+			<div
+				class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+				aria-hidden="true"
 			>
-				<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2zM7.5 13a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm9 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" />
-			</svg>
-		</div>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					class="h-5 w-5"
+				>
+					<path fill-rule="evenodd" d="M12 6.75a5.25 5.25 0 016.775-5.025.75.75 0 01.313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.64l3.318-3.319a.75.75 0 011.248.313 5.25 5.25 0 01-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 112.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0112 6.75zM4.117 19.125a.75.75 0 01.75-.75h.008a.75.75 0 01.75.75v.008a.75.75 0 01-.75.75h-.008a.75.75 0 01-.75-.75v-.008z" clip-rule="evenodd" />
+				</svg>
+			</div>
+		{:else}
+			<!-- Normal assistant avatar -->
+			<div
+				class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white"
+				aria-hidden="true"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					class="h-5 w-5"
+				>
+					<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2zM7.5 13a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm9 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" />
+				</svg>
+			</div>
+		{/if}
 	{/if}
 
 	<!-- Message content wrapper -->
@@ -122,13 +149,11 @@
 	>
 		<!-- Message bubble with branch navigator -->
 		<div
-			class="relative rounded-2xl px-4 py-3"
-			class:bg-blue-500={isUser}
-			class:text-white={isUser}
-			class:bg-gray-100={isAssistant}
-			class:dark:bg-gray-800={isAssistant}
-			class:rounded-br-md={isUser}
-			class:rounded-bl-md={isAssistant}
+			class="relative rounded-2xl px-4 py-3 {isUser
+				? 'bg-blue-500 text-white rounded-br-md'
+				: isToolMessage
+					? 'bg-emerald-950/30 border-l-2 border-emerald-500 rounded-bl-md'
+					: 'bg-gray-100 dark:bg-gray-800 rounded-bl-md'}"
 		>
 			{#if isEditing}
 				<!-- Edit mode -->
