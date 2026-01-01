@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -25,6 +26,37 @@ func ListChatsHandler(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"chats": chats})
+	}
+}
+
+// ListGroupedChatsHandler returns a handler for listing chats grouped by date
+// with search, filter, and pagination support
+func ListGroupedChatsHandler(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		search := c.Query("search")
+		includeArchived := c.Query("include_archived") == "true"
+
+		limit := 0
+		if limitStr := c.Query("limit"); limitStr != "" {
+			if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+				limit = l
+			}
+		}
+
+		offset := 0
+		if offsetStr := c.Query("offset"); offsetStr != "" {
+			if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+				offset = o
+			}
+		}
+
+		response, err := models.ListChatsGrouped(db, search, includeArchived, limit, offset)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
 }
 

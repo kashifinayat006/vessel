@@ -120,7 +120,7 @@
 		<div class="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
 			<span class="truncate">{conversation.model}</span>
 			<span class="shrink-0">-</span>
-			<span class="shrink-0">{formatRelativeTime(new Date(conversation.updatedAt))}</span>
+			<span class="shrink-0">{formatRelativeTime(conversation.updatedAt)}</span>
 		</div>
 	</div>
 

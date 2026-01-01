@@ -270,6 +270,199 @@ func GetChangedChats(db *sql.DB, sinceVersion int64) ([]Chat, error) {
 	return chats, nil
 }
 
+// DateGroup represents a date-based grouping label
+type DateGroup string
+
+const (
+	DateGroupToday     DateGroup = "Today"
+	DateGroupYesterday DateGroup = "Yesterday"
+	DateGroupThisWeek  DateGroup = "This Week"
+	DateGroupLastWeek  DateGroup = "Last Week"
+	DateGroupThisMonth DateGroup = "This Month"
+	DateGroupLastMonth DateGroup = "Last Month"
+	DateGroupOlder     DateGroup = "Older"
+)
+
+// GroupedChat represents a chat in a grouped list (without messages for efficiency)
+type GroupedChat struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Model     string    `json:"model"`
+	Pinned    bool      `json:"pinned"`
+	Archived  bool      `json:"archived"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ChatGroup represents a group of chats with a date label
+type ChatGroup struct {
+	Group string        `json:"group"`
+	Chats []GroupedChat `json:"chats"`
+}
+
+// GroupedChatsResponse represents the paginated grouped chats response
+type GroupedChatsResponse struct {
+	Groups      []ChatGroup `json:"groups"`
+	Total       int         `json:"total"`
+	TotalPinned int         `json:"totalPinned"`
+}
+
+// getDateGroup determines which date group a timestamp belongs to
+func getDateGroup(t time.Time, now time.Time) DateGroup {
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	startOfYesterday := startOfToday.AddDate(0, 0, -1)
+
+	// Calculate start of this week (Monday)
+	daysFromMonday := int(now.Weekday()) - 1
+	if daysFromMonday < 0 {
+		daysFromMonday = 6 // Sunday
+	}
+	startOfThisWeek := startOfToday.AddDate(0, 0, -daysFromMonday)
+	startOfLastWeek := startOfThisWeek.AddDate(0, 0, -7)
+
+	// Start of this month and last month
+	startOfThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	startOfLastMonth := startOfThisMonth.AddDate(0, -1, 0)
+
+	if t.After(startOfToday) || t.Equal(startOfToday) {
+		return DateGroupToday
+	}
+	if t.After(startOfYesterday) || t.Equal(startOfYesterday) {
+		return DateGroupYesterday
+	}
+	if t.After(startOfThisWeek) || t.Equal(startOfThisWeek) {
+		return DateGroupThisWeek
+	}
+	if t.After(startOfLastWeek) || t.Equal(startOfLastWeek) {
+		return DateGroupLastWeek
+	}
+	if t.After(startOfThisMonth) || t.Equal(startOfThisMonth) {
+		return DateGroupThisMonth
+	}
+	if t.After(startOfLastMonth) || t.Equal(startOfLastMonth) {
+		return DateGroupLastMonth
+	}
+	return DateGroupOlder
+}
+
+// ListChatsGrouped retrieves chats grouped by date with search/filter support
+func ListChatsGrouped(db *sql.DB, search string, includeArchived bool, limit, offset int) (*GroupedChatsResponse, error) {
+	// Build query with optional search filter
+	query := `
+		SELECT id, title, model, pinned, archived, created_at, updated_at
+		FROM chats
+		WHERE 1=1`
+	args := []interface{}{}
+
+	if !includeArchived {
+		query += " AND archived = 0"
+	}
+
+	if search != "" {
+		query += " AND title LIKE ?"
+		args = append(args, "%"+search+"%")
+	}
+
+	// Always sort: pinned first, then by updated_at desc
+	query += " ORDER BY pinned DESC, updated_at DESC"
+
+	// Apply pagination if specified
+	if limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, limit)
+		if offset > 0 {
+			query += " OFFSET ?"
+			args = append(args, offset)
+		}
+	}
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list grouped chats: %w", err)
+	}
+	defer rows.Close()
+
+	// Collect all chats first
+	var chats []GroupedChat
+	now := time.Now()
+
+	for rows.Next() {
+		var chat GroupedChat
+		var createdAt, updatedAt string
+		var pinned, archived int
+
+		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Model, &pinned, &archived,
+			&createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan chat: %w", err)
+		}
+
+		chat.Pinned = pinned == 1
+		chat.Archived = archived == 1
+		chat.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		chat.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		chats = append(chats, chat)
+	}
+
+	// Group chats by date
+	orderedGroups := []DateGroup{
+		DateGroupToday,
+		DateGroupYesterday,
+		DateGroupThisWeek,
+		DateGroupLastWeek,
+		DateGroupThisMonth,
+		DateGroupLastMonth,
+		DateGroupOlder,
+	}
+
+	groupMap := make(map[DateGroup][]GroupedChat)
+	for _, g := range orderedGroups {
+		groupMap[g] = []GroupedChat{}
+	}
+
+	totalPinned := 0
+	for _, chat := range chats {
+		if chat.Pinned {
+			totalPinned++
+		}
+		group := getDateGroup(chat.UpdatedAt, now)
+		groupMap[group] = append(groupMap[group], chat)
+	}
+
+	// Build result with non-empty groups only
+	var groups []ChatGroup
+	for _, g := range orderedGroups {
+		if len(groupMap[g]) > 0 {
+			groups = append(groups, ChatGroup{
+				Group: string(g),
+				Chats: groupMap[g],
+			})
+		}
+	}
+
+	// Get total count for pagination
+	countQuery := "SELECT COUNT(*) FROM chats WHERE 1=1"
+	countArgs := []interface{}{}
+	if !includeArchived {
+		countQuery += " AND archived = 0"
+	}
+	if search != "" {
+		countQuery += " AND title LIKE ?"
+		countArgs = append(countArgs, "%"+search+"%")
+	}
+
+	var total int
+	err = db.QueryRow(countQuery, countArgs...).Scan(&total)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count chats: %w", err)
+	}
+
+	return &GroupedChatsResponse{
+		Groups:      groups,
+		Total:       total,
+		TotalPinned: totalPinned,
+	}, nil
+}
+
 // GetMaxSyncVersion returns the maximum sync version across all tables
 func GetMaxSyncVersion(db *sql.DB) (int64, error) {
 	var maxVersion int64

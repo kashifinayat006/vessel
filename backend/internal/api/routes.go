@@ -35,6 +35,7 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string) {
 		chats := v1.Group("/chats")
 		{
 			chats.GET("", ListChatsHandler(db))
+			chats.GET("/grouped", ListGroupedChatsHandler(db))
 			chats.POST("", CreateChatHandler(db))
 			chats.GET("/:id", GetChatHandler(db))
 			chats.PUT("/:id", UpdateChatHandler(db))
@@ -65,6 +66,15 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string) {
 		// Model registry routes (cached models from ollama.com)
 		models := v1.Group("/models")
 		{
+			// === Local Models (from Ollama instance) ===
+			// List local models with filtering, sorting, pagination
+			models.GET("/local", modelRegistry.ListLocalModelsHandler())
+			// Get unique model families for filter dropdowns
+			models.GET("/local/families", modelRegistry.GetLocalFamiliesHandler())
+			// Check for available updates (compares local vs remote registry)
+			models.GET("/local/updates", modelRegistry.CheckUpdatesHandler())
+
+			// === Remote Models (from ollama.com cache) ===
 			// List/search remote models (from cache)
 			models.GET("/remote", modelRegistry.ListRemoteModelsHandler())
 			// Get single model details

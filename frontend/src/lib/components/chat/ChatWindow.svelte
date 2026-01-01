@@ -5,6 +5,7 @@
 	 */
 
 	import { chatState, modelsState, conversationsState, toolsState, promptsState } from '$lib/stores';
+	import { serverConversationsState } from '$lib/stores/server-conversations.svelte';
 	import { ollamaClient } from '$lib/ollama';
 	import { addMessage as addStoredMessage, updateConversation, createConversation as createStoredConversation } from '$lib/storage';
 	import {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * ConversationList.svelte - Chat history list grouped by date
-	 * Uses conversationsState.grouped for date-grouped display
+	 * Uses local conversationsState for immediate updates (offline-first)
 	 */
 	import { conversationsState, chatState } from '$lib/stores';
 	import ConversationItem from './ConversationItem.svelte';

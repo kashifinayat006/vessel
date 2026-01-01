@@ -9,7 +9,8 @@ import {
 	syncModels,
 	type RemoteModel,
 	type SyncStatus,
-	type ModelSearchOptions
+	type ModelSearchOptions,
+	type ModelSortOption
 } from '$lib/api/model-registry';
 
 /** Store state */
@@ -24,6 +25,7 @@ class ModelRegistryState {
 	searchQuery = $state('');
 	modelType = $state<'official' | 'community' | ''>('');
 	selectedCapabilities = $state<string[]>([]);
+	sortBy = $state<ModelSortOption>('pulls_desc');
 	currentPage = $state(0);
 	pageSize = $state(24);
 
@@ -51,7 +53,8 @@ class ModelRegistryState {
 		try {
 			const options: ModelSearchOptions = {
 				limit: this.pageSize,
-				offset: this.currentPage * this.pageSize
+				offset: this.currentPage * this.pageSize,
+				sort: this.sortBy
 			};
 
 			if (this.searchQuery.trim()) {
@@ -114,6 +117,15 @@ class ModelRegistryState {
 	 */
 	hasCapability(capability: string): boolean {
 		return this.selectedCapabilities.includes(capability);
+	}
+
+	/**
+	 * Set sort order
+	 */
+	async setSort(sort: ModelSortOption): Promise<void> {
+		this.sortBy = sort;
+		this.currentPage = 0;
+		await this.loadModels();
 	}
 
 	/**
@@ -188,6 +200,7 @@ class ModelRegistryState {
 		this.searchQuery = '';
 		this.modelType = '';
 		this.selectedCapabilities = [];
+		this.sortBy = 'pulls_desc';
 		this.currentPage = 0;
 		await this.loadModels();
 	}

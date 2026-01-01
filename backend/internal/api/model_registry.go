@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -584,7 +585,7 @@ func (s *ModelRegistryService) GetModel(ctx context.Context, slug string) (*Remo
 }
 
 // SearchModels searches for models in the database
-func (s *ModelRegistryService) SearchModels(ctx context.Context, query string, modelType string, capabilities []string, limit, offset int) ([]RemoteModel, int, error) {
+func (s *ModelRegistryService) SearchModels(ctx context.Context, query string, modelType string, capabilities []string, sortBy string, limit, offset int) ([]RemoteModel, int, error) {
 	// Build query
 	baseQuery := `FROM remote_models WHERE 1=1`
 	args := []any{}
@@ -614,11 +615,26 @@ func (s *ModelRegistryService) SearchModels(ctx context.Context, query string, m
 		return nil, 0, err
 	}
 
+	// Build ORDER BY clause based on sort parameter
+	orderBy := "pull_count DESC" // default: most popular
+	switch sortBy {
+	case "name_asc":
+		orderBy = "name ASC"
+	case "name_desc":
+		orderBy = "name DESC"
+	case "pulls_asc":
+		orderBy = "pull_count ASC"
+	case "pulls_desc":
+		orderBy = "pull_count DESC"
+	case "updated_desc":
+		orderBy = "ollama_updated_at DESC NULLS LAST, scraped_at DESC"
+	}
+
 	// Get models
 	selectQuery := `SELECT slug, name, description, model_type, architecture, parameter_size,
 		context_length, embedding_length, quantization, capabilities, default_params,
 		license, pull_count, tags, tag_sizes, ollama_updated_at, details_fetched_at, scraped_at, url ` +
-		baseQuery + ` ORDER BY pull_count DESC LIMIT ? OFFSET ?`
+		baseQuery + ` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 
 	rows, err := s.db.QueryContext(ctx, selectQuery, args...)
@@ -750,6 +766,7 @@ func (s *ModelRegistryService) ListRemoteModelsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		query := c.Query("search")
 		modelType := c.Query("type")
+		sortBy := c.Query("sort") // name_asc, name_desc, pulls_asc, pulls_desc, updated_desc
 		limit := 50
 		offset := 0
 
@@ -771,7 +788,7 @@ func (s *ModelRegistryService) ListRemoteModelsHandler() gin.HandlerFunc {
 			}
 		}
 
-		models, total, err := s.SearchModels(c.Request.Context(), query, modelType, capabilities, limit, offset)
+		models, total, err := s.SearchModels(c.Request.Context(), query, modelType, capabilities, sortBy, limit, offset)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -863,5 +880,261 @@ func (s *ModelRegistryService) SyncStatusHandler() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, status)
+	}
+}
+
+// === Local Models Management ===
+
+// LocalModel represents a local model with details and update status
+type LocalModel struct {
+	Name            string `json:"name"`
+	Model           string `json:"model"`
+	ModifiedAt      string `json:"modifiedAt"`
+	Size            int64  `json:"size"`
+	Digest          string `json:"digest"`
+	Family          string `json:"family"`
+	ParameterSize   string `json:"parameterSize"`
+	QuantizationLevel string `json:"quantizationLevel"`
+	// Update status (populated by CheckUpdatesHandler)
+	HasUpdate       bool   `json:"hasUpdate,omitempty"`
+	RemoteUpdatedAt string `json:"remoteUpdatedAt,omitempty"`
+}
+
+// LocalModelsResponse is the response for listing local models
+type LocalModelsResponse struct {
+	Models []LocalModel `json:"models"`
+	Total  int          `json:"total"`
+	Limit  int          `json:"limit"`
+	Offset int          `json:"offset"`
+}
+
+// UpdateCheckResponse is the response for update checking
+type UpdateCheckResponse struct {
+	Updates         []LocalModel `json:"updates"`         // Models with updates available
+	TotalLocal      int          `json:"totalLocal"`      // Total local models checked
+	UpdatesAvailable int         `json:"updatesAvailable"` // Count of models with updates
+}
+
+// ListLocalModelsHandler returns local models with filtering, sorting, and pagination
+// Query params:
+//   - search: filter by name (case-insensitive substring match)
+//   - family: filter by model family
+//   - sort: name_asc, name_desc, size_asc, size_desc, modified_asc, modified_desc (default: name_asc)
+//   - limit: max results (default 50, max 200)
+//   - offset: pagination offset
+func (s *ModelRegistryService) ListLocalModelsHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if s.ollamaClient == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Ollama client not available"})
+			return
+		}
+
+		// Parse query params
+		search := strings.ToLower(c.Query("search"))
+		family := strings.ToLower(c.Query("family"))
+		sortBy := c.Query("sort")
+		if sortBy == "" {
+			sortBy = "name_asc"
+		}
+
+		limit := 50
+		offset := 0
+		if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 200 {
+			limit = l
+		}
+		if o, err := strconv.Atoi(c.Query("offset")); err == nil && o >= 0 {
+			offset = o
+		}
+
+		// Fetch all local models from Ollama
+		resp, err := s.ollamaClient.List(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to list models from Ollama: " + err.Error()})
+			return
+		}
+
+		// Convert to LocalModel and apply filters
+		var filtered []LocalModel
+		for _, m := range resp.Models {
+			lm := LocalModel{
+				Name:              m.Name,
+				Model:             m.Model,
+				ModifiedAt:        m.ModifiedAt.Format(time.RFC3339),
+				Size:              m.Size,
+				Digest:            m.Digest,
+				Family:            m.Details.Family,
+				ParameterSize:     m.Details.ParameterSize,
+				QuantizationLevel: m.Details.QuantizationLevel,
+			}
+
+			// Apply search filter
+			if search != "" && !strings.Contains(strings.ToLower(lm.Name), search) {
+				continue
+			}
+
+			// Apply family filter
+			if family != "" && strings.ToLower(lm.Family) != family {
+				continue
+			}
+
+			filtered = append(filtered, lm)
+		}
+
+		// Sort
+		switch sortBy {
+		case "name_asc":
+			sort.Slice(filtered, func(i, j int) bool {
+				return strings.ToLower(filtered[i].Name) < strings.ToLower(filtered[j].Name)
+			})
+		case "name_desc":
+			sort.Slice(filtered, func(i, j int) bool {
+				return strings.ToLower(filtered[i].Name) > strings.ToLower(filtered[j].Name)
+			})
+		case "size_asc":
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].Size < filtered[j].Size
+			})
+		case "size_desc":
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].Size > filtered[j].Size
+			})
+		case "modified_asc":
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].ModifiedAt < filtered[j].ModifiedAt
+			})
+		case "modified_desc":
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].ModifiedAt > filtered[j].ModifiedAt
+			})
+		}
+
+		// Paginate
+		total := len(filtered)
+		if offset >= total {
+			filtered = []LocalModel{}
+		} else {
+			end := offset + limit
+			if end > total {
+				end = total
+			}
+			filtered = filtered[offset:end]
+		}
+
+		c.JSON(http.StatusOK, LocalModelsResponse{
+			Models: filtered,
+			Total:  total,
+			Limit:  limit,
+			Offset: offset,
+		})
+	}
+}
+
+// CheckUpdatesHandler checks for available updates by comparing local models with remote registry
+// Returns models that have updates available (remote ollamaUpdatedAt > local modifiedAt)
+func (s *ModelRegistryService) CheckUpdatesHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if s.ollamaClient == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Ollama client not available"})
+			return
+		}
+
+		// Fetch local models from Ollama
+		localResp, err := s.ollamaClient.List(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to list local models: " + err.Error()})
+			return
+		}
+
+		if len(localResp.Models) == 0 {
+			c.JSON(http.StatusOK, UpdateCheckResponse{
+				Updates:          []LocalModel{},
+				TotalLocal:       0,
+				UpdatesAvailable: 0,
+			})
+			return
+		}
+
+		// Build map of remote models from our cache (already fetched from ollama.com)
+		remoteModels, _, err := s.SearchModels(c.Request.Context(), "", "", nil, "", 1000, 0)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query remote models: " + err.Error()})
+			return
+		}
+
+		remoteMap := make(map[string]*RemoteModel)
+		for i := range remoteModels {
+			remoteMap[strings.ToLower(remoteModels[i].Slug)] = &remoteModels[i]
+		}
+
+		// Compare local vs remote
+		var updates []LocalModel
+		for _, local := range localResp.Models {
+			lm := LocalModel{
+				Name:              local.Name,
+				Model:             local.Model,
+				ModifiedAt:        local.ModifiedAt.Format(time.RFC3339),
+				Size:              local.Size,
+				Digest:            local.Digest,
+				Family:            local.Details.Family,
+				ParameterSize:     local.Details.ParameterSize,
+				QuantizationLevel: local.Details.QuantizationLevel,
+			}
+
+			// Parse model name to get base name (e.g., "llama3.2:8b" -> "llama3.2")
+			baseName := local.Name
+			if colonIdx := strings.Index(baseName, ":"); colonIdx != -1 {
+				baseName = baseName[:colonIdx]
+			}
+
+			// Look up in remote cache
+			if remote, ok := remoteMap[strings.ToLower(baseName)]; ok && remote.OllamaUpdatedAt != "" {
+				remoteTime, err1 := time.Parse(time.RFC3339, remote.OllamaUpdatedAt)
+				localTime := local.ModifiedAt
+
+				if err1 == nil && remoteTime.After(localTime) {
+					lm.HasUpdate = true
+					lm.RemoteUpdatedAt = remote.OllamaUpdatedAt
+					updates = append(updates, lm)
+				}
+			}
+		}
+
+		c.JSON(http.StatusOK, UpdateCheckResponse{
+			Updates:          updates,
+			TotalLocal:       len(localResp.Models),
+			UpdatesAvailable: len(updates),
+		})
+	}
+}
+
+// GetLocalFamiliesHandler returns unique model families from local models
+// Useful for populating filter dropdowns
+func (s *ModelRegistryService) GetLocalFamiliesHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if s.ollamaClient == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Ollama client not available"})
+			return
+		}
+
+		resp, err := s.ollamaClient.List(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to list models: " + err.Error()})
+			return
+		}
+
+		familySet := make(map[string]bool)
+		for _, m := range resp.Models {
+			if m.Details.Family != "" {
+				familySet[m.Details.Family] = true
+			}
+		}
+
+		families := make([]string, 0, len(familySet))
+		for f := range familySet {
+			families = append(families, f)
+		}
+		sort.Strings(families)
+
+		c.JSON(http.StatusOK, gin.H{"families": families})
 	}
 }

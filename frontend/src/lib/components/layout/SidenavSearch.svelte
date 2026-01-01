@@ -1,9 +1,20 @@
 <script lang="ts">
 	/**
 	 * SidenavSearch.svelte - Search input for filtering conversations
-	 * Binds to conversationsState.searchQuery
+	 * Uses local conversationsState for instant client-side filtering
 	 */
 	import { conversationsState } from '$lib/stores';
+
+	// Handle input change - directly updates store for instant filtering
+	function handleInput(e: Event) {
+		const value = (e.target as HTMLInputElement).value;
+		conversationsState.searchQuery = value;
+	}
+
+	// Handle clear button
+	function handleClear() {
+		conversationsState.clearSearch();
+	}
 </script>
 
 <div class="px-3 pb-2">
@@ -27,7 +38,8 @@
 		<!-- Search input -->
 		<input
 			type="text"
-			bind:value={conversationsState.searchQuery}
+			value={conversationsState.searchQuery}
+			oninput={handleInput}
 			placeholder="Search conversations..."
 			data-search-input
 			class="w-full rounded-lg border border-slate-700 bg-slate-800/50 py-2 pl-10 pr-9 text-sm text-slate-200 placeholder-slate-500 transition-colors focus:border-emerald-500/50 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
@@ -37,7 +49,7 @@
 		{#if conversationsState.searchQuery}
 			<button
 				type="button"
-				onclick={() => conversationsState.clearSearch()}
+				onclick={handleClear}
 				class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 transition-colors hover:bg-slate-700 hover:text-slate-300"
 				aria-label="Clear search"
 			>

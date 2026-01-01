@@ -46,11 +46,15 @@ export interface SyncStatus {
 	lastSync: string | null;
 }
 
+/** Sort options for model list */
+export type ModelSortOption = 'name_asc' | 'name_desc' | 'pulls_asc' | 'pulls_desc' | 'updated_desc';
+
 /** Search/filter options */
 export interface ModelSearchOptions {
 	search?: string;
 	type?: 'official' | 'community';
 	capabilities?: string[];
+	sort?: ModelSortOption;
 	limit?: number;
 	offset?: number;
 }
@@ -69,6 +73,7 @@ export async function fetchRemoteModels(options: ModelSearchOptions = {}): Promi
 	if (options.capabilities && options.capabilities.length > 0) {
 		params.set('capabilities', options.capabilities.join(','));
 	}
+	if (options.sort) params.set('sort', options.sort);
 	if (options.limit) params.set('limit', String(options.limit));
 	if (options.offset) params.set('offset', String(options.offset));
 
@@ -190,4 +195,98 @@ export function formatContextLength(length: number): string {
  */
 export function hasCapability(model: RemoteModel, capability: string): boolean {
 	return model.capabilities.includes(capability);
+}
+
+// ============================================================================
+// Local Models API (backend-powered with filter/sort/pagination)
+// ============================================================================
+
+/** Local model from Ollama instance */
+export interface LocalModel {
+	name: string;
+	model: string;
+	modifiedAt: string;
+	size: number;
+	digest: string;
+	family: string;
+	parameterSize: string;
+	quantizationLevel: string;
+	hasUpdate?: boolean;
+	remoteUpdatedAt?: string;
+}
+
+/** Response from listing local models */
+export interface LocalModelsResponse {
+	models: LocalModel[];
+	total: number;
+	limit: number;
+	offset: number;
+}
+
+/** Update check response */
+export interface UpdateCheckResponse {
+	updates: LocalModel[];
+	totalLocal: number;
+	updatesAvailable: number;
+}
+
+/** Sort options for local models */
+export type LocalModelSortOption = 'name_asc' | 'name_desc' | 'size_asc' | 'size_desc' | 'modified_asc' | 'modified_desc';
+
+/** Search/filter options for local models */
+export interface LocalModelSearchOptions {
+	search?: string;
+	family?: string;
+	sort?: LocalModelSortOption;
+	limit?: number;
+	offset?: number;
+}
+
+/**
+ * Fetch local models with filtering, sorting, and pagination (server-side)
+ */
+export async function fetchLocalModels(options: LocalModelSearchOptions = {}): Promise<LocalModelsResponse> {
+	const params = new URLSearchParams();
+
+	if (options.search) params.set('search', options.search);
+	if (options.family) params.set('family', options.family);
+	if (options.sort) params.set('sort', options.sort);
+	if (options.limit) params.set('limit', String(options.limit));
+	if (options.offset) params.set('offset', String(options.offset));
+
+	const url = `${API_BASE}/local${params.toString() ? '?' + params.toString() : ''}`;
+	const response = await fetch(url);
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch local models: ${response.statusText}`);
+	}
+
+	return response.json();
+}
+
+/**
+ * Get unique model families for filter dropdowns
+ */
+export async function fetchLocalFamilies(): Promise<string[]> {
+	const response = await fetch(`${API_BASE}/local/families`);
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch families: ${response.statusText}`);
+	}
+
+	const data = await response.json();
+	return data.families;
+}
+
+/**
+ * Check for available updates (backend compares local vs remote registry)
+ */
+export async function checkForUpdates(): Promise<UpdateCheckResponse> {
+	const response = await fetch(`${API_BASE}/local/updates`);
+
+	if (!response.ok) {
+		throw new Error(`Failed to check updates: ${response.statusText}`);
+	}
+
+	return response.json();
 }

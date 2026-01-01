@@ -92,7 +92,7 @@
 		const conversation = storageResult.data;
 		const conversationId = conversation.id;
 
-		// Add to conversations list
+		// Add to conversations list (immediately updates sidenav via local state)
 		conversationsState.add(conversation);
 
 		// Update browser tab title

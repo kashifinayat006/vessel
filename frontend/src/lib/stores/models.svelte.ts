@@ -6,6 +6,7 @@
 import type { OllamaModel, ModelGroup } from '$lib/types/model.js';
 import type { OllamaCapability } from '$lib/ollama/types.js';
 import { ollamaClient } from '$lib/ollama/client.js';
+import { fetchRemoteModels, type RemoteModel } from '$lib/api/model-registry';
 
 /** Known vision model families/patterns (fallback if API doesn't report) */
 const VISION_PATTERNS = ['llava', 'bakllava', 'moondream', 'vision'];
@@ -57,6 +58,13 @@ function isVisionModel(model: OllamaModel): boolean {
 	);
 }
 
+/** Update status for a local model */
+export interface ModelUpdateStatus {
+	hasUpdate: boolean;
+	remoteUpdatedAt?: string;
+	localModifiedAt: string;
+}
+
 /** Models state class with reactive properties */
 export class ModelsState {
 	// Core state
@@ -64,6 +72,10 @@ export class ModelsState {
 	selectedId = $state<string | null>(null);
 	isLoading = $state(false);
 	error = $state<string | null>(null);
+
+	// Update status cache: modelName -> update status
+	updateStatus = $state<Map<string, ModelUpdateStatus>>(new Map());
+	isCheckingUpdates = $state(false);
 
 	// Capabilities cache: modelName -> capabilities array
 	private capabilitiesCache = $state<Map<string, OllamaCapability[]>>(new Map());
@@ -311,6 +323,104 @@ export class ModelsState {
 	get selectedCapabilities(): OllamaCapability[] {
 		if (!this.selectedId) return [];
 		return this.capabilitiesCache.get(this.selectedId) ?? [];
+	}
+
+	// =========================================================================
+	// Update Checking
+	// =========================================================================
+
+	/**
+	 * Parse model name into base name and tag
+	 * e.g., "llama3.2:8b" -> { baseName: "llama3.2", tag: "8b" }
+	 * e.g., "llama3.2" -> { baseName: "llama3.2", tag: "latest" }
+	 */
+	private parseModelName(name: string): { baseName: string; tag: string } {
+		const colonIndex = name.indexOf(':');
+		if (colonIndex === -1) {
+			return { baseName: name, tag: 'latest' };
+		}
+		return {
+			baseName: name.substring(0, colonIndex),
+			tag: name.substring(colonIndex + 1)
+		};
+	}
+
+	/**
+	 * Check for updates for all local models by comparing with remote registry
+	 */
+	async checkForUpdates(): Promise<void> {
+		if (this.isCheckingUpdates || this.available.length === 0) return;
+
+		this.isCheckingUpdates = true;
+
+		try {
+			// Fetch all remote models (with high limit to get most models)
+			const response = await fetchRemoteModels({ limit: 500 });
+			const remoteModels = new Map<string, RemoteModel>();
+
+			for (const model of response.models) {
+				remoteModels.set(model.slug.toLowerCase(), model);
+			}
+
+			// Check each local model against remote registry
+			const newStatus = new Map<string, ModelUpdateStatus>();
+
+			for (const localModel of this.available) {
+				const { baseName } = this.parseModelName(localModel.name);
+				const remoteModel = remoteModels.get(baseName.toLowerCase());
+
+				if (remoteModel && remoteModel.ollamaUpdatedAt) {
+					const remoteDate = new Date(remoteModel.ollamaUpdatedAt);
+					const localDate = new Date(localModel.modified_at);
+
+					// Model has an update if remote was updated after local was pulled
+					const hasUpdate = remoteDate > localDate;
+
+					newStatus.set(localModel.name, {
+						hasUpdate,
+						remoteUpdatedAt: remoteModel.ollamaUpdatedAt,
+						localModifiedAt: localModel.modified_at
+					});
+				} else {
+					// No remote info, assume no update
+					newStatus.set(localModel.name, {
+						hasUpdate: false,
+						localModifiedAt: localModel.modified_at
+					});
+				}
+			}
+
+			this.updateStatus = newStatus;
+		} catch (err) {
+			console.error('Failed to check for updates:', err);
+		} finally {
+			this.isCheckingUpdates = false;
+		}
+	}
+
+	/**
+	 * Get update status for a specific model
+	 */
+	getUpdateStatus(modelName: string): ModelUpdateStatus | undefined {
+		return this.updateStatus.get(modelName);
+	}
+
+	/**
+	 * Check if a model has an available update
+	 */
+	hasUpdate(modelName: string): boolean {
+		return this.updateStatus.get(modelName)?.hasUpdate ?? false;
+	}
+
+	/**
+	 * Get count of models with available updates
+	 */
+	get modelsWithUpdates(): number {
+		let count = 0;
+		for (const status of this.updateStatus.values()) {
+			if (status.hasUpdate) count++;
+		}
+		return count;
 	}
 }
 
