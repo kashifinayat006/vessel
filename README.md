@@ -27,7 +27,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License MIT">
+  <img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome">
 </p>
 
@@ -337,11 +337,8 @@ All requests to `/ollama/*` are proxied to the Ollama API, enabling CORS.
 
 ## Roadmap
 
-- [ ] System prompts per conversation
-- [ ] Full-text message search
-- [ ] Keyboard shortcuts help modal
-- [ ] Export conversations (JSON, Markdown)
-- [ ] Image generation (Stable Diffusion integration)
+- [ ] Image generation (Stable Diffusion, Hugging Face models)
+- [ ] Hugging Face integration
 - [ ] Voice input/output
 - [ ] Multi-user support
 - [ ] Plugin system
@@ -362,7 +359,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Copyright (C) 2026 VikingOwl
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 
