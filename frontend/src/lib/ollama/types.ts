@@ -49,6 +49,38 @@ export interface OllamaRunningModelsResponse {
 }
 
 // ============================================================================
+// Model Pull/Delete Types
+// ============================================================================
+
+/** Request body for POST /api/pull */
+export interface OllamaPullRequest {
+	/** Model name to pull (e.g., "llama3.2", "mistral:7b") */
+	name: string;
+	/** Whether to stream progress (default: true) */
+	stream?: boolean;
+	/** Insecure mode for registry connections */
+	insecure?: boolean;
+}
+
+/** Progress chunk from POST /api/pull streaming response */
+export interface OllamaPullProgress {
+	/** Status message (e.g., "pulling manifest", "downloading", "verifying") */
+	status: string;
+	/** Digest of the layer being downloaded */
+	digest?: string;
+	/** Total size of the layer in bytes */
+	total?: number;
+	/** Bytes completed */
+	completed?: number;
+}
+
+/** Request body for DELETE /api/delete */
+export interface OllamaDeleteRequest {
+	/** Model name to delete */
+	name: string;
+}
+
+// ============================================================================
 // Message Types
 // ============================================================================
 

@@ -1,10 +1,14 @@
 <script lang="ts">
 	/**
 	 * SidenavHeader.svelte - Top section of the sidenav
-	 * Contains the app logo/title and "New Chat" button
+	 * Contains the app logo/title, "New Chat" button, and import action
 	 */
 	import { goto } from '$app/navigation';
 	import { uiState, chatState, promptsState } from '$lib/stores';
+	import { ImportDialog } from '$lib/components/shared';
+
+	// Import dialog state
+	let showImportDialog = $state(false);
 
 	/**
 	 * Handle new chat - reset state and navigate
@@ -57,22 +61,52 @@
 		{/if}
 	</div>
 
-	<!-- New Chat button -->
-	<a
-		href="/"
-		onclick={handleNewChat}
-		class="btn flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-emerald-500 active:scale-[0.98]"
-	>
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-5 w-5"
-			fill="none"
-			viewBox="0 0 24 24"
-			stroke="currentColor"
-			stroke-width="2"
+	<!-- Action buttons row -->
+	<div class="flex gap-2">
+		<!-- New Chat button -->
+		<a
+			href="/"
+			onclick={handleNewChat}
+			class="btn flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-emerald-500 active:scale-[0.98]"
 		>
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-		</svg>
-		<span>New Chat</span>
-	</a>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-5 w-5"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+			</svg>
+			<span>New Chat</span>
+		</a>
+
+		<!-- Import button -->
+		<button
+			type="button"
+			onclick={() => (showImportDialog = true)}
+			class="rounded-lg border border-slate-600 p-2.5 text-slate-400 transition-colors hover:border-slate-500 hover:bg-slate-800 hover:text-slate-200"
+			aria-label="Import conversation"
+			title="Import conversation"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-5 w-5"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+				/>
+			</svg>
+		</button>
+	</div>
 </div>
+
+<!-- Import Dialog -->
+<ImportDialog isOpen={showImportDialog} onClose={() => (showImportDialog = false)} />

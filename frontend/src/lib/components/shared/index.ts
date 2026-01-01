@@ -4,6 +4,7 @@
  */
 
 export { default as ExportDialog } from './ExportDialog.svelte';
+export { default as ImportDialog } from './ImportDialog.svelte';
 export { default as ConfirmDialog } from './ConfirmDialog.svelte';
 export { default as ToastContainer } from './ToastContainer.svelte';
 export { default as Skeleton } from './Skeleton.svelte';

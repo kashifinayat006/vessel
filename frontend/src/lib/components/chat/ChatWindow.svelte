@@ -6,6 +6,7 @@
 
 	import { chatState, modelsState, conversationsState, toolsState, promptsState, toastState } from '$lib/stores';
 	import { serverConversationsState } from '$lib/stores/server-conversations.svelte';
+	import { streamingMetricsState } from '$lib/stores/streaming-metrics.svelte';
 	import { ollamaClient } from '$lib/ollama';
 	import { addMessage as addStoredMessage, updateConversation, createConversation as createStoredConversation } from '$lib/storage';
 	import {
@@ -26,6 +27,9 @@
 	import EmptyState from './EmptyState.svelte';
 	import ContextUsageBar from './ContextUsageBar.svelte';
 	import SummaryBanner from './SummaryBanner.svelte';
+	import StreamingStats from './StreamingStats.svelte';
+	import ModelParametersPanel from '$lib/components/settings/ModelParametersPanel.svelte';
+	import { settingsState } from '$lib/stores/settings.svelte';
 
 	/**
 	 * Props interface for ChatWindow
@@ -272,6 +276,9 @@
 		const assistantMessageId = chatState.startStreaming();
 		abortController = new AbortController();
 
+		// Start streaming metrics tracking
+		streamingMetricsState.startStream();
+
 		// Track tool calls received during streaming
 		let pendingToolCalls: OllamaToolCall[] | null = null;
 
@@ -325,7 +332,8 @@
 					model: chatModel,
 					messages,
 					tools,
-					think: useNativeThinking
+					think: useNativeThinking,
+					options: settingsState.apiParameters
 				},
 				{
 					onThinkingToken: (token) => {
@@ -336,6 +344,8 @@
 						}
 						streamingThinking += token;
 						chatState.appendToStreaming(token);
+						// Track thinking tokens for metrics
+						streamingMetricsState.incrementTokens();
 					},
 					onToken: (token) => {
 						// Close thinking block when content starts
@@ -344,6 +354,8 @@
 							thinkingClosed = true;
 						}
 						chatState.appendToStreaming(token);
+						// Track content tokens for metrics
+						streamingMetricsState.incrementTokens();
 					},
 					onToolCall: (toolCalls) => {
 						// Store tool calls to process after streaming completes
@@ -357,6 +369,7 @@
 						}
 
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 						abortController = null;
 
 						// Handle tool calls if received
@@ -388,6 +401,7 @@
 					onError: (error) => {
 						console.error('Streaming error:', error);
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 						abortController = null;
 					}
 				},
@@ -396,6 +410,7 @@
 		} catch (error) {
 			toastState.error('Failed to send message. Please try again.');
 			chatState.finishStreaming();
+			streamingMetricsState.endStream();
 			abortController = null;
 		}
 	}
@@ -529,6 +544,9 @@
 
 		abortController = new AbortController();
 
+		// Start streaming metrics tracking
+		streamingMetricsState.startStream();
+
 		// Track tool calls received during streaming
 		let pendingToolCalls: OllamaToolCall[] | null = null;
 
@@ -546,17 +564,20 @@
 				{
 					model: chatModel,
 					messages,
-					tools
+					tools,
+					options: settingsState.apiParameters
 				},
 				{
 					onToken: (token) => {
 						chatState.appendToStreaming(token);
+						streamingMetricsState.incrementTokens();
 					},
 					onToolCall: (toolCalls) => {
 						pendingToolCalls = toolCalls;
 					},
 					onComplete: async () => {
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 						abortController = null;
 
 						// Handle tool calls if received
@@ -589,6 +610,7 @@
 					onError: (error) => {
 						console.error('Regenerate error:', error);
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 						abortController = null;
 					}
 				},
@@ -597,6 +619,7 @@
 		} catch (error) {
 			toastState.error('Failed to regenerate. Please try again.');
 			chatState.finishStreaming();
+			streamingMetricsState.endStream();
 			abortController = null;
 		}
 	}
@@ -675,9 +698,34 @@
 				</div>
 			{/if}
 
-			<!-- Chat options bar (thinking mode toggle) -->
-			{#if supportsThinking}
-				<div class="flex items-center justify-end gap-3 px-4 pt-3">
+			<!-- Streaming performance stats -->
+			<div class="flex justify-center px-4 pt-2">
+				<StreamingStats />
+			</div>
+
+			<!-- Chat options bar (settings toggle + thinking mode toggle) -->
+			<div class="flex items-center justify-between gap-3 px-4 pt-3">
+				<!-- Left side: Settings gear -->
+				<button
+					type="button"
+					onclick={() => settingsState.togglePanel()}
+					class="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+					class:bg-slate-800={settingsState.isPanelOpen}
+					class:text-sky-400={settingsState.isPanelOpen || settingsState.useCustomParameters}
+					aria-label="Toggle model parameters"
+					aria-expanded={settingsState.isPanelOpen}
+				>
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+					</svg>
+					{#if settingsState.useCustomParameters}
+						<span class="text-[10px]">Custom</span>
+					{/if}
+				</button>
+
+				<!-- Right side: Thinking mode toggle -->
+				{#if supportsThinking}
 					<label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
 						<span class="flex items-center gap-1">
 							<span class="text-amber-400">🧠</span>
@@ -695,8 +743,13 @@
 							></span>
 						</button>
 					</label>
-				</div>
-			{/if}
+				{/if}
+			</div>
+
+			<!-- Model parameters panel -->
+			<div class="px-4 pt-2">
+				<ModelParametersPanel />
+			</div>
 
 			<div class="px-4 pb-4 pt-2">
 				<ChatInput

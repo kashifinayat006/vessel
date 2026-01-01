@@ -19,6 +19,7 @@ import type {
 	OllamaEmbedResponse,
 	OllamaGenerateRequest,
 	OllamaGenerateResponse,
+	OllamaPullProgress,
 	JsonSchema
 } from './types.js';
 import {
@@ -128,6 +129,89 @@ export class OllamaClient {
 			body: JSON.stringify(request),
 			signal
 		});
+	}
+
+	/**
+	 * Pulls (downloads) a model from the registry
+	 * POST /api/pull with streaming progress
+	 * @param name Model name to pull (e.g., "llama3.2", "mistral:7b")
+	 * @param onProgress Callback for progress updates
+	 * @param signal Optional abort signal
+	 */
+	async pullModel(
+		name: string,
+		onProgress: (progress: OllamaPullProgress) => void,
+		signal?: AbortSignal
+	): Promise<void> {
+		const url = `${this.config.baseUrl}/api/pull`;
+
+		const response = await this.fetchFn(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name, stream: true }),
+			signal
+		});
+
+		if (!response.ok) {
+			throw await createErrorFromResponse(response, '/api/pull');
+		}
+
+		if (!response.body) {
+			throw new Error('No response body for pull stream');
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+
+				// Process complete lines
+				let newlineIndex: number;
+				while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+					const line = buffer.slice(0, newlineIndex).trim();
+					buffer = buffer.slice(newlineIndex + 1);
+
+					if (!line) continue;
+
+					try {
+						const progress = JSON.parse(line) as OllamaPullProgress;
+						onProgress(progress);
+					} catch {
+						console.warn('[Ollama] Failed to parse pull progress:', line);
+					}
+				}
+			}
+		} finally {
+			reader.releaseLock();
+		}
+	}
+
+	/**
+	 * Deletes a model from local storage
+	 * DELETE /api/delete
+	 * @param name Model name to delete
+	 * @param signal Optional abort signal
+	 */
+	async deleteModel(name: string, signal?: AbortSignal): Promise<void> {
+		const url = `${this.config.baseUrl}/api/delete`;
+
+		const response = await this.fetchFn(url, {
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name }),
+			signal
+		});
+
+		if (!response.ok) {
+			throw await createErrorFromResponse(response, '/api/delete');
+		}
 	}
 
 	// ==========================================================================

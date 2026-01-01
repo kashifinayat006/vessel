@@ -98,6 +98,9 @@ export type {
 	OllamaVersionResponse,
 	OllamaEmbedRequest,
 	OllamaEmbedResponse,
+	OllamaPullProgress,
+	OllamaPullRequest,
+	OllamaDeleteRequest,
 
 	// Error types
 	OllamaErrorResponse,

@@ -2,6 +2,10 @@
 	/**
 	 * ExportDialog.svelte - Modal dialog for exporting conversations
 	 * Allows users to select export format and preview the output
+	 *
+	 * Supports two modes:
+	 * 1. Full data mode: Pass conversation + messageTree + activePath (for chat window)
+	 * 2. Lazy load mode: Pass just conversationId (for sidebar, loads data on demand)
 	 */
 	import type { Conversation } from '$lib/types/conversation.js';
 	import type { MessageNode, BranchPath } from '$lib/types/chat.js';
@@ -14,21 +18,43 @@
 		generateShareUrl,
 		copyToClipboard
 	} from '$lib/utils/export.js';
+	import { getMessagesForConversation, getMessageTree, getConversation } from '$lib/storage';
 
 	interface Props {
-		/** The conversation to export */
-		conversation: Conversation | null | undefined;
-		/** Message tree map */
-		messageTree: Map<string, MessageNode>;
-		/** Active branch path */
-		activePath: BranchPath;
+		/** The conversation to export (optional if conversationId provided) */
+		conversation?: Conversation | null | undefined;
+		/** Message tree map (optional, will be loaded if not provided) */
+		messageTree?: Map<string, MessageNode>;
+		/** Active branch path (optional, will be loaded if not provided) */
+		activePath?: BranchPath;
+		/** Conversation ID for lazy loading mode */
+		conversationId?: string | null;
 		/** Whether the dialog is open */
 		isOpen: boolean;
 		/** Callback when dialog is closed */
 		onClose: () => void;
 	}
 
-	let { conversation, messageTree, activePath, isOpen, onClose }: Props = $props();
+	let {
+		conversation: propConversation,
+		messageTree: propMessageTree,
+		activePath: propActivePath,
+		conversationId,
+		isOpen,
+		onClose
+	}: Props = $props();
+
+	// Internal state for lazy-loaded data
+	let loadedConversation = $state<Conversation | null>(null);
+	let loadedMessageTree = $state<Map<string, MessageNode>>(new Map());
+	let loadedActivePath = $state<BranchPath>([]);
+	let isLoading = $state(false);
+	let loadError = $state<string | null>(null);
+
+	// Use props if provided, otherwise use loaded data
+	let conversation = $derived(propConversation ?? loadedConversation);
+	let messageTree = $derived(propMessageTree ?? loadedMessageTree);
+	let activePath = $derived(propActivePath ?? loadedActivePath);
 
 	/** Currently selected export format */
 	let selectedFormat = $state<ExportFormat>('markdown');
@@ -96,12 +122,55 @@
 		}
 	}
 
+	/** Load data when dialog opens in lazy load mode */
+	async function loadConversationData(id: string): Promise<void> {
+		isLoading = true;
+		loadError = null;
+
+		try {
+			const [convResult, messagesResult, treeResult] = await Promise.all([
+				getConversation(id),
+				getMessagesForConversation(id),
+				getMessageTree(id)
+			]);
+
+			if (!convResult.success || !convResult.data) {
+				throw new Error('Failed to load conversation');
+			}
+			if (!messagesResult.success || !messagesResult.data) {
+				throw new Error('Failed to load messages');
+			}
+			if (!treeResult.success || !treeResult.data) {
+				throw new Error('Failed to load message tree');
+			}
+
+			loadedConversation = convResult.data;
+			loadedMessageTree = messagesResult.data;
+			loadedActivePath = treeResult.data.activePath;
+		} catch (error) {
+			loadError = error instanceof Error ? error.message : 'Failed to load conversation data';
+		} finally {
+			isLoading = false;
+		}
+	}
+
 	/** Reset state when dialog opens */
 	$effect(() => {
 		if (isOpen) {
 			selectedFormat = 'markdown';
 			shareCopied = false;
 			errorMessage = null;
+			loadError = null;
+
+			// Lazy load if conversationId provided but no props
+			if (conversationId && !propConversation && !propMessageTree) {
+				loadConversationData(conversationId);
+			}
+		} else {
+			// Clear loaded data when closing
+			loadedConversation = null;
+			loadedMessageTree = new Map();
+			loadedActivePath = [];
 		}
 	});
 </script>
@@ -149,6 +218,33 @@
 
 			<!-- Content -->
 			<div class="space-y-5 px-6 py-5">
+				{#if isLoading}
+					<!-- Loading state -->
+					<div class="flex items-center justify-center py-8">
+						<svg class="h-6 w-6 animate-spin text-slate-400" viewBox="0 0 24 24">
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+								fill="none"
+							/>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							/>
+						</svg>
+						<span class="ml-2 text-sm text-slate-400">Loading conversation...</span>
+					</div>
+				{:else if loadError}
+					<!-- Load error state -->
+					<div class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400" role="alert">
+						{loadError}
+					</div>
+				{:else}
 				<!-- Format selection -->
 				<fieldset class="space-y-3">
 					<legend class="text-sm font-medium text-slate-300">Export Format</legend>
@@ -229,6 +325,7 @@
 						{errorMessage}
 					</div>
 				{/if}
+				{/if}
 			</div>
 
 			<!-- Footer -->
@@ -284,7 +381,8 @@
 					<button
 						type="button"
 						onclick={handleExport}
-						class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
+						disabled={isLoading || !!loadError || !conversation}
+						class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						Download {selectedFormat === 'markdown' ? '.md' : '.json'}
 					</button>

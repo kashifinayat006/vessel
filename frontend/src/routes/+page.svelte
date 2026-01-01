@@ -7,6 +7,8 @@
 
 	import { onMount } from 'svelte';
 	import { chatState, conversationsState, modelsState, toolsState, promptsState } from '$lib/stores';
+	import { streamingMetricsState } from '$lib/stores/streaming-metrics.svelte';
+	import { settingsState } from '$lib/stores/settings.svelte';
 	import { createConversation as createStoredConversation, addMessage as addStoredMessage, updateConversation } from '$lib/storage';
 	import { ollamaClient } from '$lib/ollama';
 	import type { OllamaMessage, OllamaToolDefinition, OllamaToolCall } from '$lib/ollama';
@@ -117,6 +119,9 @@
 		// Start streaming response
 		const assistantMessageId = chatState.startStreaming();
 
+		// Start streaming metrics tracking
+		streamingMetricsState.startStream();
+
 		// Track tool calls
 		let pendingToolCalls: OllamaToolCall[] | null = null;
 
@@ -167,7 +172,7 @@
 			let thinkingClosed = false;
 
 			await ollamaClient.streamChatWithCallbacks(
-				{ model: chatModel, messages, tools, think: useNativeThinking },
+				{ model: chatModel, messages, tools, think: useNativeThinking, options: settingsState.apiParameters },
 				{
 					onThinkingToken: (token) => {
 						// Accumulate thinking and update the message
@@ -177,6 +182,7 @@
 						}
 						streamingThinking += token;
 						chatState.appendToStreaming(token);
+						streamingMetricsState.incrementTokens();
 					},
 					onToken: (token) => {
 						// Close thinking block when content starts
@@ -185,6 +191,7 @@
 							thinkingClosed = true;
 						}
 						chatState.appendToStreaming(token);
+						streamingMetricsState.incrementTokens();
 					},
 					onToolCall: (toolCalls) => {
 						pendingToolCalls = toolCalls;
@@ -197,6 +204,7 @@
 						}
 
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 
 						// Handle tool calls if received
 						if (pendingToolCalls && pendingToolCalls.length > 0) {
@@ -229,12 +237,14 @@
 					onError: (error) => {
 						console.error('Streaming error:', error);
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 					}
 				}
 			);
 		} catch (error) {
 			console.error('Failed to send message:', error);
 			chatState.finishStreaming();
+			streamingMetricsState.endStream();
 		}
 	}
 
@@ -307,6 +317,9 @@
 			// Stream final response using original model - WITH tools so it can call more if needed
 			const finalMessageId = chatState.startStreaming();
 
+			// Continue metrics tracking for tool follow-up
+			streamingMetricsState.startStream();
+
 			// Use allMessages (including hidden) to send tool results to the model
 			const apiMessages = chatState.allMessages.map(node => ({
 				role: node.message.role,
@@ -321,16 +334,18 @@
 			const tools = getToolsForApi();
 
 			await ollamaClient.streamChatWithCallbacks(
-				{ model, messages: apiMessages, tools },
+				{ model, messages: apiMessages, tools, options: settingsState.apiParameters },
 				{
 					onToken: (token) => {
 						chatState.appendToStreaming(token);
+						streamingMetricsState.incrementTokens();
 					},
 					onToolCall: (newToolCalls) => {
 						morePendingToolCalls = newToolCalls;
 					},
 					onComplete: async () => {
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 
 						// If model wants to call more tools, recurse
 						if (morePendingToolCalls && morePendingToolCalls.length > 0) {
@@ -359,11 +374,13 @@
 					onError: (error) => {
 						console.error('Final response error:', error);
 						chatState.finishStreaming();
+						streamingMetricsState.endStream();
 					}
 				}
 			);
 		} catch (error) {
 			console.error('Tool execution failed:', error);
+			streamingMetricsState.endStream();
 		}
 	}
 

@@ -1,12 +1,13 @@
 <script lang="ts">
 	/**
 	 * ConversationItem.svelte - Single conversation row in the sidebar
-	 * Shows title, model, and hover actions (pin, delete)
+	 * Shows title, model, and hover actions (pin, export, delete)
 	 */
 	import type { Conversation } from '$lib/types/conversation.js';
 	import { goto } from '$app/navigation';
 	import { conversationsState, uiState, chatState, toastState } from '$lib/stores';
 	import { deleteConversation } from '$lib/storage';
+	import { ExportDialog } from '$lib/components/shared';
 
 	interface Props {
 		conversation: Conversation;
@@ -14,6 +15,9 @@
 	}
 
 	let { conversation, isSelected = false }: Props = $props();
+
+	// Export dialog state
+	let showExportDialog = $state(false);
 
 	/** Format relative time for display */
 	function formatRelativeTime(date: Date): string {
@@ -35,6 +39,13 @@
 		e.preventDefault();
 		e.stopPropagation();
 		conversationsState.pin(conversation.id);
+	}
+
+	/** Handle export */
+	function handleExport(e: MouseEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		showExportDialog = true;
 	}
 
 	/** Handle delete */
@@ -163,6 +174,30 @@
 			{/if}
 		</button>
 
+		<!-- Export button -->
+		<button
+			type="button"
+			onclick={handleExport}
+			class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-slate-200"
+			aria-label="Export conversation"
+			title="Export"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-4 w-4"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+				/>
+			</svg>
+		</button>
+
 		<!-- Delete button -->
 		<button
 			type="button"
@@ -188,3 +223,10 @@
 		</button>
 	</div>
 </a>
+
+<!-- Export Dialog -->
+<ExportDialog
+	conversationId={conversation.id}
+	isOpen={showExportDialog}
+	onClose={() => (showExportDialog = false)}
+/>

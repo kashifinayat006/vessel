@@ -8,7 +8,9 @@
 	import { modelRegistry } from '$lib/stores/model-registry.svelte';
 	import { localModelsState } from '$lib/stores/local-models.svelte';
 	import { modelsState } from '$lib/stores/models.svelte';
+	import { modelOperationsState } from '$lib/stores/model-operations.svelte';
 	import { ModelCard } from '$lib/components/models';
+	import PullModelDialog from '$lib/components/models/PullModelDialog.svelte';
 	import { fetchTagSizes, type RemoteModel } from '$lib/api/model-registry';
 
 	// Search debounce
@@ -263,6 +265,17 @@
 							{/if}
 						</button>
 					{:else}
+						<!-- Pull Model Button -->
+						<button
+							type="button"
+							onclick={() => modelOperationsState.openPullDialog()}
+							class="flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+							</svg>
+							<span>Pull Model</span>
+						</button>
 						<button
 							type="button"
 							onclick={() => localModelsState.checkUpdates()}
@@ -1014,3 +1027,44 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Pull Model Dialog -->
+<PullModelDialog />
+
+<!-- Active Pulls Progress (fixed bottom bar) -->
+{#if modelOperationsState.activePulls.size > 0}
+	<div class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-700 bg-slate-800/95 p-4 backdrop-blur-sm">
+		<div class="mx-auto max-w-4xl space-y-3">
+			<h3 class="text-sm font-medium text-slate-300">Active Downloads</h3>
+			{#each [...modelOperationsState.activePulls.entries()] as [name, pull]}
+				<div class="rounded-lg bg-slate-900/50 p-3">
+					<div class="mb-2 flex items-center justify-between">
+						<span class="font-medium text-slate-200">{name}</span>
+						<button
+							type="button"
+							onclick={() => modelOperationsState.cancelPull(name)}
+							class="text-xs text-red-400 hover:text-red-300"
+						>
+							Cancel
+						</button>
+					</div>
+					<div class="mb-1 flex items-center gap-3">
+						<div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-700">
+							<div
+								class="h-full bg-sky-500 transition-all duration-300"
+								style="width: {pull.progress.percent}%"
+							></div>
+						</div>
+						<span class="text-xs text-slate-400">{pull.progress.percent}%</span>
+					</div>
+					<div class="flex items-center justify-between text-xs text-slate-500">
+						<span>{pull.progress.status}</span>
+						{#if pull.progress.speed}
+							<span>{modelOperationsState.formatBytes(pull.progress.speed)}/s</span>
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+{/if}
