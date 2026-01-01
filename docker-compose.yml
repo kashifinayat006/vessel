@@ -11,9 +11,6 @@ services:
     environment:
       - OLLAMA_API_URL=http://ollama:11434
       - BACKEND_URL=http://backend:9090
-    depends_on:
-      - ollama
-      - backend
     networks:
       - vessel-network
     restart: unless-stopped
@@ -30,8 +27,6 @@ services:
       - PORT=9090
     volumes:
       - backend-data:/app/data
-    depends_on:
-      - ollama
     networks:
       - vessel-network
     restart: unless-stopped

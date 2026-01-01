@@ -90,10 +90,12 @@ prompt_yes_no() {
     fi
 
     # Read from /dev/tty to work with curl | bash
+    # Print prompt to stderr so it shows even when stdin is redirected
     if [[ -t 0 ]]; then
         read -r -p "$prompt" response
     else
-        read -r -p "$prompt" response < /dev/tty 2>/dev/null || response="$default"
+        printf "%s" "$prompt" >&2
+        read -r response < /dev/tty 2>/dev/null || response="$default"
     fi
     response="${response:-$default}"
 
@@ -231,14 +233,12 @@ services:
     profiles: ["disabled"]
 
   frontend:
-    depends_on: []
     environment:
       - OLLAMA_API_URL=http://host.docker.internal:11434
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
   backend:
-    depends_on: []
     environment:
       - OLLAMA_URL=http://host.docker.internal:11434
     extra_hosts:
