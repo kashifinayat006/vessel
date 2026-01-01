@@ -90,10 +90,27 @@
 		return labels[key] || key;
 	}
 
+	/** Search result item */
+	interface SearchResultItem {
+		rank: number;
+		title: string;
+		url: string;
+		snippet: string;
+	}
+
+	/** Parsed result with structured data */
+	interface ParsedResult {
+		type: 'search' | 'location' | 'fetch' | 'json' | 'text' | 'empty';
+		summary: string;
+		full: string;
+		searchResults?: SearchResultItem[];
+		query?: string;
+	}
+
 	/**
 	 * Parse result content (could be JSON or plain text)
 	 */
-	function parseResult(result: string | undefined): { type: string; summary: string; full: string } {
+	function parseResult(result: string | undefined): ParsedResult {
 		if (!result) return { type: 'empty', summary: 'No result', full: '' };
 
 		try {
@@ -105,7 +122,9 @@
 				return {
 					type: 'search',
 					summary: `Found ${count} results for "${json.query}"`,
-					full: result
+					full: result,
+					searchResults: json.results as SearchResultItem[],
+					query: json.query
 				};
 			}
 
@@ -295,7 +314,35 @@
 						<!-- Expanded result content -->
 						{#if isResultExpanded && hasResult && parsed.full}
 							<div class="max-h-96 overflow-auto border-t border-slate-200/50 bg-slate-50/50 px-4 py-3 dark:border-slate-700/50 dark:bg-slate-900/50">
-								<pre class="whitespace-pre-wrap break-words text-xs text-slate-600 dark:text-slate-400">{parsed.full.length > 10000 ? parsed.full.substring(0, 10000) + '\n\n... (truncated)' : parsed.full}</pre>
+								{#if parsed.type === 'search' && parsed.searchResults}
+									<!-- Formatted search results -->
+									<div class="space-y-3">
+										{#each parsed.searchResults.slice(0, 10) as result, i}
+											<a
+												href={result.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="block rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-blue-400 hover:bg-blue-50/50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-blue-500 dark:hover:bg-slate-700/50"
+											>
+												<div class="flex items-start gap-2">
+													<span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-blue-100 text-xs font-medium text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
+														{result.rank || i + 1}
+													</span>
+													<div class="min-w-0 flex-1">
+														<p class="font-medium text-blue-600 dark:text-blue-400">{result.title}</p>
+														<p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-500">{result.url}</p>
+														{#if result.snippet && result.snippet !== '(no snippet available)'}
+															<p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{result.snippet}</p>
+														{/if}
+													</div>
+												</div>
+											</a>
+										{/each}
+									</div>
+								{:else}
+									<!-- Fallback: raw content -->
+									<pre class="whitespace-pre-wrap break-words text-xs text-slate-600 dark:text-slate-400">{parsed.full.length > 10000 ? parsed.full.substring(0, 10000) + '\n\n... (truncated)' : parsed.full}</pre>
+								{/if}
 							</div>
 						{/if}
 					</div>
