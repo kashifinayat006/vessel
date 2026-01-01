@@ -144,13 +144,13 @@
 	}
 </script>
 
-<div class="h-screen w-full overflow-hidden bg-slate-900">
+<div class="h-screen w-full overflow-hidden bg-theme-primary">
 	<!-- Sidenav - fixed position -->
 	<Sidenav />
 
 	<!-- Main content wrapper - shifts right when sidenav is open on desktop -->
 	<div
-		class="flex h-full flex-col bg-slate-900 transition-[margin-left] duration-300 ease-in-out"
+		class="flex h-full flex-col bg-theme-primary transition-[margin-left] duration-300 ease-in-out"
 		style="margin-left: {!uiState.isMobile && uiState.sidenavOpen ? SIDENAV_WIDTH : 0}px"
 	>
 		<!-- Top navigation - fixed at top of content area -->

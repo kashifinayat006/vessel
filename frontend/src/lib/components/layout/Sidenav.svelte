@@ -29,7 +29,7 @@
 
 <!-- Sidenav container -->
 <aside
-	class="fixed left-0 top-0 z-50 flex h-full flex-col overflow-hidden bg-slate-950 transition-all duration-300 ease-in-out"
+	class="fixed left-0 top-0 z-50 flex h-full flex-col overflow-hidden bg-theme-sidenav transition-all duration-300 ease-in-out"
 	class:w-[280px]={uiState.sidenavOpen}
 	class:w-0={!uiState.sidenavOpen}
 	class:shadow-xl={uiState.sidenavOpen}
@@ -48,11 +48,11 @@
 		</div>
 
 		<!-- Footer / Navigation links -->
-		<div class="border-t border-slate-700/50 p-3 space-y-1">
+		<div class="border-t border-theme p-3 space-y-1">
 			<!-- Model Browser link -->
 			<a
 				href="/models"
-				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/models') ? 'bg-cyan-900/30 text-cyan-400' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}"
+				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/models') ? 'bg-cyan-500/20 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400' : 'text-theme-muted hover:bg-theme-hover hover:text-theme-primary'}"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -74,7 +74,7 @@
 			<!-- Knowledge Base link -->
 			<a
 				href="/knowledge"
-				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/knowledge') ? 'bg-blue-900/30 text-blue-400' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}"
+				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/knowledge') ? 'bg-blue-500/20 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-theme-muted hover:bg-theme-hover hover:text-theme-primary'}"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -96,7 +96,7 @@
 			<!-- Tools link -->
 			<a
 				href="/tools"
-				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/tools') ? 'bg-emerald-900/30 text-emerald-400' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}"
+				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/tools') ? 'bg-emerald-500/20 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-theme-muted hover:bg-theme-hover hover:text-theme-primary'}"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -118,7 +118,7 @@
 			<!-- Prompts link -->
 			<a
 				href="/prompts"
-				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/prompts') ? 'bg-purple-900/30 text-purple-400' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}"
+				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/prompts') ? 'bg-purple-500/20 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-theme-muted hover:bg-theme-hover hover:text-theme-primary'}"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -141,7 +141,7 @@
 			<button
 				type="button"
 				onclick={() => (settingsOpen = true)}
-				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-primary"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"

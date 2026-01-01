@@ -2,10 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme colors using CSS custom properties */
+:root {
+	/* Light mode (default) */
+	--color-bg-primary: theme('colors.slate.50');
+	--color-bg-secondary: theme('colors.slate.100');
+	--color-bg-tertiary: theme('colors.slate.200');
+	--color-bg-sidenav: theme('colors.slate.100');
+	--color-bg-topnav: theme('colors.white');
+	--color-bg-input: theme('colors.white');
+	--color-bg-hover: theme('colors.slate.200');
+	--color-bg-message-user: theme('colors.slate.200');
+	--color-bg-message-assistant: transparent;
+	--color-text-primary: theme('colors.slate.900');
+	--color-text-secondary: theme('colors.slate.600');
+	--color-text-muted: theme('colors.slate.500');
+	--color-text-placeholder: theme('colors.slate.400');
+	--color-border: theme('colors.slate.300');
+	--color-border-subtle: theme('colors.slate.200');
+}
+
+.dark {
+	/* Dark mode */
+	--color-bg-primary: theme('colors.slate.900');
+	--color-bg-secondary: theme('colors.slate.800');
+	--color-bg-tertiary: theme('colors.slate.700');
+	--color-bg-sidenav: theme('colors.slate.950');
+	--color-bg-topnav: theme('colors.slate.900');
+	--color-bg-input: theme('colors.slate.800');
+	--color-bg-hover: theme('colors.slate.700');
+	--color-bg-message-user: theme('colors.slate.700');
+	--color-bg-message-assistant: transparent;
+	--color-text-primary: theme('colors.slate.100');
+	--color-text-secondary: theme('colors.slate.300');
+	--color-text-muted: theme('colors.slate.400');
+	--color-text-placeholder: theme('colors.slate.500');
+	--color-border: theme('colors.slate.700');
+	--color-border-subtle: theme('colors.slate.800');
+}
+
+/* Utility classes for theme colors */
+.bg-theme-primary { background-color: var(--color-bg-primary); }
+.bg-theme-secondary { background-color: var(--color-bg-secondary); }
+.bg-theme-tertiary { background-color: var(--color-bg-tertiary); }
+.bg-theme-sidenav { background-color: var(--color-bg-sidenav); }
+.bg-theme-topnav { background-color: var(--color-bg-topnav); }
+.bg-theme-input { background-color: var(--color-bg-input); }
+.bg-theme-hover { background-color: var(--color-bg-hover); }
+.bg-theme-message-user { background-color: var(--color-bg-message-user); }
+.text-theme-primary { color: var(--color-text-primary); }
+.text-theme-secondary { color: var(--color-text-secondary); }
+.text-theme-muted { color: var(--color-text-muted); }
+.text-theme-placeholder { color: var(--color-text-placeholder); }
+.border-theme { border-color: var(--color-border); }
+.border-theme-subtle { border-color: var(--color-border-subtle); }
+.hover\:bg-theme-hover:hover { background-color: var(--color-bg-hover); }
+.placeholder-theme-placeholder::placeholder { color: var(--color-text-placeholder); }
+
 /* Base styles */
 html,
 body {
 	@apply h-full;
+	background-color: var(--color-bg-primary);
+	color: var(--color-text-primary);
 }
 
 /* Text selection styling for dark theme */

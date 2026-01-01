@@ -101,7 +101,7 @@
 </script>
 
 <header
-	class="flex h-16 items-center border-b border-slate-800 bg-slate-950/90 backdrop-blur-sm"
+	class="flex h-16 items-center border-b border-theme bg-theme-topnav backdrop-blur-sm"
 >
 	<div class="flex h-full w-full items-center justify-between px-4">
 		<!-- Left section: Hamburger menu + Model select -->
@@ -110,7 +110,7 @@
 			<button
 				type="button"
 				onclick={() => uiState.toggleSidenav()}
-				class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+				class="rounded-lg p-2 text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-primary"
 				aria-label={uiState.sidenavOpen ? 'Close sidebar' : 'Open sidebar'}
 			>
 				{#if uiState.sidenavOpen}
@@ -159,7 +159,7 @@
 			<div class="hidden flex-1 items-center justify-center gap-4 sm:flex">
 				<!-- Conversation title -->
 				{#if currentConversation}
-					<h1 class="max-w-[300px] truncate text-sm font-medium text-slate-300" title={currentConversation.title}>
+					<h1 class="max-w-[300px] truncate text-sm font-medium text-theme-secondary" title={currentConversation.title}>
 						{currentConversation.title}
 					</h1>
 				{/if}
@@ -173,7 +173,7 @@
 			<button
 				type="button"
 				onclick={() => uiState.toggleDarkMode()}
-				class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+				class="rounded-lg p-2 text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-primary"
 				aria-label={uiState.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
 				title={uiState.darkMode ? 'Light mode' : 'Dark mode'}
 			>
@@ -217,7 +217,7 @@
 				<button
 					type="button"
 					onclick={handleExport}
-					class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+					class="rounded-lg p-2 text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-primary"
 					aria-label="Export conversation"
 					title="Export"
 				>
@@ -241,7 +241,7 @@
 				<button
 					type="button"
 					onclick={handlePin}
-					class="rounded-lg p-2 transition-colors hover:bg-slate-800 {currentConversation?.isPinned ? 'text-emerald-500 hover:text-emerald-400' : 'text-slate-400 hover:text-slate-200'}"
+					class="rounded-lg p-2 transition-colors hover:bg-theme-hover {currentConversation?.isPinned ? 'text-emerald-500 hover:text-emerald-400' : 'text-theme-muted hover:text-theme-primary'}"
 					aria-label={currentConversation?.isPinned ? 'Unpin conversation' : 'Pin conversation'}
 					title={currentConversation?.isPinned ? 'Unpin' : 'Pin'}
 				>
@@ -265,7 +265,7 @@
 				<button
 					type="button"
 					onclick={handleArchive}
-					class="rounded-lg p-2 transition-colors hover:bg-slate-800 {currentConversation?.isArchived ? 'text-amber-500 hover:text-amber-400' : 'text-slate-400 hover:text-slate-200'}"
+					class="rounded-lg p-2 transition-colors hover:bg-theme-hover {currentConversation?.isArchived ? 'text-amber-500 hover:text-amber-400' : 'text-theme-muted hover:text-theme-primary'}"
 					aria-label={currentConversation?.isArchived ? 'Unarchive conversation' : 'Archive conversation'}
 					title={currentConversation?.isArchived ? 'Unarchive' : 'Archive'}
 				>
@@ -289,7 +289,7 @@
 				<button
 					type="button"
 					onclick={handleDeleteClick}
-					class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-900/30 hover:text-red-400"
+					class="rounded-lg p-2 text-theme-muted transition-colors hover:bg-red-500/20 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
 					aria-label="Delete conversation"
 					title="Delete"
 				>

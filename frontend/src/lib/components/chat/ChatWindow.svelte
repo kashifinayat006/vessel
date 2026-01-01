@@ -807,7 +807,7 @@
 	}
 </script>
 
-<div class="flex h-full flex-col bg-slate-900">
+<div class="flex h-full flex-col bg-theme-primary">
 	{#if hasMessages}
 		<div class="flex-1 overflow-hidden">
 			<MessageList
@@ -825,9 +825,9 @@
 	<!-- Input area with subtle gradient fade -->
 	<div class="relative">
 		<!-- Gradient fade at top -->
-		<div class="pointer-events-none absolute -top-8 left-0 right-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
+		<div class="pointer-events-none absolute -top-8 left-0 right-0 h-8 bg-gradient-to-t from-[var(--color-bg-primary)] to-transparent"></div>
 
-		<div class="border-t border-slate-800/50 bg-slate-900/95 backdrop-blur-sm">
+		<div class="border-t border-theme bg-theme-primary/95 backdrop-blur-sm">
 			<!-- Summary recommendation banner -->
 			<SummaryBanner onSummarize={handleSummarize} isLoading={isSummarizing} />
 
@@ -850,8 +850,8 @@
 					<button
 						type="button"
 						onclick={() => settingsState.togglePanel()}
-						class="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
-						class:bg-slate-800={settingsState.isPanelOpen}
+						class="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-primary"
+						class:bg-theme-secondary={settingsState.isPanelOpen}
 						class:text-sky-400={settingsState.isPanelOpen || settingsState.useCustomParameters}
 						aria-label="Toggle model parameters"
 						aria-expanded={settingsState.isPanelOpen}
@@ -881,7 +881,7 @@
 
 				<!-- Right side: Thinking mode toggle -->
 				{#if supportsThinking}
-					<label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+					<label class="flex cursor-pointer items-center gap-2 text-xs text-theme-muted">
 						<span class="flex items-center gap-1">
 							<span class="text-amber-400">🧠</span>
 							Thinking mode

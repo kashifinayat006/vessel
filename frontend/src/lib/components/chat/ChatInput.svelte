@@ -258,8 +258,8 @@
 
 <!-- Full-screen drag overlay - shown when dragging files anywhere on the page -->
 {#if isDragOver}
-	<div class="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
-		<div class="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-violet-500 bg-slate-800/90 p-8 text-violet-300">
+	<div class="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center bg-[var(--color-bg-primary)]/80 backdrop-blur-sm">
+		<div class="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-violet-500 bg-theme-secondary p-8 text-violet-600 dark:text-violet-300">
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-12 w-12">
 				<path fill-rule="evenodd" d="M10.5 3.75a6 6 0 0 0-5.98 6.496A5.25 5.25 0 0 0 6.75 20.25H18a4.5 4.5 0 0 0 2.206-8.423 3.75 3.75 0 0 0-4.133-4.303A6.001 6.001 0 0 0 10.5 3.75Zm2.03 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v4.19a.75.75 0 0 0 1.5 0v-4.19l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clip-rule="evenodd" />
 			</svg>
@@ -270,7 +270,7 @@
 					Drop files here
 				{/if}
 			</span>
-			<span class="text-sm text-slate-400">
+			<span class="text-sm text-theme-muted">
 				{#if isVisionModel}
 					Images, text files, and PDFs supported
 				{:else}
@@ -295,7 +295,7 @@
 	/>
 
 	<div
-		class="flex items-end gap-3 rounded-2xl border border-slate-700/50 bg-slate-800/80 p-3 backdrop-blur transition-all focus-within:border-slate-600 focus-within:bg-slate-800"
+		class="flex items-end gap-3 rounded-2xl border border-theme bg-theme-input p-3 backdrop-blur transition-all focus-within:border-theme-subtle"
 	>
 		<!-- Attachment indicators -->
 		{#if pendingImages.length > 0 || pendingAttachments.length > 0}
@@ -346,7 +346,7 @@
 			{placeholder}
 			{disabled}
 			rows="1"
-			class="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+			class="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1 py-1.5 text-theme-primary placeholder-theme-placeholder focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 			aria-label="Message input"
 			data-chat-input
 		></textarea>
@@ -379,7 +379,7 @@
 					disabled={!canSend}
 					class="flex h-9 w-9 items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50 {canSend
 						? 'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 hover:text-violet-300'
-						: 'text-slate-600 cursor-not-allowed'}"
+						: 'text-theme-muted cursor-not-allowed'}"
 					aria-label="Send message"
 					title="Send message"
 				>
@@ -397,19 +397,19 @@
 	</div>
 
 	<!-- Subtle helper text -->
-	<p class="text-center text-[11px] text-slate-600">
-		<kbd class="rounded bg-slate-800 px-1 py-0.5 font-mono">Enter</kbd> send
-		<span class="mx-1.5 text-slate-700">·</span>
-		<kbd class="rounded bg-slate-800 px-1 py-0.5 font-mono">Shift+Enter</kbd> new line
-		<span class="mx-1.5 text-slate-700">·</span>
+	<p class="text-center text-[11px] text-theme-muted">
+		<kbd class="rounded bg-theme-secondary px-1 py-0.5 font-mono">Enter</kbd> send
+		<span class="mx-1.5 opacity-50">·</span>
+		<kbd class="rounded bg-theme-secondary px-1 py-0.5 font-mono">Shift+Enter</kbd> new line
+		<span class="mx-1.5 opacity-50">·</span>
 		{#if isVisionModel}
-			<span class="text-violet-500/70">images</span>
-			<span class="mx-1 text-slate-700">+</span>
+			<span class="text-violet-500 dark:text-violet-500/70">images</span>
+			<span class="mx-1 opacity-50">+</span>
 		{/if}
-		<span class="text-slate-500">files supported</span>
+		<span class="text-theme-muted">files supported</span>
 		{#if showTokenCount}
-			<span class="mx-1.5 text-slate-700">·</span>
-			<span class="text-slate-500" title="{tokenEstimate.textTokens} text + {tokenEstimate.imageTokens} image tokens">
+			<span class="mx-1.5 opacity-50">·</span>
+			<span class="text-theme-muted" title="{tokenEstimate.textTokens} text + {tokenEstimate.imageTokens} image tokens">
 				~{formatTokenCount(tokenEstimate.totalTokens)} tokens
 			</span>
 		{/if}

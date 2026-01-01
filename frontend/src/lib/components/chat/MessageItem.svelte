@@ -123,10 +123,10 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="mb-1 flex items-center gap-2">
-					<span class="text-xs font-medium text-amber-400">Conversation Summary</span>
-					<span class="text-xs text-slate-500">Earlier messages compressed</span>
+					<span class="text-xs font-medium text-amber-500 dark:text-amber-400">Conversation Summary</span>
+					<span class="text-xs text-theme-muted">Earlier messages compressed</span>
 				</div>
-				<div class="prose prose-sm prose-invert max-w-none text-slate-300">
+				<div class="prose prose-sm dark:prose-invert max-w-none text-theme-secondary">
 					<MessageContent
 						content={node.message.content.replace('[Previous conversation summary]\n\n', '')}
 						{isStreaming}
@@ -185,9 +185,9 @@
 		<!-- Message bubble with branch navigator -->
 		<div
 			class="relative rounded-2xl px-4 py-3 {isUser
-				? 'bg-slate-700 text-slate-100'
+				? 'bg-theme-message-user text-theme-primary'
 				: isToolMessage
-					? 'bg-slate-800/50 border-l-2 border-teal-500/50'
+					? 'bg-theme-secondary border-l-2 border-teal-500/50'
 					: 'bg-transparent'}"
 		>
 			{#if isEditing}
@@ -275,7 +275,7 @@
 	<!-- Avatar for user -->
 	{#if isUser}
 		<div
-			class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-600 text-slate-300"
+			class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-theme-tertiary text-theme-secondary"
 			aria-hidden="true"
 		>
 			<svg

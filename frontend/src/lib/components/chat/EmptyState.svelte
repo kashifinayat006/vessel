@@ -89,7 +89,7 @@
 	</div>
 
 	<!-- Welcome text -->
-	<h2 class="mb-2 text-xl font-medium text-slate-100">
+	<h2 class="mb-2 text-xl font-medium text-theme-primary">
 		{#if hasModel}
 			Start a conversation
 		{:else}
@@ -97,9 +97,9 @@
 		{/if}
 	</h2>
 
-	<p class="mb-8 max-w-md text-sm text-slate-500">
+	<p class="mb-8 max-w-md text-sm text-theme-muted">
 		{#if hasModel && selectedModel}
-			Chatting with <span class="font-medium text-slate-300">{selectedModel.name}</span>
+			Chatting with <span class="font-medium text-theme-secondary">{selectedModel.name}</span>
 		{:else}
 			Select a model from the sidebar to start chatting
 		{/if}
@@ -155,9 +155,9 @@
 		onclick={() => selectPrompt(props.type)}
 		class="flex items-start gap-3 rounded-xl border p-3 text-left transition-all {active
 			? 'border-violet-500/50 bg-violet-500/10'
-			: 'border-slate-800/50 bg-slate-800/30 hover:border-slate-700 hover:bg-slate-800/60'}"
+			: 'border-theme hover:border-theme-subtle bg-theme-secondary/30 hover:bg-theme-secondary/60'}"
 	>
-		<div class="flex-shrink-0 {active ? 'text-violet-400' : 'text-slate-500'}">
+		<div class="flex-shrink-0 {active ? 'text-violet-400' : 'text-theme-muted'}">
 			{#if props.icon === 'lightbulb'}
 				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
 					<path d="M10 1a6 6 0 00-3.815 10.631C7.237 12.5 8 13.443 8 14.456v.644a.75.75 0 00.572.729 6.016 6.016 0 002.856 0A.75.75 0 0012 15.1v-.644c0-1.013.762-1.957 1.815-2.825A6 6 0 0010 1zM8.863 17.414a.75.75 0 00-.226 1.483 9.066 9.066 0 002.726 0 .75.75 0 00-.226-1.483 7.553 7.553 0 01-2.274 0z" />
@@ -177,8 +177,8 @@
 			{/if}
 		</div>
 		<div>
-			<h3 class="text-sm font-medium {active ? 'text-violet-200' : 'text-slate-200'}">{props.title}</h3>
-			<p class="text-xs {active ? 'text-violet-400/70' : 'text-slate-500'}">{props.description}</p>
+			<h3 class="text-sm font-medium {active ? 'text-violet-200 dark:text-violet-200' : 'text-theme-primary'}">{props.title}</h3>
+			<p class="text-xs {active ? 'text-violet-400/70' : 'text-theme-muted'}">{props.description}</p>
 		</div>
 	</button>
 {/snippet}
