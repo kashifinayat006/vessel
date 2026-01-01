@@ -153,7 +153,7 @@ class OllamaDatabase extends Dexie {
 	prompts!: Table<StoredPrompt>;
 
 	constructor() {
-		super('ollama-webui');
+		super('vessel');
 
 		// Version 1: Core chat functionality
 		this.version(1).stores({

@@ -13,14 +13,14 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"ollama-webui-backend/internal/api"
-	"ollama-webui-backend/internal/database"
+	"vessel-backend/internal/api"
+	"vessel-backend/internal/database"
 )
 
 func main() {
 	var (
 		port      = flag.String("port", "8080", "Server port")
-		dbPath    = flag.String("db", "./data/ollama-webui.db", "Database file path")
+		dbPath    = flag.String("db", "./data/vessel.db", "Database file path")
 		ollamaURL = flag.String("ollama-url", "http://localhost:11434", "Ollama API URL")
 	)
 	flag.Parse()

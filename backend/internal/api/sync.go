@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"ollama-webui-backend/internal/models"
+	"vessel-backend/internal/models"
 )
 
 // PushChangesRequest represents the request body for pushing changes

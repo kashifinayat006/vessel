@@ -465,7 +465,7 @@
 </script>
 
 <svelte:head>
-	<title>{currentTitle ? `${currentTitle} - Ollama WebUI` : 'Ollama WebUI'}</title>
+	<title>{currentTitle ? `${currentTitle} - Vessel` : 'Vessel'}</title>
 </svelte:head>
 
 <div class="flex h-full flex-col">

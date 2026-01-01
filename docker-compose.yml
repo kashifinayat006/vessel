@@ -1,5 +1,7 @@
+name: vessel
+
 services:
-  # Ollama WebUI Frontend
+  # Vessel Frontend
   frontend:
     build:
       context: ./frontend
@@ -13,10 +15,10 @@ services:
       - ollama
       - backend
     networks:
-      - ollama-network
+      - vessel-network
     restart: unless-stopped
 
-  # Go Backend API
+  # Vessel Backend API
   backend:
     build:
       context: ./backend
@@ -31,7 +33,7 @@ services:
     depends_on:
       - ollama
     networks:
-      - ollama-network
+      - vessel-network
     restart: unless-stopped
 
   # Ollama LLM Server
@@ -42,7 +44,7 @@ services:
     volumes:
       - ollama-data:/root/.ollama
     networks:
-      - ollama-network
+      - vessel-network
     restart: unless-stopped
     # Uncomment for GPU support (NVIDIA)
     # deploy:
@@ -54,7 +56,7 @@ services:
     #           capabilities: [gpu]
 
 networks:
-  ollama-network:
+  vessel-network:
     driver: bridge
 
 volumes:

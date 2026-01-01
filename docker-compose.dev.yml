@@ -1,3 +1,5 @@
+name: vessel-dev
+
 # Development docker-compose - uses host network for direct Ollama access
 services:
   frontend:
@@ -24,4 +26,4 @@ services:
       - ./backend/data:/app/data
     environment:
       - GIN_MODE=release
-    command: ["./server", "-port", "9090", "-db", "/app/data/ollama-webui.db", "-ollama-url", "http://localhost:11434"]
+    command: ["./server", "-port", "9090", "-db", "/app/data/vessel.db", "-ollama-url", "http://localhost:11434"]

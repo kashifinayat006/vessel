@@ -100,7 +100,7 @@
 </script>
 
 <svelte:head>
-	<title>{conversation?.title ?? 'Chat'} - Ollama WebUI</title>
+	<title>{conversation?.title ?? 'Chat'} - Vessel</title>
 </svelte:head>
 
 <div class="flex h-full flex-col">

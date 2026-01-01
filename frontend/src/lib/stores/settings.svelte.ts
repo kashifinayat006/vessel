@@ -11,7 +11,7 @@ import {
 	PARAMETER_RANGES
 } from '$lib/types/settings';
 
-const STORAGE_KEY = 'ollama-webui-settings';
+const STORAGE_KEY = 'vessel-settings';
 
 /**
  * Settings state class with reactive properties

@@ -173,9 +173,9 @@
 				<section>
 					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-theme-muted">About</h3>
 					<div class="rounded-lg bg-theme-tertiary/50 p-4">
-						<p class="font-medium text-theme-secondary">Ollama Web UI</p>
+						<p class="font-medium text-theme-secondary">Vessel</p>
 						<p class="mt-1 text-sm text-theme-muted">
-							A feature-rich web interface for Ollama with chat, tools, and memory management.
+							A modern interface for local AI with chat, tools, and memory management.
 						</p>
 					</div>
 				</section>

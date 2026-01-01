@@ -74,17 +74,22 @@
 </script>
 
 <div class="flex flex-col items-center justify-center px-4 py-12 text-center">
-	<!-- Logo/Icon - subtle violet glow -->
+	<!-- Logo/Icon - Vessel V with violet gradient -->
 	<div
-		class="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400"
+		class="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10"
 	>
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 24 24"
-			fill="currentColor"
-			class="h-7 w-7"
+			class="h-8 w-8"
 		>
-			<path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+			<defs>
+				<linearGradient id="vessel-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+					<stop offset="0%" stop-color="#a78bfa"/>
+					<stop offset="100%" stop-color="#818cf8"/>
+				</linearGradient>
+			</defs>
+			<path d="M12 21 L3 6 Q3 4.5 4.5 4.5 L7.5 4.5 L12 13.5 L16.5 4.5 L19.5 4.5 Q21 4.5 21 6 L12 21 Z" fill="url(#vessel-gradient)"/>
 		</svg>
 	</div>
 
