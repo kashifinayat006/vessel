@@ -2,16 +2,19 @@
 	/**
 	 * SystemPromptSelector - Dropdown to select a system prompt for the current conversation
 	 * Allows per-conversation prompt assignment with quick preview
+	 * In 'new' mode (no conversationId), uses onSelect callback for local state management
 	 */
 	import { promptsState, conversationsState, toastState } from '$lib/stores';
 	import { updateSystemPrompt } from '$lib/storage';
 
 	interface Props {
-		conversationId: string | null;
+		conversationId?: string | null;
 		currentPromptId?: string | null;
+		/** Callback for 'new' mode - called when prompt is selected without a conversation */
+		onSelect?: (promptId: string | null) => void;
 	}
 
-	let { conversationId, currentPromptId = null }: Props = $props();
+	let { conversationId = null, currentPromptId = null, onSelect }: Props = $props();
 
 	// UI state
 	let isOpen = $state(false);
@@ -46,9 +49,16 @@
 	 * Handle prompt selection
 	 */
 	async function handleSelect(promptId: string | null): Promise<void> {
-		if (!conversationId) return;
+		// In 'new' mode (no conversation), use the callback
+		if (!conversationId) {
+			onSelect?.(promptId);
+			const promptName = promptId ? prompts.find((p) => p.id === promptId)?.name : null;
+			toastState.success(promptName ? `Using "${promptName}"` : 'System prompt cleared');
+			closeDropdown();
+			return;
+		}
 
-		// Update in storage
+		// Update in storage for existing conversation
 		const result = await updateSystemPrompt(conversationId, promptId);
 		if (result.success) {
 			// Update in memory

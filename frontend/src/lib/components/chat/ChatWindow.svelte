@@ -72,6 +72,9 @@
 	let hasKnowledgeBase = $state(false);
 	let lastRagContext = $state<string | null>(null);
 
+	// System prompt for new conversations (before a conversation is created)
+	let newChatPromptId = $state<string | null>(null);
+
 	// Derived: Check if selected model supports thinking
 	const supportsThinking = $derived.by(() => {
 		const caps = modelsState.selectedCapabilities;
@@ -410,13 +413,19 @@
 			// Wait for prompts to be loaded
 			await promptsState.ready();
 
-			// Priority: per-conversation prompt > global active prompt > none
+			// Priority: per-conversation prompt > new chat prompt > global active prompt > none
 			let promptContent: string | null = null;
 			if (conversation?.systemPromptId) {
 				// Use per-conversation prompt
 				const conversationPrompt = promptsState.get(conversation.systemPromptId);
 				if (conversationPrompt) {
 					promptContent = conversationPrompt.content;
+				}
+			} else if (newChatPromptId) {
+				// Use new chat selected prompt (before conversation is created)
+				const newChatPrompt = promptsState.get(newChatPromptId);
+				if (newChatPrompt) {
+					promptContent = newChatPrompt.content;
 				}
 			} else if (promptsState.activePrompt) {
 				// Fall back to global active prompt
@@ -856,11 +865,16 @@
 						{/if}
 					</button>
 
-					<!-- System prompt selector (only in conversation mode) -->
+					<!-- System prompt selector -->
 					{#if mode === 'conversation' && conversation}
 						<SystemPromptSelector
 							conversationId={conversation.id}
 							currentPromptId={conversation.systemPromptId}
+						/>
+					{:else if mode === 'new'}
+						<SystemPromptSelector
+							currentPromptId={newChatPromptId}
+							onSelect={(promptId) => (newChatPromptId = promptId)}
 						/>
 					{/if}
 				</div>
