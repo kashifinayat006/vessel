@@ -17,11 +17,18 @@ import (
 	"vessel-backend/internal/database"
 )
 
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 func main() {
 	var (
-		port      = flag.String("port", "8080", "Server port")
-		dbPath    = flag.String("db", "./data/vessel.db", "Database file path")
-		ollamaURL = flag.String("ollama-url", "http://localhost:11434", "Ollama API URL")
+		port      = flag.String("port", getEnvOrDefault("PORT", "8080"), "Server port")
+		dbPath    = flag.String("db", getEnvOrDefault("DB_PATH", "./data/vessel.db"), "Database file path")
+		ollamaURL = flag.String("ollama-url", getEnvOrDefault("OLLAMA_URL", "http://localhost:11434"), "Ollama API URL")
 	)
 	flag.Parse()
 

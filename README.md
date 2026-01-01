@@ -109,41 +109,48 @@ Vessel includes five powerful tools that models can invoke automatically:
 
 ## Quick Start
 
-The fastest way to get running with Docker Compose:
+### One-Line Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/vessel.git
+curl -fsSL https://somegit.dev/vikingowl/vessel/raw/main/install.sh | bash
+```
+
+### Or Clone and Run
+
+```bash
+git clone https://somegit.dev/vikingowl/vessel.git
 cd vessel
-
-# Start all services (frontend, backend, ollama)
-docker compose up -d
-
-# Open in browser
-open http://localhost:7842
+./install.sh
 ```
 
-This starts:
-- **Frontend** on `http://localhost:7842`
-- **Backend API** on `http://localhost:9090`
-- **Ollama** on `http://localhost:11434`
+The installer will:
+- Check for Docker and Docker Compose
+- Detect if you have Ollama installed locally (and let you choose)
+- Start all services
+- Optionally pull a starter model (llama3.2)
 
-### First Model
-
-Pull your first model from the UI or via command line:
-
-```bash
-# Via Ollama CLI
-docker compose exec ollama ollama pull llama3.2
-
-# Or use the Model Browser in the UI
-```
+Once running, open **http://localhost:7842** in your browser.
 
 ---
 
 ## Installation
 
-### Option 1: Docker Compose (Recommended)
+### Option 1: Install Script (Recommended)
+
+The install script handles everything automatically:
+
+```bash
+./install.sh              # Install and start
+./install.sh --update     # Update to latest version
+./install.sh --uninstall  # Remove installation
+```
+
+**Features:**
+- Detects local Ollama installation
+- Configures Docker networking automatically
+- Works on Linux and macOS
+
+### Option 2: Docker Compose (Manual)
 
 ```bash
 docker compose up -d

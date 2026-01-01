@@ -35,5 +35,10 @@ EXPOSE 8080
 # Set environment variables
 ENV GIN_MODE=release
 
-# Run the server
-CMD ["./server", "-port", "8080", "-db", "/app/data/ollama-webui.db"]
+# Default environment variables (can be overridden in docker-compose)
+ENV PORT=8080
+ENV DB_PATH=/app/data/vessel.db
+ENV OLLAMA_URL=http://localhost:11434
+
+# Run the server (reads config from environment variables)
+CMD ["./server"]
