@@ -546,7 +546,6 @@ const getLocationHandler: BuiltinToolHandler<GetLocationArgs> = async (args) => 
 			};
 		} catch {
 			// Browser geolocation failed, try IP fallback
-			console.log('[get_location] Browser geolocation failed, trying IP fallback...');
 		}
 	}
 
@@ -693,6 +692,3 @@ export const builtinTools: Map<string, ToolRegistryEntry> = new Map([
 export function getBuiltinToolDefinitions(): ToolDefinition[] {
 	return Array.from(builtinTools.values()).map(entry => entry.definition);
 }
-
-// Log available builtin tools at startup
-console.log('[Builtin Tools] Available:', Array.from(builtinTools.keys()));

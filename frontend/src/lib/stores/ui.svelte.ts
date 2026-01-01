@@ -13,6 +13,11 @@ export class UIState {
 	darkMode = $state(true); // Default to dark mode
 	isMobile = $state(false);
 
+	// Bound function references for proper cleanup
+	private boundHandleResize: () => void;
+	private boundHandleThemeChange: (e: MediaQueryListEvent) => void;
+	private mediaQuery: MediaQueryList | null = null;
+
 	// Derived: Effective sidenav state (closed on mobile by default)
 	effectiveSidenavOpen = $derived.by(() => {
 		if (this.isMobile) {
@@ -22,7 +27,9 @@ export class UIState {
 	});
 
 	constructor() {
-		// Initialize will be called separately to avoid SSR issues
+		// Bind handlers once for proper add/remove
+		this.boundHandleResize = this.handleResize.bind(this);
+		this.boundHandleThemeChange = this.handleThemeChange.bind(this);
 	}
 
 	/**
@@ -51,15 +58,11 @@ export class UIState {
 		this.applyDarkMode();
 
 		// Listen for resize events
-		window.addEventListener('resize', this.handleResize.bind(this));
+		window.addEventListener('resize', this.boundHandleResize);
 
 		// Listen for system theme changes
-		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-			if (localStorage.getItem('darkMode') === null) {
-				this.darkMode = e.matches;
-				this.applyDarkMode();
-			}
-		});
+		this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		this.mediaQuery.addEventListener('change', this.boundHandleThemeChange);
 	}
 
 	/**
@@ -67,7 +70,9 @@ export class UIState {
 	 */
 	destroy(): void {
 		if (typeof window === 'undefined') return;
-		window.removeEventListener('resize', this.handleResize.bind(this));
+		window.removeEventListener('resize', this.boundHandleResize);
+		this.mediaQuery?.removeEventListener('change', this.boundHandleThemeChange);
+		this.mediaQuery = null;
 	}
 
 	/**
@@ -80,6 +85,17 @@ export class UIState {
 		// Auto-close sidenav when switching to mobile
 		if (!wasMobile && this.isMobile) {
 			this.sidenavOpen = false;
+		}
+	}
+
+	/**
+	 * Handle system theme preference changes
+	 */
+	private handleThemeChange(e: MediaQueryListEvent): void {
+		// Only apply if user hasn't set explicit preference
+		if (localStorage.getItem('darkMode') === null) {
+			this.darkMode = e.matches;
+			this.applyDarkMode();
 		}
 	}
 

@@ -53,12 +53,20 @@ class SyncManager {
 	private syncIntervalId: ReturnType<typeof setInterval> | null = null;
 	private isSyncing = false;
 
+	// Bound function references for proper cleanup
+	private boundHandleOnline: () => void;
+	private boundHandleOffline: () => void;
+
 	constructor(config: SyncManagerConfig = {}) {
 		this.config = {
 			syncInterval: config.syncInterval ?? 30000,
 			autoSync: config.autoSync ?? true,
 			maxRetries: config.maxRetries ?? 5
 		};
+
+		// Bind handlers once for proper add/remove
+		this.boundHandleOnline = this.handleOnline.bind(this);
+		this.boundHandleOffline = this.handleOffline.bind(this);
 	}
 
 	/**
@@ -72,17 +80,8 @@ class SyncManager {
 		syncState.isOnline = navigator.onLine;
 
 		// Listen for online/offline events
-		window.addEventListener('online', () => {
-			syncState.isOnline = true;
-			syncState.status = 'idle';
-			// Trigger sync when coming back online
-			this.sync();
-		});
-
-		window.addEventListener('offline', () => {
-			syncState.isOnline = false;
-			syncState.status = 'offline';
-		});
+		window.addEventListener('online', this.boundHandleOnline);
+		window.addEventListener('offline', this.boundHandleOffline);
 
 		// Load last sync version from localStorage
 		const savedVersion = localStorage.getItem('lastSyncVersion');
@@ -111,6 +110,28 @@ class SyncManager {
 	 */
 	destroy(): void {
 		this.stopAutoSync();
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('online', this.boundHandleOnline);
+			window.removeEventListener('offline', this.boundHandleOffline);
+		}
+	}
+
+	/**
+	 * Handle online event
+	 */
+	private handleOnline(): void {
+		syncState.isOnline = true;
+		syncState.status = 'idle';
+		// Trigger sync when coming back online
+		this.sync();
+	}
+
+	/**
+	 * Handle offline event
+	 */
+	private handleOffline(): void {
+		syncState.isOnline = false;
+		syncState.status = 'offline';
 	}
 
 	/**

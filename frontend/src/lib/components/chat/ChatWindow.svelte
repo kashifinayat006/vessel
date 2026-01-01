@@ -4,7 +4,7 @@
 	 * Handles sending messages, streaming responses, and tool execution
 	 */
 
-	import { chatState, modelsState, conversationsState, toolsState, promptsState } from '$lib/stores';
+	import { chatState, modelsState, conversationsState, toolsState, promptsState, toastState } from '$lib/stores';
 	import { serverConversationsState } from '$lib/stores/server-conversations.svelte';
 	import { ollamaClient } from '$lib/ollama';
 	import { addMessage as addStoredMessage, updateConversation, createConversation as createStoredConversation } from '$lib/storage';
@@ -96,7 +96,6 @@
 			if (results.length === 0) return null;
 
 			const context = formatResultsAsContext(results);
-			console.log('[RAG] Retrieved', results.length, 'chunks for context');
 			return context;
 		} catch (error) {
 			console.error('[RAG] Failed to retrieve context:', error);
@@ -183,7 +182,6 @@
 		const { toSummarize, toKeep } = selectMessagesForSummarization(messages, 0);
 
 		if (toSummarize.length === 0) {
-			console.log('No messages to summarize');
 			return;
 		}
 
@@ -194,13 +192,8 @@
 			const summary = await generateSummary(toSummarize, selectedModel);
 			const formattedSummary = formatSummaryAsContext(summary);
 
-			// Calculate savings for logging
+			// Calculate savings
 			const savedTokens = calculateTokenSavings(toSummarize, formattedSummary);
-			console.log(`Summarization saved ~${savedTokens} tokens`);
-
-			// For now, we'll log the summary - full implementation would
-			// replace the old messages with the summary in the chat state
-			console.log('Summary generated:', summary);
 
 			// TODO: Implement message replacement in chat state
 			// This requires adding a method to ChatState to replace messages
@@ -217,11 +210,10 @@
 	 * Send a message and stream the response (with tool support)
 	 */
 	async function handleSendMessage(content: string, images?: string[]): Promise<void> {
-		console.log('[Chat] handleSendMessage called:', content.substring(0, 50));
 		const selectedModel = modelsState.selectedId;
 
 		if (!selectedModel) {
-			console.error('No model selected');
+			toastState.error('Please select a model first');
 			return;
 		}
 
@@ -277,7 +269,6 @@
 		parentMessageId: string,
 		conversationId: string | null
 	): Promise<void> {
-		console.log('[Chat] streamAssistantResponse called with model:', model);
 		const assistantMessageId = chatState.startStreaming();
 		abortController = new AbortController();
 
@@ -296,17 +287,7 @@
 			const activePrompt = promptsState.activePrompt;
 			if (activePrompt) {
 				systemParts.push(activePrompt.content);
-				console.log('[Chat] Using system prompt:', activePrompt.name);
 			}
-
-			// Log thinking mode status (now using native API support, not prompt-based)
-			console.log('[Chat] Thinking mode check:', {
-				supportsThinking,
-				thinkingEnabled,
-				selectedModel: modelsState.selectedId,
-				selectedCapabilities: modelsState.selectedCapabilities
-			});
-			// Note: Thinking is now handled via the `think: true` API parameter instead of prompt injection
 
 			// RAG: Retrieve relevant context for the last user message
 			const lastUserMessage = messages.filter(m => m.role === 'user').pop();
@@ -315,7 +296,6 @@
 				if (ragContext) {
 					lastRagContext = ragContext;
 					systemParts.push(`You have access to a knowledge base. Use the following relevant context to help answer the user's question. If the context isn't relevant, you can ignore it.\n\n${ragContext}`);
-					console.log('[RAG] Injected context into conversation');
 				}
 			}
 
@@ -333,16 +313,8 @@
 				? getFunctionModel(model)
 				: model;
 
-			// Debug logging
-			console.log('[Chat] Tools enabled:', toolsState.toolsEnabled);
-			console.log('[Chat] Tools count:', tools?.length ?? 0);
-			console.log('[Chat] Tool names:', tools?.map(t => t.function.name) ?? []);
-			console.log('[Chat] USE_FUNCTION_MODEL:', USE_FUNCTION_MODEL);
-			console.log('[Chat] Using model:', chatModel, '(original:', model, ')');
-
 			// Determine if we should use native thinking mode
 			const useNativeThinking = supportsThinking && thinkingEnabled;
-			console.log('[Chat] Native thinking mode:', useNativeThinking);
 
 			// Track thinking content during streaming
 			let streamingThinking = '';
@@ -376,7 +348,6 @@
 					onToolCall: (toolCalls) => {
 						// Store tool calls to process after streaming completes
 						pendingToolCalls = toolCalls;
-						console.log('Tool calls received:', toolCalls);
 					},
 					onComplete: async () => {
 						// Close thinking block if it was opened but not closed (e.g., tool calls without content)
@@ -423,7 +394,7 @@
 				abortController.signal
 			);
 		} catch (error) {
-			console.error('Failed to send message:', error);
+			toastState.error('Failed to send message. Please try again.');
 			chatState.finishStreaming();
 			abortController = null;
 		}
@@ -506,7 +477,7 @@
 			await streamAssistantResponse(model, toolMessageId, conversationId);
 
 		} catch (error) {
-			console.error('Tool execution failed:', error);
+			toastState.error('Tool execution failed');
 			// Update assistant message with error
 			const node = chatState.messageTree.get(assistantMessageId);
 			if (node) {
@@ -548,7 +519,7 @@
 		// Use the new startRegeneration method which creates a sibling and sets up streaming
 		const newMessageId = chatState.startRegeneration(lastMessageId);
 		if (!newMessageId) {
-			console.error('Failed to start regeneration');
+			toastState.error('Failed to regenerate response');
 			return;
 		}
 
@@ -624,7 +595,7 @@
 				abortController.signal
 			);
 		} catch (error) {
-			console.error('Failed to regenerate:', error);
+			toastState.error('Failed to regenerate. Please try again.');
 			chatState.finishStreaming();
 			abortController = null;
 		}
@@ -652,7 +623,7 @@
 		);
 
 		if (!newUserMessageId) {
-			console.error('Failed to create edited message branch');
+			toastState.error('Failed to edit message');
 			return;
 		}
 

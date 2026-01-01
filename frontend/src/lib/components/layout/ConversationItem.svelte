@@ -5,7 +5,7 @@
 	 */
 	import type { Conversation } from '$lib/types/conversation.js';
 	import { goto } from '$app/navigation';
-	import { conversationsState, uiState, chatState } from '$lib/stores';
+	import { conversationsState, uiState, chatState, toastState } from '$lib/stores';
 	import { deleteConversation } from '$lib/storage';
 
 	interface Props {
@@ -56,7 +56,7 @@
 				goto('/');
 			}
 		} else {
-			console.error('Failed to delete conversation:', result.error);
+			toastState.error('Failed to delete conversation');
 		}
 	}
 
@@ -124,8 +124,8 @@
 		</div>
 	</div>
 
-	<!-- Action buttons (shown on hover) -->
-	<div class="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+	<!-- Action buttons (always visible on mobile, hover on desktop) -->
+	<div class="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 transition-opacity {uiState.isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}">
 		<!-- Pin/Unpin button -->
 		<button
 			type="button"

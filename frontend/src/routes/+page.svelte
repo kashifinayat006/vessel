@@ -133,30 +133,14 @@
 			// Wait for prompts to be loaded, then add system prompt if active
 			await promptsState.ready();
 			const activePrompt = promptsState.activePrompt;
-			console.log('[NewChat] Prompts state:', {
-				promptsCount: promptsState.prompts.length,
-				activePromptId: promptsState.activePromptId,
-				activePrompt: activePrompt?.name ?? 'none'
-			});
 			if (activePrompt) {
 				systemParts.push(activePrompt.content);
-				console.log('[NewChat] Using system prompt:', activePrompt.name);
 			}
-
-			// Log thinking mode status (now using native API support, not prompt-based)
-			console.log('[NewChat] Thinking mode check:', {
-				supportsThinking,
-				thinkingEnabled,
-				selectedModel: modelsState.selectedId,
-				selectedCapabilities: modelsState.selectedCapabilities
-			});
-			// Note: Thinking is now handled via the `think: true` API parameter instead of prompt injection
 
 			// Add RAG context if available
 			const ragContext = await retrieveRagContext(content);
 			if (ragContext) {
 				systemParts.push(`You have access to a knowledge base. Use the following relevant context to help answer the user's question. If the context isn't relevant, you can ignore it.\n\n${ragContext}`);
-				console.log('[NewChat] RAG context injected');
 			}
 
 			// Inject combined system message
@@ -175,14 +159,8 @@
 				? getFunctionModel(model)
 				: model;
 
-			console.log('[NewChat] Tools enabled:', toolsState.toolsEnabled);
-			console.log('[NewChat] Tools count:', tools?.length ?? 0);
-			console.log('[NewChat] Tool names:', tools?.map(t => t.function.name) ?? []);
-			console.log('[NewChat] Using model:', chatModel, '(original:', model, ')');
-
 			// Determine if we should use native thinking mode
 			const useNativeThinking = supportsThinking && thinkingEnabled;
-			console.log('[NewChat] Native thinking mode:', useNativeThinking);
 
 			// Track thinking content during streaming
 			let streamingThinking = '';
@@ -210,7 +188,6 @@
 					},
 					onToolCall: (toolCalls) => {
 						pendingToolCalls = toolCalls;
-						console.log('[NewChat] Tool calls received:', toolCalls);
 					},
 					onComplete: async () => {
 						// Close thinking block if it was opened but not closed (e.g., tool calls without content)
@@ -351,7 +328,6 @@
 					},
 					onToolCall: (newToolCalls) => {
 						morePendingToolCalls = newToolCalls;
-						console.log('[NewChat] Additional tool calls received:', newToolCalls);
 					},
 					onComplete: async () => {
 						chatState.finishStreaming();
@@ -415,12 +391,10 @@
 		userMessage: string,
 		assistantMessage: string
 	): Promise<void> {
-		console.log('[NewChat] generateSmartTitle called:', { conversationId, userMessage: userMessage.substring(0, 50) });
 		try {
 			// Use a small, fast model for title generation if available, otherwise use selected
 			const model = modelsState.selectedId;
 			if (!model) {
-				console.log('[NewChat] No model selected, skipping title generation');
 				return;
 			}
 
@@ -430,14 +404,10 @@
 				.replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
 				.trim();
 
-			console.log('[NewChat] cleanedAssistant length:', cleanedAssistant.length);
-
 			// Build prompt - use assistant content if available, otherwise just user message
 			const promptContent = cleanedAssistant.length > 0
 				? `User: ${userMessage.substring(0, 200)}\n\nAssistant: ${cleanedAssistant.substring(0, 300)}`
 				: `User message: ${userMessage.substring(0, 400)}`;
-
-			console.log('[NewChat] Generating title with model:', model);
 
 			const response = await ollamaClient.chat({
 				model,
@@ -453,8 +423,6 @@
 				]
 			});
 
-			console.log('[NewChat] Title generation response:', response.message.content);
-
 			// Strip any thinking blocks from the title response and clean it up
 			const newTitle = response.message.content
 				.replace(/<think>[\s\S]*?<\/think>/g, '')
@@ -468,7 +436,6 @@
 				await updateConversation(conversationId, { title: newTitle });
 				conversationsState.update(conversationId, { title: newTitle });
 				currentTitle = newTitle;
-				console.log('[NewChat] Updated title to:', newTitle);
 			}
 		} catch (error) {
 			console.error('[NewChat] Failed to generate smart title:', error);

@@ -5,6 +5,7 @@
 	 */
 
 	import type { MessageRole } from '$lib/types';
+	import { toastState } from '$lib/stores';
 
 	interface Props {
 		role: MessageRole;
@@ -42,7 +43,7 @@
 			}, 2000);
 			onCopy?.();
 		} catch (error) {
-			console.error('Failed to copy:', error);
+			toastState.error('Failed to copy to clipboard');
 		}
 	}
 </script>

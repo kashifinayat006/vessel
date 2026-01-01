@@ -278,9 +278,6 @@
 		const result = parseContent(cleanedContent);
 		// Debug: Log if thinking blocks were found
 		const thinkingParts = result.parts.filter(p => p.type === 'thinking');
-		if (thinkingParts.length > 0) {
-			console.log('[MessageContent] Found thinking blocks:', thinkingParts.length, 'in-progress:', result.isThinkingInProgress);
-		}
 		return result;
 	});
 	// Filter out thinking parts if showThinking is false

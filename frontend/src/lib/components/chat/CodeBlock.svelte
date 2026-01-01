@@ -8,6 +8,7 @@
 	import { codeToHtml, type BundledLanguage } from 'shiki';
 	import { executionManager, isExecutable, getRuntime } from '$lib/execution';
 	import type { ExecutionResult, ExecutionOutput } from '$lib/execution';
+	import { toastState } from '$lib/stores';
 
 	interface Props {
 		code: string;
@@ -115,7 +116,7 @@
 				copied = false;
 			}, 2000);
 		} catch (error) {
-			console.error('Failed to copy code:', error);
+			toastState.error('Failed to copy code');
 		}
 	}
 
