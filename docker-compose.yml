@@ -9,8 +9,10 @@ services:
     ports:
       - "7842:3000"
     environment:
-      - OLLAMA_API_URL=http://ollama:11434
+      - OLLAMA_API_URL=http://host.docker.internal:11434
       - BACKEND_URL=http://backend:9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - vessel-network
     restart: unless-stopped
@@ -23,37 +25,19 @@ services:
     ports:
       - "9090:9090"
     environment:
-      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_URL=http://host.docker.internal:11434
       - PORT=9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - backend-data:/app/data
     networks:
       - vessel-network
     restart: unless-stopped
 
-  # Ollama LLM Server
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - vessel-network
-    restart: unless-stopped
-    # Uncomment for GPU support (NVIDIA)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
-
 networks:
   vessel-network:
     driver: bridge
 
 volumes:
-  ollama-data:
   backend-data:

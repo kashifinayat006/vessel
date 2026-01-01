@@ -109,6 +109,11 @@ Vessel includes five powerful tools that models can invoke automatically:
 
 ## Quick Start
 
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- [Ollama](https://ollama.com/download) installed and running locally
+
 ### One-Line Install
 
 ```bash
@@ -124,9 +129,8 @@ cd vessel
 ```
 
 The installer will:
-- Check for Docker and Docker Compose
-- Detect if you have Ollama installed locally (and let you choose)
-- Start all services
+- Check for Docker, Docker Compose, and Ollama
+- Start the frontend and backend services
 - Optionally pull a starter model (llama3.2)
 
 Once running, open **http://localhost:7842** in your browser.
@@ -145,39 +149,22 @@ The install script handles everything automatically:
 ./install.sh --uninstall  # Remove installation
 ```
 
-**Features:**
-- Detects local Ollama installation
-- Configures Docker networking automatically
-- Works on Linux and macOS
+**Requirements:**
+- Ollama must be installed and running locally
+- Docker and Docker Compose
+- Linux or macOS
 
 ### Option 2: Docker Compose (Manual)
 
 ```bash
+# Make sure Ollama is running first
+ollama serve
+
+# Start Vessel
 docker compose up -d
 ```
 
-#### With GPU Support (NVIDIA)
-
-Uncomment the GPU section in `docker-compose.yml`:
-
-```yaml
-ollama:
-  image: ollama/ollama:latest
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: all
-            capabilities: [gpu]
-```
-
-Then run:
-```bash
-docker compose up -d
-```
-
-### Option 2: Manual Setup
+### Option 3: Manual Setup (Development)
 
 #### Prerequisites
 - [Node.js](https://nodejs.org/) 20+
@@ -344,6 +331,7 @@ All requests to `/ollama/*` are proxied to the Ollama API, enabling CORS.
 
 ## Roadmap
 
+- [ ] Docker Ollama support (for systems without local Ollama)
 - [ ] Image generation (Stable Diffusion, Hugging Face models)
 - [ ] Hugging Face integration
 - [ ] Voice input/output
