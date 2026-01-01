@@ -18,6 +18,11 @@ type OllamaService struct {
 	ollamaURL string
 }
 
+// Client returns the underlying Ollama API client
+func (s *OllamaService) Client() *api.Client {
+	return s.client
+}
+
 // NewOllamaService creates a new Ollama service with the official client
 func NewOllamaService(ollamaURL string) (*OllamaService, error) {
 	baseURL, err := url.Parse(ollamaURL)

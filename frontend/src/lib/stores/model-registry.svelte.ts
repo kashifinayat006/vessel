@@ -1,0 +1,204 @@
+/**
+ * Model Registry Store
+ * Manages state for browsing and searching remote models from ollama.com
+ */
+
+import {
+	fetchRemoteModels,
+	getSyncStatus,
+	syncModels,
+	type RemoteModel,
+	type SyncStatus,
+	type ModelSearchOptions
+} from '$lib/api/model-registry';
+
+/** Store state */
+class ModelRegistryState {
+	// Model list
+	models = $state<RemoteModel[]>([]);
+	total = $state(0);
+	loading = $state(false);
+	error = $state<string | null>(null);
+
+	// Search/filter state
+	searchQuery = $state('');
+	modelType = $state<'official' | 'community' | ''>('');
+	selectedCapabilities = $state<string[]>([]);
+	currentPage = $state(0);
+	pageSize = $state(24);
+
+	// Sync status
+	syncStatus = $state<SyncStatus | null>(null);
+	syncing = $state(false);
+
+	// Selected model for details view
+	selectedModel = $state<RemoteModel | null>(null);
+
+	// Derived: total pages
+	totalPages = $derived(Math.ceil(this.total / this.pageSize));
+
+	// Derived: has more pages
+	hasNextPage = $derived(this.currentPage < this.totalPages - 1);
+	hasPrevPage = $derived(this.currentPage > 0);
+
+	/**
+	 * Load models with current filters
+	 */
+	async loadModels(): Promise<void> {
+		this.loading = true;
+		this.error = null;
+
+		try {
+			const options: ModelSearchOptions = {
+				limit: this.pageSize,
+				offset: this.currentPage * this.pageSize
+			};
+
+			if (this.searchQuery.trim()) {
+				options.search = this.searchQuery.trim();
+			}
+
+			if (this.modelType) {
+				options.type = this.modelType;
+			}
+
+			if (this.selectedCapabilities.length > 0) {
+				options.capabilities = this.selectedCapabilities;
+			}
+
+			const response = await fetchRemoteModels(options);
+			this.models = response.models;
+			this.total = response.total;
+		} catch (err) {
+			this.error = err instanceof Error ? err.message : 'Failed to load models';
+			console.error('Failed to load models:', err);
+		} finally {
+			this.loading = false;
+		}
+	}
+
+	/**
+	 * Search models (resets to first page)
+	 */
+	async search(query: string): Promise<void> {
+		this.searchQuery = query;
+		this.currentPage = 0;
+		await this.loadModels();
+	}
+
+	/**
+	 * Filter by model type
+	 */
+	async filterByType(type: 'official' | 'community' | ''): Promise<void> {
+		this.modelType = type;
+		this.currentPage = 0;
+		await this.loadModels();
+	}
+
+	/**
+	 * Toggle a capability filter
+	 */
+	async toggleCapability(capability: string): Promise<void> {
+		const index = this.selectedCapabilities.indexOf(capability);
+		if (index === -1) {
+			this.selectedCapabilities = [...this.selectedCapabilities, capability];
+		} else {
+			this.selectedCapabilities = this.selectedCapabilities.filter((c) => c !== capability);
+		}
+		this.currentPage = 0;
+		await this.loadModels();
+	}
+
+	/**
+	 * Check if a capability is selected
+	 */
+	hasCapability(capability: string): boolean {
+		return this.selectedCapabilities.includes(capability);
+	}
+
+	/**
+	 * Go to next page
+	 */
+	async nextPage(): Promise<void> {
+		if (this.hasNextPage) {
+			this.currentPage++;
+			await this.loadModels();
+		}
+	}
+
+	/**
+	 * Go to previous page
+	 */
+	async prevPage(): Promise<void> {
+		if (this.hasPrevPage) {
+			this.currentPage--;
+			await this.loadModels();
+		}
+	}
+
+	/**
+	 * Go to specific page
+	 */
+	async goToPage(page: number): Promise<void> {
+		if (page >= 0 && page < this.totalPages) {
+			this.currentPage = page;
+			await this.loadModels();
+		}
+	}
+
+	/**
+	 * Load sync status
+	 */
+	async loadSyncStatus(): Promise<void> {
+		try {
+			this.syncStatus = await getSyncStatus();
+		} catch (err) {
+			console.error('Failed to load sync status:', err);
+		}
+	}
+
+	/**
+	 * Sync models from ollama.com
+	 */
+	async sync(): Promise<void> {
+		this.syncing = true;
+		try {
+			await syncModels();
+			await this.loadSyncStatus();
+			await this.loadModels();
+		} catch (err) {
+			this.error = err instanceof Error ? err.message : 'Failed to sync models';
+			console.error('Failed to sync:', err);
+		} finally {
+			this.syncing = false;
+		}
+	}
+
+	/**
+	 * Select a model for details view
+	 */
+	selectModel(model: RemoteModel | null): void {
+		this.selectedModel = model;
+	}
+
+	/**
+	 * Clear search and filters
+	 */
+	async clearFilters(): Promise<void> {
+		this.searchQuery = '';
+		this.modelType = '';
+		this.selectedCapabilities = [];
+		this.currentPage = 0;
+		await this.loadModels();
+	}
+
+	/**
+	 * Initialize the store
+	 */
+	async init(): Promise<void> {
+		await Promise.all([this.loadSyncStatus(), this.loadModels()]);
+	}
+}
+
+// Export singleton instance
+export const modelRegistry = new ModelRegistryState();

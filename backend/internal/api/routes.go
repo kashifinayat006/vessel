@@ -15,6 +15,14 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string) {
 		log.Printf("Warning: Failed to initialize Ollama service: %v", err)
 	}
 
+	// Initialize model registry service
+	var modelRegistry *ModelRegistryService
+	if ollamaService != nil {
+		modelRegistry = NewModelRegistryService(db, ollamaService.Client())
+	} else {
+		modelRegistry = NewModelRegistryService(db, nil)
+	}
+
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -54,6 +62,23 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string) {
 		// IP-based geolocation (fallback when browser geolocation fails)
 		v1.GET("/location", IPGeolocationHandler())
 
+		// Model registry routes (cached models from ollama.com)
+		models := v1.Group("/models")
+		{
+			// List/search remote models (from cache)
+			models.GET("/remote", modelRegistry.ListRemoteModelsHandler())
+			// Get single model details
+			models.GET("/remote/:slug", modelRegistry.GetRemoteModelHandler())
+			// Fetch detailed info from Ollama (requires model to be pulled)
+			models.POST("/remote/:slug/details", modelRegistry.FetchModelDetailsHandler())
+			// Fetch tag sizes from ollama.com (scrapes model detail page)
+			models.POST("/remote/:slug/sizes", modelRegistry.FetchTagSizesHandler())
+			// Sync models from ollama.com
+			models.POST("/remote/sync", modelRegistry.SyncModelsHandler())
+			// Get sync status
+			models.GET("/remote/status", modelRegistry.SyncStatusHandler())
+		}
+
 		// Ollama API routes (using official client)
 		if ollamaService != nil {
 			ollama := v1.Group("/ollama")
@@ -76,13 +101,10 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string) {
 				// Status
 				ollama.GET("/api/version", ollamaService.VersionHandler())
 				ollama.GET("/", ollamaService.HeartbeatHandler())
-
-				// Fallback proxy for any other endpoints
-				ollama.Any("/*path", ollamaService.ProxyHandler())
 			}
-		} else {
-			// Fallback to simple proxy if service init failed
-			v1.Any("/ollama/*path", OllamaProxyHandler(ollamaURL))
 		}
+
+		// Fallback proxy for direct Ollama access (separate path to avoid conflicts)
+		v1.Any("/ollama-proxy/*path", OllamaProxyHandler(ollamaURL))
 	}
 }
