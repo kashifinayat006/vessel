@@ -391,7 +391,7 @@
 		{:else if part.type === 'tool-result'}
 			<ToolResultDisplay content={part.content} />
 		{:else}
-			<div class="prose prose-sm prose-invert max-w-none">
+			<div class="prose prose-sm max-w-none dark:prose-invert">
 				{@html renderMarkdown(part.content)}
 			</div>
 		{/if}
@@ -489,7 +489,9 @@
 	}
 
 	.message-content :global(.prose code:not(pre code)) {
-		@apply rounded bg-slate-200 px-1.5 py-0.5 text-sm text-emerald-700;
+		@apply rounded px-1.5 py-0.5 text-sm;
+		background-color: rgb(226 232 240) !important; /* slate-200 */
+		color: rgb(4 120 87) !important; /* emerald-700 */
 	}
 
 	.message-content :global(.prose a) {
@@ -544,7 +546,8 @@
 	}
 
 	:global(.dark) .message-content :global(.prose code:not(pre code)) {
-		@apply bg-slate-700 text-emerald-400;
+		background-color: rgb(51 65 85) !important; /* slate-700 */
+		color: rgb(52 211 153) !important; /* emerald-400 */
 	}
 
 	:global(.dark) .message-content :global(.prose a) {
