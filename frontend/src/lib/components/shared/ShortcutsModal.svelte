@@ -66,16 +66,16 @@
 		aria-labelledby="shortcuts-dialog-title"
 	>
 		<!-- Dialog -->
-		<div class="mx-4 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+		<div class="mx-4 w-full max-w-md rounded-xl border border-theme bg-theme-primary shadow-2xl">
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-				<h2 id="shortcuts-dialog-title" class="text-lg font-semibold text-slate-100">
+			<div class="flex items-center justify-between border-b border-theme px-6 py-4">
+				<h2 id="shortcuts-dialog-title" class="text-lg font-semibold text-theme-primary">
 					Keyboard Shortcuts
 				</h2>
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+					class="rounded-lg p-1.5 text-theme-muted transition-colors hover:bg-theme-secondary hover:text-theme-primary"
 					aria-label="Close dialog"
 				>
 					<svg
@@ -96,14 +96,14 @@
 				{#each Object.entries(groupedShortcuts) as [group, items]}
 					{#if items.length > 0}
 						<div class="mb-4 last:mb-0">
-							<h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+							<h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-theme-muted">
 								{group}
 							</h3>
 							<div class="space-y-2">
 								{#each items as shortcut}
 									<div class="flex items-center justify-between">
-										<span class="text-sm text-slate-300">{shortcut.description}</span>
-										<kbd class="rounded bg-slate-800 px-2 py-1 font-mono text-xs text-slate-400">
+										<span class="text-sm text-theme-secondary">{shortcut.description}</span>
+										<kbd class="rounded bg-theme-secondary px-2 py-1 font-mono text-xs text-theme-muted">
 											{formatShortcut(shortcut.key, shortcut.modifiers)}
 										</kbd>
 									</div>
@@ -115,9 +115,9 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="border-t border-slate-700 px-6 py-3">
-				<p class="text-center text-xs text-slate-500">
-					Press <kbd class="rounded bg-slate-800 px-1.5 py-0.5 font-mono">Shift+?</kbd> to toggle this panel
+			<div class="border-t border-theme px-6 py-3">
+				<p class="text-center text-xs text-theme-muted">
+					Press <kbd class="rounded bg-theme-secondary px-1.5 py-0.5 font-mono">Shift+?</kbd> to toggle this panel
 				</p>
 			</div>
 		</div>

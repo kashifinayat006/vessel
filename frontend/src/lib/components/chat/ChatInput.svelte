@@ -18,14 +18,20 @@
 		isStreaming?: boolean;
 		disabled?: boolean;
 		placeholder?: string;
+		/** Hide the attach button in FileUpload (when shown elsewhere) */
+		hideAttachButton?: boolean;
+		/** Bindable function to trigger file picker from parent */
+		triggerFilePicker?: () => void;
 	}
 
-	const {
+	let {
 		onSend,
 		onStop,
 		isStreaming = false,
 		disabled = false,
-		placeholder = 'Type a message...'
+		placeholder = 'Type a message...',
+		hideAttachButton = false,
+		triggerFilePicker = $bindable()
 	}: Props = $props();
 
 	// Input state
@@ -292,6 +298,8 @@
 		supportsVision={isVisionModel}
 		{disabled}
 		hideDropZone={true}
+		hideButton={hideAttachButton}
+		bind:triggerPicker={triggerFilePicker}
 	/>
 
 	<div

@@ -16,7 +16,7 @@
 		<div class="flex flex-col items-center justify-center px-4 py-8 text-center">
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				class="mb-3 h-12 w-12 text-slate-600"
+				class="mb-3 h-12 w-12 text-theme-muted"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
@@ -29,7 +29,7 @@
 				/>
 			</svg>
 			{#if conversationsState.searchQuery}
-				<p class="text-sm text-slate-500">No conversations match your search</p>
+				<p class="text-sm text-theme-muted">No conversations match your search</p>
 				<button
 					type="button"
 					onclick={() => conversationsState.clearSearch()}
@@ -38,8 +38,8 @@
 					Clear search
 				</button>
 			{:else}
-				<p class="text-sm text-slate-500">No conversations yet</p>
-				<p class="mt-1 text-xs text-slate-600">Start a new chat to begin</p>
+				<p class="text-sm text-theme-muted">No conversations yet</p>
+				<p class="mt-1 text-xs text-theme-muted">Start a new chat to begin</p>
 			{/if}
 		</div>
 	{:else}
@@ -47,7 +47,7 @@
 		{#each conversationsState.grouped as { group, conversations } (group)}
 			<div class="mb-2">
 				<!-- Group header -->
-				<h3 class="sticky top-0 z-10 bg-slate-950 px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
+				<h3 class="sticky top-0 z-10 bg-theme-primary px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-theme-muted">
 					{group}
 				</h3>
 
@@ -65,11 +65,11 @@
 
 		<!-- Archived section -->
 		{#if conversationsState.archived.length > 0}
-			<div class="mt-4 border-t border-slate-700/50 pt-2">
+			<div class="mt-4 border-t border-theme/50 pt-2">
 				<button
 					type="button"
 					onclick={() => (showArchived = !showArchived)}
-					class="flex w-full items-center justify-between px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-400"
+					class="flex w-full items-center justify-between px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-theme-muted hover:text-theme-muted"
 				>
 					<span>Archived ({conversationsState.archived.length})</span>
 					<svg

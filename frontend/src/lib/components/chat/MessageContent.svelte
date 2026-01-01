@@ -394,9 +394,9 @@
 {/if}
 
 <style>
-	/* Prose styling overrides for chat context (dark theme) */
+	/* Prose styling overrides for chat context */
 	.message-content :global(.prose) {
-		@apply leading-relaxed text-slate-200;
+		@apply leading-relaxed;
 	}
 
 	.message-content :global(.prose p) {
@@ -415,12 +415,8 @@
 		@apply my-2 rounded-lg;
 	}
 
-	.message-content :global(.prose code:not(pre code)) {
-		@apply rounded bg-slate-700 px-1.5 py-0.5 text-sm text-emerald-400;
-	}
-
 	.message-content :global(.prose a) {
-		@apply text-blue-400 hover:text-blue-300 hover:underline;
+		@apply hover:underline;
 	}
 
 	.message-content :global(.prose ul),
@@ -432,37 +428,55 @@
 		@apply my-0.5;
 	}
 
-	.message-content :global(.prose blockquote) {
-		@apply border-l-4 border-slate-600 pl-4 italic text-slate-400;
-	}
-
 	.message-content :global(.prose table) {
 		@apply my-2 w-full border-collapse text-sm;
 	}
 
 	.message-content :global(.prose th),
 	.message-content :global(.prose td) {
-		@apply border border-slate-600 px-3 py-2;
+		@apply px-3 py-2;
+	}
+
+	/* Light mode prose styles */
+	.message-content :global(.prose) {
+		@apply text-slate-800;
+	}
+
+	.message-content :global(.prose code:not(pre code)) {
+		@apply rounded bg-slate-200 px-1.5 py-0.5 text-sm text-emerald-700;
+	}
+
+	.message-content :global(.prose a) {
+		@apply text-blue-600 hover:text-blue-700;
+	}
+
+	.message-content :global(.prose blockquote) {
+		@apply border-l-4 border-slate-300 pl-4 italic text-slate-600;
+	}
+
+	.message-content :global(.prose th),
+	.message-content :global(.prose td) {
+		@apply border border-slate-300;
 	}
 
 	.message-content :global(.prose th) {
-		@apply bg-slate-700 font-semibold text-slate-200;
+		@apply bg-slate-100 font-semibold text-slate-800;
 	}
 
 	.message-content :global(.prose td) {
-		@apply bg-slate-800/50 text-slate-300;
+		@apply bg-white text-slate-700;
 	}
 
 	.message-content :global(.prose tr:hover td) {
-		@apply bg-slate-700/50;
+		@apply bg-slate-50;
 	}
 
 	.message-content :global(.prose strong) {
-		@apply text-slate-100;
+		@apply text-slate-900;
 	}
 
 	.message-content :global(.prose em) {
-		@apply text-slate-300;
+		@apply text-slate-700;
 	}
 
 	.message-content :global(.prose h1),
@@ -471,10 +485,65 @@
 	.message-content :global(.prose h4),
 	.message-content :global(.prose h5),
 	.message-content :global(.prose h6) {
-		@apply text-slate-100;
+		@apply text-slate-900;
 	}
 
 	.message-content :global(.prose hr) {
+		@apply border-slate-300;
+	}
+
+	/* Dark mode prose styles */
+	:global(.dark) .message-content :global(.prose) {
+		@apply text-slate-200;
+	}
+
+	:global(.dark) .message-content :global(.prose code:not(pre code)) {
+		@apply bg-slate-700 text-emerald-400;
+	}
+
+	:global(.dark) .message-content :global(.prose a) {
+		@apply text-blue-400 hover:text-blue-300;
+	}
+
+	:global(.dark) .message-content :global(.prose blockquote) {
+		@apply border-slate-600 text-slate-400;
+	}
+
+	:global(.dark) .message-content :global(.prose th),
+	:global(.dark) .message-content :global(.prose td) {
+		@apply border-slate-600;
+	}
+
+	:global(.dark) .message-content :global(.prose th) {
+		@apply bg-slate-700 text-slate-200;
+	}
+
+	:global(.dark) .message-content :global(.prose td) {
+		@apply bg-slate-800/50 text-slate-300;
+	}
+
+	:global(.dark) .message-content :global(.prose tr:hover td) {
+		@apply bg-slate-700/50;
+	}
+
+	:global(.dark) .message-content :global(.prose strong) {
+		@apply text-slate-100;
+	}
+
+	:global(.dark) .message-content :global(.prose em) {
+		@apply text-slate-300;
+	}
+
+	:global(.dark) .message-content :global(.prose h1),
+	:global(.dark) .message-content :global(.prose h2),
+	:global(.dark) .message-content :global(.prose h3),
+	:global(.dark) .message-content :global(.prose h4),
+	:global(.dark) .message-content :global(.prose h5),
+	:global(.dark) .message-content :global(.prose h6) {
+		@apply text-slate-100;
+	}
+
+	:global(.dark) .message-content :global(.prose hr) {
 		@apply border-slate-600;
 	}
 </style>

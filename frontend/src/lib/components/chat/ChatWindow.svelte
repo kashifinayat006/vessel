@@ -75,6 +75,9 @@
 	// System prompt for new conversations (before a conversation is created)
 	let newChatPromptId = $state<string | null>(null);
 
+	// File picker trigger function (bound from ChatInput -> FileUpload)
+	let triggerFilePicker: (() => void) | undefined = $state();
+
 	// Derived: Check if selected model supports thinking
 	const supportsThinking = $derived.by(() => {
 		const caps = modelsState.selectedCapabilities;
@@ -843,7 +846,7 @@
 				<StreamingStats />
 			</div>
 
-			<!-- Chat options bar (settings toggle + system prompt + thinking mode toggle) -->
+			<!-- Chat options bar: [Custom] [System Prompt] ... [Attach] [Thinking] -->
 			<div class="flex items-center justify-between gap-3 px-4 pt-3">
 				<!-- Left side: Settings gear + System prompt selector -->
 				<div class="flex items-center gap-2">
@@ -879,26 +882,43 @@
 					{/if}
 				</div>
 
-				<!-- Right side: Thinking mode toggle -->
-				{#if supportsThinking}
-					<label class="flex cursor-pointer items-center gap-2 text-xs text-theme-muted">
-						<span class="flex items-center gap-1">
-							<span class="text-amber-400">🧠</span>
-							Thinking mode
-						</span>
-						<button
-							type="button"
-							role="switch"
-							aria-checked={thinkingEnabled}
-							onclick={() => (thinkingEnabled = !thinkingEnabled)}
-							class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 {thinkingEnabled ? 'bg-amber-600' : 'bg-slate-600'}"
-						>
-							<span
-								class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {thinkingEnabled ? 'translate-x-4' : 'translate-x-0'}"
-							></span>
-						</button>
-					</label>
-				{/if}
+				<!-- Right side: Attach files + Thinking mode toggle -->
+				<div class="flex items-center gap-3">
+					<!-- Attach files button -->
+					<button
+						type="button"
+						onclick={() => triggerFilePicker?.()}
+						disabled={!modelsState.selectedId}
+						class="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-primary disabled:cursor-not-allowed disabled:opacity-50"
+						aria-label="Attach files"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+							<path fill-rule="evenodd" d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 4.241 4.243h.001l.497-.5a.75.75 0 0 1 1.064 1.057l-.498.501-.002.002a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.368 6.36l-3.455 3.553A2.625 2.625 0 1 1 9.52 9.52l3.45-3.451a.75.75 0 1 1 1.061 1.06l-3.45 3.451a1.125 1.125 0 0 0 1.587 1.595l3.454-3.553a3 3 0 0 0 0-4.242Z" clip-rule="evenodd" />
+						</svg>
+						<span>Attach</span>
+					</button>
+
+					<!-- Thinking mode toggle -->
+					{#if supportsThinking}
+						<label class="flex cursor-pointer items-center gap-2 text-xs text-theme-muted">
+							<span class="flex items-center gap-1">
+								<span class="text-amber-400">🧠</span>
+								Thinking
+							</span>
+							<button
+								type="button"
+								role="switch"
+								aria-checked={thinkingEnabled}
+								onclick={() => (thinkingEnabled = !thinkingEnabled)}
+								class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-theme-primary {thinkingEnabled ? 'bg-amber-600' : 'bg-theme-tertiary'}"
+							>
+								<span
+									class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {thinkingEnabled ? 'translate-x-4' : 'translate-x-0'}"
+								></span>
+							</button>
+						</label>
+					{/if}
+				</div>
 			</div>
 
 			<!-- Model parameters panel -->
@@ -912,6 +932,8 @@
 					onStop={handleStopStreaming}
 					isStreaming={chatState.isStreaming}
 					disabled={!modelsState.selectedId}
+					hideAttachButton={true}
+					bind:triggerFilePicker
 				/>
 			</div>
 		</div>

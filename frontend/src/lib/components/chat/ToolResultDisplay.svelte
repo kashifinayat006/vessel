@@ -106,7 +106,7 @@
 		<div class="flex items-center gap-3 px-4 py-3">
 			<span class="text-2xl">📍</span>
 			<div>
-				<p class="font-medium text-slate-100">
+				<p class="font-medium text-theme-primary">
 					{#if loc.location?.city}
 						{loc.location.city}{#if loc.location.country}, {loc.location.country}{/if}
 					{:else if loc.message}
@@ -116,9 +116,9 @@
 					{/if}
 				</p>
 				{#if loc.source === 'ip'}
-					<p class="text-xs text-slate-500">Based on IP address (approximate)</p>
+					<p class="text-xs text-theme-muted">Based on IP address (approximate)</p>
 				{:else if loc.source === 'gps'}
-					<p class="text-xs text-slate-500">From device GPS</p>
+					<p class="text-xs text-theme-muted">From device GPS</p>
 				{/if}
 			</div>
 		</div>
@@ -127,7 +127,7 @@
 {:else if parsed.type === 'search'}
 	{@const search = parsed.data as SearchData}
 	<div class="my-3 space-y-2">
-		<div class="flex items-center gap-2 text-sm text-slate-400">
+		<div class="flex items-center gap-2 text-sm text-theme-muted">
 			<span>🔍</span>
 			<span>Found {search.resultCount || search.results?.length || 0} results for "{search.query}"</span>
 		</div>
@@ -139,15 +139,15 @@
 						href={result.url}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="block rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 transition-colors hover:border-blue-500/50 hover:bg-slate-800"
+						class="block rounded-lg border border-theme/50 bg-theme-secondary/50 p-3 transition-colors hover:border-blue-500/50 hover:bg-theme-secondary"
 					>
 						<div class="flex items-start gap-2">
 							<span class="mt-0.5 text-blue-400">#{result.rank}</span>
 							<div class="min-w-0 flex-1">
 								<p class="font-medium text-blue-400 hover:underline">{result.title}</p>
-								<p class="mt-0.5 truncate text-xs text-slate-500">{result.url}</p>
+								<p class="mt-0.5 truncate text-xs text-theme-muted">{result.url}</p>
 								{#if result.snippet && result.snippet !== '(no snippet available)'}
-									<p class="mt-1 text-sm text-slate-400">{result.snippet}</p>
+									<p class="mt-1 text-sm text-theme-muted">{result.snippet}</p>
 								{/if}
 							</div>
 						</div>
@@ -172,32 +172,32 @@
 			<div class="flex items-center gap-2 text-sm">
 				<span>🌐</span>
 				{#if data.title}
-					<span class="font-medium text-slate-200">{data.title}</span>
+					<span class="font-medium text-theme-secondary">{data.title}</span>
 				{:else if data.url}
 					<a href={String(data.url)} target="_blank" rel="noopener noreferrer" class="text-violet-400 hover:underline">
 						{data.url}
 					</a>
 				{:else}
-					<span class="text-slate-400">Fetched content</span>
+					<span class="text-theme-muted">Fetched content</span>
 				{/if}
 			</div>
 			{#if data.text && typeof data.text === 'string'}
-				<p class="mt-2 line-clamp-4 text-sm text-slate-400">{data.text.substring(0, 300)}{data.text.length > 300 ? '...' : ''}</p>
+				<p class="mt-2 line-clamp-4 text-sm text-theme-muted">{data.text.substring(0, 300)}{data.text.length > 300 ? '...' : ''}</p>
 			{/if}
 		</div>
 	</div>
 
 {:else if parsed.type === 'json'}
 	{@const data = parsed.data as Record<string, unknown>}
-	<div class="my-3 rounded-xl border border-slate-700/50 bg-slate-800/50 p-3">
-		<pre class="overflow-x-auto text-xs text-slate-400">{JSON.stringify(data, null, 2)}</pre>
+	<div class="my-3 rounded-xl border border-theme/50 bg-theme-secondary/50 p-3">
+		<pre class="overflow-x-auto text-xs text-theme-muted">{JSON.stringify(data, null, 2)}</pre>
 	</div>
 
 {:else}
 	<!-- Fallback: just show the text (if not empty/whitespace) -->
 	{#if typeof parsed.data === 'string' && parsed.data.trim().length > 0}
-		<div class="my-3 rounded-xl border border-slate-700/50 bg-slate-800/50 p-3">
-			<p class="text-sm text-slate-300">{parsed.data}</p>
+		<div class="my-3 rounded-xl border border-theme/50 bg-theme-secondary/50 p-3">
+			<p class="text-sm text-theme-secondary">{parsed.data}</p>
 		</div>
 	{/if}
 {/if}

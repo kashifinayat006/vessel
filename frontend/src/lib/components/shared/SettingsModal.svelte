@@ -65,18 +65,18 @@
 	>
 		<!-- Modal -->
 		<div
-			class="w-full max-w-lg rounded-xl bg-slate-800 shadow-2xl"
+			class="w-full max-w-lg rounded-xl bg-theme-secondary shadow-2xl"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="settings-title"
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-				<h2 id="settings-title" class="text-lg font-semibold text-slate-100">Settings</h2>
+			<div class="flex items-center justify-between border-b border-theme px-6 py-4">
+				<h2 id="settings-title" class="text-lg font-semibold text-theme-primary">Settings</h2>
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+					class="rounded-lg p-1.5 text-theme-muted hover:bg-theme-tertiary hover:text-theme-secondary"
 					aria-label="Close settings"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -89,17 +89,17 @@
 			<div class="space-y-6 p-6">
 				<!-- Appearance Section -->
 				<section>
-					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Appearance</h3>
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-theme-muted">Appearance</h3>
 					<div class="space-y-4">
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="text-sm font-medium text-slate-200">Dark Mode</p>
-								<p class="text-xs text-slate-400">Toggle between light and dark theme</p>
+								<p class="text-sm font-medium text-theme-secondary">Dark Mode</p>
+								<p class="text-xs text-theme-muted">Toggle between light and dark theme</p>
 							</div>
 							<button
 								type="button"
 								onclick={() => uiState.toggleDarkMode()}
-								class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-800 {uiState.darkMode ? 'bg-emerald-600' : 'bg-slate-600'}"
+								class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-theme {uiState.darkMode ? 'bg-emerald-600' : 'bg-theme-tertiary'}"
 								role="switch"
 								aria-checked={uiState.darkMode}
 							>
@@ -110,13 +110,13 @@
 						</div>
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="text-sm font-medium text-slate-200">Use System Theme</p>
-								<p class="text-xs text-slate-400">Match your OS light/dark preference</p>
+								<p class="text-sm font-medium text-theme-secondary">Use System Theme</p>
+								<p class="text-xs text-theme-muted">Match your OS light/dark preference</p>
 							</div>
 							<button
 								type="button"
 								onclick={() => uiState.useSystemTheme()}
-								class="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-600"
+								class="rounded-lg bg-theme-tertiary px-3 py-1.5 text-xs font-medium text-theme-secondary transition-colors hover:bg-theme-tertiary"
 							>
 								Sync with System
 							</button>
@@ -126,55 +126,55 @@
 
 				<!-- Model Section -->
 				<section>
-					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Default Model</h3>
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-theme-muted">Default Model</h3>
 					<div class="space-y-4">
 						<div>
 							<select
 								bind:value={defaultModel}
-								class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+								class="w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-secondary focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
 							>
 								{#each modelsState.chatModels as model}
 									<option value={model.name}>{model.name}</option>
 								{/each}
 							</select>
-							<p class="mt-1 text-sm text-slate-400">Model used for new conversations</p>
+							<p class="mt-1 text-sm text-theme-muted">Model used for new conversations</p>
 						</div>
 					</div>
 				</section>
 
 				<!-- Keyboard Shortcuts Section -->
 				<section>
-					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">Keyboard Shortcuts</h3>
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-theme-muted">Keyboard Shortcuts</h3>
 					<div class="space-y-2 text-sm">
-						<div class="flex justify-between text-slate-300">
+						<div class="flex justify-between text-theme-secondary">
 							<span>New Chat</span>
-							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">{modifierKey}+N</kbd>
+							<kbd class="rounded bg-theme-tertiary px-2 py-0.5 font-mono text-theme-muted">{modifierKey}+N</kbd>
 						</div>
-						<div class="flex justify-between text-slate-300">
+						<div class="flex justify-between text-theme-secondary">
 							<span>Search</span>
-							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">{modifierKey}+K</kbd>
+							<kbd class="rounded bg-theme-tertiary px-2 py-0.5 font-mono text-theme-muted">{modifierKey}+K</kbd>
 						</div>
-						<div class="flex justify-between text-slate-300">
+						<div class="flex justify-between text-theme-secondary">
 							<span>Toggle Sidebar</span>
-							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">{modifierKey}+B</kbd>
+							<kbd class="rounded bg-theme-tertiary px-2 py-0.5 font-mono text-theme-muted">{modifierKey}+B</kbd>
 						</div>
-						<div class="flex justify-between text-slate-300">
+						<div class="flex justify-between text-theme-secondary">
 							<span>Send Message</span>
-							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">Enter</kbd>
+							<kbd class="rounded bg-theme-tertiary px-2 py-0.5 font-mono text-theme-muted">Enter</kbd>
 						</div>
-						<div class="flex justify-between text-slate-300">
+						<div class="flex justify-between text-theme-secondary">
 							<span>New Line</span>
-							<kbd class="rounded bg-slate-700 px-2 py-0.5 font-mono text-slate-400">Shift+Enter</kbd>
+							<kbd class="rounded bg-theme-tertiary px-2 py-0.5 font-mono text-theme-muted">Shift+Enter</kbd>
 						</div>
 					</div>
 				</section>
 
 				<!-- About Section -->
 				<section>
-					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">About</h3>
-					<div class="rounded-lg bg-slate-700/50 p-4">
-						<p class="font-medium text-slate-200">Ollama Web UI</p>
-						<p class="mt-1 text-sm text-slate-400">
+					<h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-theme-muted">About</h3>
+					<div class="rounded-lg bg-theme-tertiary/50 p-4">
+						<p class="font-medium text-theme-secondary">Ollama Web UI</p>
+						<p class="mt-1 text-sm text-theme-muted">
 							A feature-rich web interface for Ollama with chat, tools, and memory management.
 						</p>
 					</div>
@@ -182,11 +182,11 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="flex justify-end gap-3 border-t border-slate-700 px-6 py-4">
+			<div class="flex justify-end gap-3 border-t border-theme px-6 py-4">
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+					class="rounded-lg px-4 py-2 text-sm font-medium text-theme-secondary hover:bg-theme-tertiary"
 				>
 					Cancel
 				</button>

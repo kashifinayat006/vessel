@@ -98,13 +98,13 @@
 	}
 </script>
 
-<div class="h-full overflow-y-auto bg-slate-900 p-6">
+<div class="h-full overflow-y-auto bg-theme-primary p-6">
 	<div class="mx-auto max-w-4xl">
 		<!-- Header -->
 		<div class="mb-8 flex items-center justify-between">
 			<div>
-				<h1 class="text-2xl font-bold text-white">System Prompts</h1>
-				<p class="mt-1 text-sm text-slate-400">
+				<h1 class="text-2xl font-bold text-theme-primary">System Prompts</h1>
+				<p class="mt-1 text-sm text-theme-muted">
 					Create and manage system prompt templates for conversations
 				</p>
 			</div>
@@ -112,7 +112,7 @@
 			<button
 				type="button"
 				onclick={openCreateEditor}
-				class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+				class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-blue-700"
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -136,21 +136,21 @@
 		<!-- Prompts list -->
 		{#if promptsState.isLoading}
 			<div class="flex items-center justify-center py-12">
-				<div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-blue-500"></div>
+				<div class="h-8 w-8 animate-spin rounded-full border-2 border-theme-subtle border-t-blue-500"></div>
 			</div>
 		{:else if promptsState.prompts.length === 0}
-			<div class="rounded-lg border border-dashed border-slate-700 bg-slate-800/50 p-8 text-center">
-				<svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+			<div class="rounded-lg border border-dashed border-theme bg-theme-secondary/50 p-8 text-center">
+				<svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-theme-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
 				</svg>
-				<h3 class="mt-4 text-sm font-medium text-slate-400">No system prompts yet</h3>
-				<p class="mt-1 text-sm text-slate-500">
+				<h3 class="mt-4 text-sm font-medium text-theme-muted">No system prompts yet</h3>
+				<p class="mt-1 text-sm text-theme-muted">
 					Create a system prompt to customize AI behavior
 				</p>
 				<button
 					type="button"
 					onclick={openCreateEditor}
-					class="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-600"
+					class="mt-4 inline-flex items-center gap-2 rounded-lg bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-tertiary"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -162,12 +162,12 @@
 			<div class="space-y-3">
 				{#each promptsState.prompts as prompt (prompt.id)}
 					<div
-						class="rounded-lg border bg-slate-800 p-4 transition-colors {promptsState.activePromptId === prompt.id ? 'border-blue-500/50' : 'border-slate-700'}"
+						class="rounded-lg border bg-theme-secondary p-4 transition-colors {promptsState.activePromptId === prompt.id ? 'border-blue-500/50' : 'border-theme'}"
 					>
 						<div class="flex items-start justify-between gap-4">
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2">
-									<h3 class="font-medium text-white">{prompt.name}</h3>
+									<h3 class="font-medium text-theme-primary">{prompt.name}</h3>
 									{#if prompt.isDefault}
 										<span class="rounded bg-blue-900 px-2 py-0.5 text-xs text-blue-300">
 											default
@@ -180,12 +180,12 @@
 									{/if}
 								</div>
 								{#if prompt.description}
-									<p class="mt-1 text-sm text-slate-400">{prompt.description}</p>
+									<p class="mt-1 text-sm text-theme-muted">{prompt.description}</p>
 								{/if}
-								<p class="mt-2 line-clamp-2 text-sm text-slate-500">
+								<p class="mt-2 line-clamp-2 text-sm text-theme-muted">
 									{prompt.content}
 								</p>
-								<p class="mt-2 text-xs text-slate-600">
+								<p class="mt-2 text-xs text-theme-muted">
 									Updated {formatDate(prompt.updatedAt)}
 								</p>
 							</div>
@@ -195,7 +195,7 @@
 								<button
 									type="button"
 									onclick={() => handleSetActive(prompt)}
-									class="rounded p-1.5 transition-colors {promptsState.activePromptId === prompt.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}"
+									class="rounded p-1.5 transition-colors {promptsState.activePromptId === prompt.id ? 'bg-emerald-600 text-theme-primary' : 'text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary'}"
 									title={promptsState.activePromptId === prompt.id ? 'Deactivate' : 'Use for new chats'}
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -207,7 +207,7 @@
 								<button
 									type="button"
 									onclick={() => handleSetDefault(prompt)}
-									class="rounded p-1.5 transition-colors {prompt.isDefault ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}"
+									class="rounded p-1.5 transition-colors {prompt.isDefault ? 'bg-blue-600 text-theme-primary' : 'text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary'}"
 									title={prompt.isDefault ? 'Remove as default' : 'Set as default'}
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill={prompt.isDefault ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -219,7 +219,7 @@
 								<button
 									type="button"
 									onclick={() => openEditEditor(prompt)}
-									class="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+									class="rounded p-1.5 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
 									title="Edit"
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -231,7 +231,7 @@
 								<button
 									type="button"
 									onclick={() => handleDelete(prompt)}
-									class="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-900/30 hover:text-red-400"
+									class="rounded p-1.5 text-theme-muted transition-colors hover:bg-red-900/30 hover:text-red-400"
 									title="Delete"
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -246,21 +246,21 @@
 		{/if}
 
 		<!-- Info section -->
-		<section class="mt-8 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-			<h3 class="flex items-center gap-2 text-sm font-medium text-slate-300">
+		<section class="mt-8 rounded-lg border border-theme bg-theme-secondary/50 p-4">
+			<h3 class="flex items-center gap-2 text-sm font-medium text-theme-secondary">
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 				</svg>
 				How System Prompts Work
 			</h3>
-			<p class="mt-2 text-sm text-slate-400">
+			<p class="mt-2 text-sm text-theme-muted">
 				System prompts define the AI's behavior, personality, and constraints. They're sent at the
 				beginning of each conversation to set the context. Use them to create specialized assistants
 				(e.g., code reviewer, writing helper) or to enforce specific response formats.
 			</p>
-			<p class="mt-2 text-sm text-slate-400">
-				<strong class="text-slate-300">Default prompt:</strong> Automatically used for all new chats.
-				<strong class="text-slate-300">Active prompt:</strong> Currently selected for your session.
+			<p class="mt-2 text-sm text-theme-muted">
+				<strong class="text-theme-secondary">Default prompt:</strong> Automatically used for all new chats.
+				<strong class="text-theme-secondary">Active prompt:</strong> Currently selected for your session.
 			</p>
 		</section>
 	</div>
@@ -276,15 +276,15 @@
 		aria-modal="true"
 		aria-labelledby="editor-title"
 	>
-		<div class="w-full max-w-2xl rounded-xl bg-slate-800 shadow-xl">
-			<div class="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-				<h2 id="editor-title" class="text-lg font-semibold text-white">
+		<div class="w-full max-w-2xl rounded-xl bg-theme-secondary shadow-xl">
+			<div class="flex items-center justify-between border-b border-theme px-6 py-4">
+				<h2 id="editor-title" class="text-lg font-semibold text-theme-primary">
 					{editingPrompt ? 'Edit Prompt' : 'Create Prompt'}
 				</h2>
 				<button
 					type="button"
 					onclick={closeEditor}
-					class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+					class="rounded p-1 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -296,7 +296,7 @@
 				<div class="space-y-4">
 					<!-- Name -->
 					<div>
-						<label for="prompt-name" class="mb-1 block text-sm font-medium text-slate-300">
+						<label for="prompt-name" class="mb-1 block text-sm font-medium text-theme-secondary">
 							Name <span class="text-red-400">*</span>
 						</label>
 						<input
@@ -304,14 +304,14 @@
 							type="text"
 							bind:value={formName}
 							placeholder="e.g., Code Reviewer"
-							class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+							class="w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-primary placeholder-theme-muted focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 							required
 						/>
 					</div>
 
 					<!-- Description -->
 					<div>
-						<label for="prompt-description" class="mb-1 block text-sm font-medium text-slate-300">
+						<label for="prompt-description" class="mb-1 block text-sm font-medium text-theme-secondary">
 							Description
 						</label>
 						<input
@@ -319,13 +319,13 @@
 							type="text"
 							bind:value={formDescription}
 							placeholder="Brief description of this prompt's purpose"
-							class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+							class="w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-primary placeholder-theme-muted focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 						/>
 					</div>
 
 					<!-- Content -->
 					<div>
-						<label for="prompt-content" class="mb-1 block text-sm font-medium text-slate-300">
+						<label for="prompt-content" class="mb-1 block text-sm font-medium text-theme-secondary">
 							System Prompt <span class="text-red-400">*</span>
 						</label>
 						<textarea
@@ -333,10 +333,10 @@
 							bind:value={formContent}
 							placeholder="You are a helpful assistant that..."
 							rows="8"
-							class="w-full resize-none rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 font-mono text-sm text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+							class="w-full resize-none rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 font-mono text-sm text-theme-primary placeholder-theme-muted focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 							required
 						></textarea>
-						<p class="mt-1 text-xs text-slate-500">
+						<p class="mt-1 text-xs text-theme-muted">
 							{formContent.length} characters
 						</p>
 					</div>
@@ -347,9 +347,9 @@
 							id="prompt-default"
 							type="checkbox"
 							bind:checked={formIsDefault}
-							class="h-4 w-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
+							class="h-4 w-4 rounded border-theme-subtle bg-theme-tertiary text-blue-600 focus:ring-blue-500 focus:ring-offset-theme"
 						/>
-						<label for="prompt-default" class="text-sm text-slate-300">
+						<label for="prompt-default" class="text-sm text-theme-secondary">
 							Set as default for new chats
 						</label>
 					</div>
@@ -360,14 +360,14 @@
 					<button
 						type="button"
 						onclick={closeEditor}
-						class="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700"
+						class="rounded-lg px-4 py-2 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-tertiary"
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
 						disabled={isSaving || !formName.trim() || !formContent.trim()}
-						class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{isSaving ? 'Saving...' : editingPrompt ? 'Update' : 'Create'}
 					</button>

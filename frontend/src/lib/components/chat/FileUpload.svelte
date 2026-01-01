@@ -24,17 +24,28 @@
 		disabled?: boolean;
 		/** Hide the drop zone (when drag overlay is handled by parent) */
 		hideDropZone?: boolean;
+		/** Hide the attach button (when button is rendered elsewhere) */
+		hideButton?: boolean;
+		/** Bindable function to trigger file picker from parent */
+		triggerPicker?: () => void;
 	}
 
-	const {
+	let {
 		images,
 		onImagesChange,
 		attachments,
 		onAttachmentsChange,
 		supportsVision = false,
 		disabled = false,
-		hideDropZone = false
+		hideDropZone = false,
+		hideButton = false,
+		triggerPicker = $bindable()
 	}: Props = $props();
+
+	// Expose the picker trigger to parent
+	$effect(() => {
+		triggerPicker = openFilePicker;
+	});
 
 	// Processing state
 	let isProcessing = $state(false);
@@ -249,74 +260,76 @@
 		</div>
 	{/if}
 
-	<!-- Add files button -->
-	<div class="flex items-center gap-2">
-		<!-- Hidden file input -->
-		<input
-			bind:this={fileInputRef}
-			type="file"
-			accept={fileAccept}
-			multiple
-			class="hidden"
-			onchange={handleFileSelect}
-			{disabled}
-		/>
+	<!-- Hidden file input (always present for programmatic triggering) -->
+	<input
+		bind:this={fileInputRef}
+		type="file"
+		accept={fileAccept}
+		multiple
+		class="hidden"
+		onchange={handleFileSelect}
+		{disabled}
+	/>
 
-		<!-- Attach files button -->
-		<button
-			type="button"
-			onclick={openFilePicker}
-			disabled={disabled || isProcessing}
-			class="flex items-center gap-1.5 rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
-		>
-			{#if isProcessing}
-				<svg
-					class="h-4 w-4 animate-spin"
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-				>
-					<circle
-						class="opacity-25"
-						cx="12"
-						cy="12"
-						r="10"
-						stroke="currentColor"
-						stroke-width="4"
-					></circle>
-					<path
-						class="opacity-75"
+	<!-- Add files button (optional - can be hidden when button is elsewhere) -->
+	{#if !hideButton}
+		<div class="flex items-center gap-2">
+			<!-- Attach files button -->
+			<button
+				type="button"
+				onclick={openFilePicker}
+				disabled={disabled || isProcessing}
+				class="flex items-center gap-1.5 rounded-lg border border-theme/50 bg-theme-secondary/50 px-3 py-1.5 text-xs text-theme-muted transition-colors hover:bg-theme-secondary hover:text-theme-secondary disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				{#if isProcessing}
+					<svg
+						class="h-4 w-4 animate-spin"
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<circle
+							class="opacity-25"
+							cx="12"
+							cy="12"
+							r="10"
+							stroke="currentColor"
+							stroke-width="4"
+						></circle>
+						<path
+							class="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+						></path>
+					</svg>
+					<span>Processing...</span>
+				{:else}
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 20 20"
 						fill="currentColor"
-						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-					></path>
-				</svg>
-				<span>Processing...</span>
-			{:else}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 20 20"
-					fill="currentColor"
-					class="h-4 w-4"
-				>
-					<path
-						fill-rule="evenodd"
-						d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 4.241 4.243h.001l.497-.5a.75.75 0 0 1 1.064 1.057l-.498.501-.002.002a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.368 6.36l-3.455 3.553A2.625 2.625 0 1 1 9.52 9.52l3.45-3.451a.75.75 0 1 1 1.061 1.06l-3.45 3.451a1.125 1.125 0 0 0 1.587 1.595l3.454-3.553a3 3 0 0 0 0-4.242Z"
-						clip-rule="evenodd"
-					/>
-				</svg>
-				<span>Attach files</span>
-			{/if}
-		</button>
+						class="h-4 w-4"
+					>
+						<path
+							fill-rule="evenodd"
+							d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 4.241 4.243h.001l.497-.5a.75.75 0 0 1 1.064 1.057l-.498.501-.002.002a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.368 6.36l-3.455 3.553A2.625 2.625 0 1 1 9.52 9.52l3.45-3.451a.75.75 0 1 1 1.061 1.06l-3.45 3.451a1.125 1.125 0 0 0 1.587 1.595l3.454-3.553a3 3 0 0 0 0-4.242Z"
+							clip-rule="evenodd"
+						/>
+					</svg>
+					<span>Attach files</span>
+				{/if}
+			</button>
 
-		<!-- File type hint -->
-		<span class="text-[10px] text-slate-600">
-			{#if supportsVision}
-				Images, text files, PDFs
-			{:else}
-				Text files, PDFs (content will be included in message)
-			{/if}
-		</span>
-	</div>
+			<!-- File type hint -->
+			<span class="text-[10px] text-theme-muted">
+				{#if supportsVision}
+					Images, text files, PDFs
+				{:else}
+					Text files, PDFs (content will be included in message)
+				{/if}
+			</span>
+		</div>
+	{/if}
 
 	<!-- Error message -->
 	{#if errorMessage}

@@ -100,7 +100,7 @@
 		onclick={toggleDropdown}
 		class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors {currentPrompt
 			? 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/30'
-			: 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}"
+			: 'text-theme-muted hover:bg-theme-secondary hover:text-theme-secondary'}"
 		title={currentPrompt ? `System prompt: ${currentPrompt.name}` : 'Set system prompt'}
 	>
 		<svg
@@ -133,15 +133,15 @@
 	<!-- Dropdown menu -->
 	{#if isOpen}
 		<div
-			class="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-slate-700 bg-slate-800 py-1 shadow-xl"
+			class="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-theme bg-theme-secondary py-1 shadow-xl"
 		>
 			<!-- No prompt option -->
 			<button
 				type="button"
 				onclick={() => handleSelect(null)}
-				class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-700 {!currentPromptId
-					? 'bg-slate-700/50 text-slate-100'
-					: 'text-slate-300'}"
+				class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-theme-tertiary {!currentPromptId
+					? 'bg-theme-tertiary/50 text-theme-primary'
+					: 'text-theme-secondary'}"
 			>
 				<span class="flex-1">No system prompt</span>
 				{#if !currentPromptId}
@@ -161,23 +161,23 @@
 			</button>
 
 			{#if prompts.length > 0}
-				<div class="my-1 border-t border-slate-700"></div>
+				<div class="my-1 border-t border-theme"></div>
 
 				<!-- Available prompts -->
 				{#each prompts as prompt}
 					<button
 						type="button"
 						onclick={() => handleSelect(prompt.id)}
-						class="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-slate-700 {currentPromptId ===
+						class="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-theme-tertiary {currentPromptId ===
 						prompt.id
-							? 'bg-slate-700/50'
+							? 'bg-theme-tertiary/50'
 							: ''}"
 					>
 						<div class="flex items-center gap-2">
 							<span
 								class="flex-1 text-sm font-medium {currentPromptId === prompt.id
-									? 'text-slate-100'
-									: 'text-slate-300'}"
+									? 'text-theme-primary'
+									: 'text-theme-secondary'}"
 							>
 								{prompt.name}
 								{#if prompt.isDefault}
@@ -200,12 +200,12 @@
 							{/if}
 						</div>
 						{#if prompt.description}
-							<span class="line-clamp-1 text-xs text-slate-500">{prompt.description}</span>
+							<span class="line-clamp-1 text-xs text-theme-muted">{prompt.description}</span>
 						{/if}
 					</button>
 				{/each}
 			{:else}
-				<div class="px-3 py-2 text-xs text-slate-500">
+				<div class="px-3 py-2 text-xs text-theme-muted">
 					No prompts available. <a href="/prompts" class="text-violet-400 hover:underline"
 						>Create one</a
 					>

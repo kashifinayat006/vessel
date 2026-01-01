@@ -51,17 +51,17 @@
 
 {#if settingsState.isPanelOpen}
 	<div
-		class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-4"
+		class="rounded-lg border border-theme/50 bg-theme-secondary/50 p-4"
 		role="region"
 		aria-label="Model parameters"
 	>
 		<!-- Header -->
 		<div class="mb-4 flex items-center justify-between">
-			<h3 class="text-sm font-medium text-slate-200">Model Parameters</h3>
+			<h3 class="text-sm font-medium text-theme-secondary">Model Parameters</h3>
 			<button
 				type="button"
 				onclick={() => settingsState.closePanel()}
-				class="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+				class="rounded p-1 text-theme-muted hover:bg-theme-tertiary hover:text-theme-secondary"
 				aria-label="Close settings panel"
 			>
 				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -72,7 +72,7 @@
 
 		<!-- Enable custom parameters toggle -->
 		<div class="mb-4 flex items-center justify-between">
-			<label class="flex items-center gap-2 text-sm text-slate-300">
+			<label class="flex items-center gap-2 text-sm text-theme-secondary">
 				<span>Use custom parameters</span>
 			</label>
 			<button
@@ -80,7 +80,7 @@
 				role="switch"
 				aria-checked={settingsState.useCustomParameters}
 				onclick={() => settingsState.toggleCustomParameters()}
-				class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 {settingsState.useCustomParameters ? 'bg-sky-600' : 'bg-slate-600'}"
+				class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-theme-secondary {settingsState.useCustomParameters ? 'bg-sky-600' : 'bg-theme-tertiary'}"
 			>
 				<span
 					class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {settingsState.useCustomParameters ? 'translate-x-4' : 'translate-x-0'}"
@@ -97,13 +97,13 @@
 
 				<div>
 					<div class="mb-1 flex items-center justify-between">
-						<label for="param-{key}" class="text-xs font-medium text-slate-300">
+						<label for="param-{key}" class="text-xs font-medium text-theme-secondary">
 							{PARAMETER_LABELS[key]}
 							{#if !isDefault}
 								<span class="ml-1 text-sky-400">*</span>
 							{/if}
 						</label>
-						<span class="font-mono text-xs text-slate-400">
+						<span class="font-mono text-xs text-theme-muted">
 							{formatValue(key, value)}
 						</span>
 					</div>
@@ -117,11 +117,11 @@
 						value={value}
 						oninput={(e) => handleSliderChange(key, e)}
 						disabled={!settingsState.useCustomParameters}
-						class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-700 disabled:cursor-not-allowed [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-sky-500 disabled:[&::-webkit-slider-thumb]:bg-slate-500"
+						class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-theme-tertiary disabled:cursor-not-allowed [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-sky-500 disabled:[&::-webkit-slider-thumb]:bg-theme-muted"
 						title={PARAMETER_DESCRIPTIONS[key]}
 					/>
 
-					<p class="mt-0.5 text-[10px] text-slate-500">
+					<p class="mt-0.5 text-[10px] text-theme-muted">
 						{PARAMETER_DESCRIPTIONS[key]}
 					</p>
 				</div>
@@ -133,7 +133,7 @@
 			<button
 				type="button"
 				onclick={() => settingsState.resetToDefaults()}
-				class="rounded px-2 py-1 text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+				class="rounded px-2 py-1 text-xs text-theme-muted hover:bg-theme-tertiary hover:text-theme-secondary"
 			>
 				Reset to defaults
 			</button>

@@ -45,14 +45,14 @@
 		aria-labelledby="pull-dialog-title"
 	>
 		<!-- Dialog -->
-		<div class="w-full max-w-md rounded-xl bg-slate-800 p-6 shadow-xl">
-			<h2 id="pull-dialog-title" class="mb-4 text-lg font-semibold text-slate-100">
+		<div class="w-full max-w-md rounded-xl bg-theme-secondary p-6 shadow-xl">
+			<h2 id="pull-dialog-title" class="mb-4 text-lg font-semibold text-theme-primary">
 				Pull Model
 			</h2>
 
 			<form onsubmit={handleSubmit}>
 				<div class="mb-4">
-					<label for="model-name" class="mb-2 block text-sm text-slate-300">
+					<label for="model-name" class="mb-2 block text-sm text-theme-secondary">
 						Model Name
 					</label>
 					<input
@@ -60,13 +60,13 @@
 						type="text"
 						bind:value={modelOperationsState.pullModelInput}
 						placeholder="e.g., llama3.2, mistral:7b, codellama:13b"
-						class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+						class="w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-primary placeholder-theme-muted focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
 						autocomplete="off"
 						autocorrect="off"
 						autocapitalize="off"
 						spellcheck="false"
 					/>
-					<p class="mt-1 text-xs text-slate-400">
+					<p class="mt-1 text-xs text-theme-muted">
 						Enter the model name with optional tag (e.g., llama3.2:latest)
 					</p>
 				</div>
@@ -89,7 +89,7 @@
 					<button
 						type="button"
 						onclick={() => modelOperationsState.closePullDialog()}
-						class="rounded-lg px-4 py-2 text-sm text-slate-300 hover:bg-slate-700"
+						class="rounded-lg px-4 py-2 text-sm text-theme-secondary hover:bg-theme-tertiary"
 					>
 						Cancel
 					</button>

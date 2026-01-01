@@ -158,12 +158,12 @@
 		aria-labelledby="search-dialog-title"
 	>
 		<!-- Dialog -->
-		<div class="mx-4 w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+		<div class="mx-4 w-full max-w-2xl rounded-xl border border-theme bg-theme-primary shadow-2xl">
 			<!-- Search input -->
-			<div class="flex items-center gap-3 border-b border-slate-700 px-4 py-3">
+			<div class="flex items-center gap-3 border-b border-theme px-4 py-3">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 text-slate-400"
+					class="h-5 w-5 text-theme-muted"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -181,10 +181,10 @@
 					oninput={handleSearch}
 					type="text"
 					placeholder="Search conversations and messages..."
-					class="flex-1 bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none"
+					class="flex-1 bg-transparent text-theme-primary placeholder-theme-muted focus:outline-none"
 				/>
 				{#if isSearching}
-					<svg class="h-5 w-5 animate-spin text-slate-400" viewBox="0 0 24 24">
+					<svg class="h-5 w-5 animate-spin text-theme-muted" viewBox="0 0 24 24">
 						<circle
 							class="opacity-25"
 							cx="12"
@@ -209,7 +209,7 @@
 							messageResults = [];
 							inputElement?.focus();
 						}}
-						class="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+						class="rounded p-1 text-theme-muted hover:bg-theme-secondary hover:text-theme-secondary"
 						aria-label="Clear search"
 					>
 						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -222,21 +222,21 @@
 						</svg>
 					</button>
 				{/if}
-				<kbd class="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-500">Esc</kbd>
+				<kbd class="rounded bg-theme-secondary px-2 py-0.5 text-xs text-theme-muted">Esc</kbd>
 			</div>
 
 			<!-- Tabs -->
-			<div class="flex border-b border-slate-700">
+			<div class="flex border-b border-theme">
 				<button
 					type="button"
 					onclick={() => (activeTab = 'titles')}
 					class="flex-1 px-4 py-2 text-sm font-medium transition-colors {activeTab === 'titles'
 						? 'border-b-2 border-violet-500 text-violet-400'
-						: 'text-slate-400 hover:text-slate-200'}"
+						: 'text-theme-muted hover:text-theme-secondary'}"
 				>
 					Titles
 					{#if titleResults.length > 0}
-						<span class="ml-1.5 rounded-full bg-slate-800 px-1.5 py-0.5 text-xs"
+						<span class="ml-1.5 rounded-full bg-theme-secondary px-1.5 py-0.5 text-xs"
 							>{titleResults.length}</span
 						>
 					{/if}
@@ -246,11 +246,11 @@
 					onclick={() => (activeTab = 'messages')}
 					class="flex-1 px-4 py-2 text-sm font-medium transition-colors {activeTab === 'messages'
 						? 'border-b-2 border-violet-500 text-violet-400'
-						: 'text-slate-400 hover:text-slate-200'}"
+						: 'text-theme-muted hover:text-theme-secondary'}"
 				>
 					Messages
 					{#if messageResults.length > 0}
-						<span class="ml-1.5 rounded-full bg-slate-800 px-1.5 py-0.5 text-xs"
+						<span class="ml-1.5 rounded-full bg-theme-secondary px-1.5 py-0.5 text-xs"
 							>{messageResults.length}</span
 						>
 					{/if}
@@ -261,7 +261,7 @@
 			<div class="max-h-[50vh] overflow-y-auto">
 				{#if !searchQuery.trim()}
 					<!-- Empty state -->
-					<div class="flex flex-col items-center justify-center py-12 text-slate-500">
+					<div class="flex flex-col items-center justify-center py-12 text-theme-muted">
 						<svg class="mb-3 h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path
 								stroke-linecap="round"
@@ -274,18 +274,18 @@
 					</div>
 				{:else if activeTab === 'titles'}
 					{#if titleResults.length === 0 && !isSearching}
-						<div class="py-8 text-center text-sm text-slate-500">
+						<div class="py-8 text-center text-sm text-theme-muted">
 							No conversations found matching "{searchQuery}"
 						</div>
 					{:else}
-						<div class="divide-y divide-slate-800">
+						<div class="divide-y divide-theme-secondary">
 							{#each titleResults as result}
 								<button
 									type="button"
 									onclick={() => navigateToConversation(result.id)}
-									class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-800"
+									class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-theme-secondary"
 								>
-									<svg class="h-4 w-4 flex-shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<svg class="h-4 w-4 flex-shrink-0 text-theme-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
@@ -294,10 +294,10 @@
 										/>
 									</svg>
 									<div class="min-w-0 flex-1">
-										<p class="truncate text-sm font-medium text-slate-200">
+										<p class="truncate text-sm font-medium text-theme-secondary">
 											{result.title}
 										</p>
-										<p class="text-xs text-slate-500">
+										<p class="text-xs text-theme-muted">
 											{result.messageCount} messages · {result.model}
 										</p>
 									</div>
@@ -314,16 +314,16 @@
 					{/if}
 				{:else}
 					{#if messageResults.length === 0 && !isSearching}
-						<div class="py-8 text-center text-sm text-slate-500">
+						<div class="py-8 text-center text-sm text-theme-muted">
 							No messages found matching "{searchQuery}"
 						</div>
 					{:else}
-						<div class="divide-y divide-slate-800">
+						<div class="divide-y divide-theme-secondary">
 							{#each messageResults as result}
 								<button
 									type="button"
 									onclick={() => navigateToConversation(result.conversationId)}
-									class="flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-slate-800"
+									class="flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-theme-secondary"
 								>
 									<div class="flex items-center gap-2">
 										<span
@@ -334,11 +334,11 @@
 										>
 											{result.role}
 										</span>
-										<span class="truncate text-xs text-slate-500">
+										<span class="truncate text-xs text-theme-muted">
 											{getConversationTitle(result.conversationId)}
 										</span>
 									</div>
-									<p class="line-clamp-2 text-sm text-slate-300">
+									<p class="line-clamp-2 text-sm text-theme-secondary">
 										{getSnippet(result.content, result.matchIndex, searchQuery)}
 									</p>
 								</button>
@@ -349,10 +349,10 @@
 			</div>
 
 			<!-- Footer hint -->
-			<div class="border-t border-slate-700 px-4 py-2">
-				<p class="text-center text-xs text-slate-500">
-					<kbd class="rounded bg-slate-800 px-1.5 py-0.5 font-mono">Enter</kbd> to select ·
-					<kbd class="rounded bg-slate-800 px-1.5 py-0.5 font-mono">Tab</kbd> to switch tabs
+			<div class="border-t border-theme px-4 py-2">
+				<p class="text-center text-xs text-theme-muted">
+					<kbd class="rounded bg-theme-secondary px-1.5 py-0.5 font-mono">Enter</kbd> to select ·
+					<kbd class="rounded bg-theme-secondary px-1.5 py-0.5 font-mono">Tab</kbd> to switch tabs
 				</p>
 			</div>
 		</div>

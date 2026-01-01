@@ -189,18 +189,18 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
-			class="mx-4 w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 shadow-2xl"
+			class="mx-4 w-full max-w-lg rounded-xl border border-theme bg-theme-primary shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-				<h2 id="export-dialog-title" class="text-lg font-semibold text-slate-100">
+			<div class="flex items-center justify-between border-b border-theme px-6 py-4">
+				<h2 id="export-dialog-title" class="text-lg font-semibold text-theme-primary">
 					Export Conversation
 				</h2>
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+					class="rounded-lg p-1.5 text-theme-muted transition-colors hover:bg-theme-secondary hover:text-theme-secondary"
 					aria-label="Close dialog"
 				>
 					<svg
@@ -221,7 +221,7 @@
 				{#if isLoading}
 					<!-- Loading state -->
 					<div class="flex items-center justify-center py-8">
-						<svg class="h-6 w-6 animate-spin text-slate-400" viewBox="0 0 24 24">
+						<svg class="h-6 w-6 animate-spin text-theme-muted" viewBox="0 0 24 24">
 							<circle
 								class="opacity-25"
 								cx="12"
@@ -237,7 +237,7 @@
 								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
 							/>
 						</svg>
-						<span class="ml-2 text-sm text-slate-400">Loading conversation...</span>
+						<span class="ml-2 text-sm text-theme-muted">Loading conversation...</span>
 					</div>
 				{:else if loadError}
 					<!-- Load error state -->
@@ -247,12 +247,12 @@
 				{:else}
 				<!-- Format selection -->
 				<fieldset class="space-y-3">
-					<legend class="text-sm font-medium text-slate-300">Export Format</legend>
+					<legend class="text-sm font-medium text-theme-secondary">Export Format</legend>
 					<div class="flex gap-4">
 						<label
 							class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 transition-colors {selectedFormat === 'markdown'
 								? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-								: 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-600'}"
+								: 'border-theme bg-theme-secondary/50 text-theme-secondary hover:border-theme-subtle'}"
 						>
 							<input
 								type="radio"
@@ -280,7 +280,7 @@
 						<label
 							class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 transition-colors {selectedFormat === 'json'
 								? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-								: 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-600'}"
+								: 'border-theme bg-theme-secondary/50 text-theme-secondary hover:border-theme-subtle'}"
 						>
 							<input
 								type="radio"
@@ -310,9 +310,9 @@
 
 				<!-- Preview -->
 				<div class="space-y-2">
-					<span class="text-sm font-medium text-slate-300">Preview</span>
+					<span class="text-sm font-medium text-theme-secondary">Preview</span>
 					<div
-						class="max-h-48 overflow-auto rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-xs text-slate-400"
+						class="max-h-48 overflow-auto rounded-lg border border-theme bg-theme-primary p-3 font-mono text-xs text-theme-muted"
 						aria-label="Export preview"
 					>
 						<pre class="whitespace-pre-wrap">{preview}</pre>
@@ -330,13 +330,13 @@
 
 			<!-- Footer -->
 			<div
-				class="flex flex-col gap-3 border-t border-slate-700 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+				class="flex flex-col gap-3 border-t border-theme px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
 			>
 				<!-- Share button -->
 				<button
 					type="button"
 					onclick={handleShare}
-					class="flex items-center justify-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
+					class="flex items-center justify-center gap-2 rounded-lg border border-theme-subtle px-4 py-2.5 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-secondary hover:text-theme-primary"
 				>
 					{#if shareCopied}
 						<svg
@@ -374,7 +374,7 @@
 					<button
 						type="button"
 						onclick={onClose}
-						class="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+						class="rounded-lg px-4 py-2.5 text-sm font-medium text-theme-muted transition-colors hover:bg-theme-secondary hover:text-theme-secondary"
 					>
 						Cancel
 					</button>

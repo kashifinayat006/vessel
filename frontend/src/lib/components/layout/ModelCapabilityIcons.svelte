@@ -67,7 +67,7 @@
 			amber: { bg: 'bg-amber-900/50', text: 'text-amber-300' },
 			red: { bg: 'bg-red-900/50', text: 'text-red-300' },
 			sky: { bg: 'bg-sky-900/50', text: 'text-sky-300' },
-			slate: { bg: 'bg-slate-800', text: 'text-slate-400' }
+			slate: { bg: 'bg-theme-secondary', text: 'text-theme-muted' }
 		};
 		return colors[color] ?? colors.slate;
 	}

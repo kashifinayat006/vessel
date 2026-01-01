@@ -82,7 +82,7 @@
 <a
 	href="/chat/{conversation.id}"
 	onclick={handleClick}
-	class="group relative flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors {isSelected ? 'bg-slate-800' : 'hover:bg-slate-800/60'}"
+	class="group relative flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors {isSelected ? 'bg-theme-secondary' : 'hover:bg-theme-secondary/60'}"
 >
 	<!-- Chat icon -->
 	<div class="mt-0.5 shrink-0">
@@ -100,7 +100,7 @@
 			<!-- Regular chat bubble -->
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				class="h-4 w-4 text-slate-500"
+				class="h-4 w-4 text-theme-muted"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
@@ -120,15 +120,15 @@
 		<!-- Title -->
 		<p
 			class="truncate text-sm font-medium"
-			class:text-slate-100={isSelected}
-			class:text-slate-300={!isSelected}
+			class:text-theme-primary={isSelected}
+			class:text-theme-secondary={!isSelected}
 			title={conversation.title || 'New Conversation'}
 		>
 			{conversation.title || 'New Conversation'}
 		</p>
 
 		<!-- Meta info (model + time) -->
-		<div class="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+		<div class="mt-0.5 flex items-center gap-2 text-xs text-theme-muted">
 			<span class="truncate">{conversation.model}</span>
 			<span class="shrink-0">-</span>
 			<span class="shrink-0">{formatRelativeTime(conversation.updatedAt)}</span>
@@ -141,7 +141,7 @@
 		<button
 			type="button"
 			onclick={handlePin}
-			class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-slate-200"
+			class="rounded p-1 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
 			aria-label={conversation.isPinned ? 'Unpin conversation' : 'Pin conversation'}
 			title={conversation.isPinned ? 'Unpin' : 'Pin'}
 		>
@@ -178,7 +178,7 @@
 		<button
 			type="button"
 			onclick={handleExport}
-			class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-slate-200"
+			class="rounded p-1 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
 			aria-label="Export conversation"
 			title="Export"
 		>
@@ -202,7 +202,7 @@
 		<button
 			type="button"
 			onclick={handleDelete}
-			class="rounded p-1 text-slate-400 transition-colors hover:bg-red-900/50 hover:text-red-400"
+			class="rounded p-1 text-theme-muted transition-colors hover:bg-red-900/50 hover:text-red-400"
 			aria-label="Delete conversation"
 			title="Delete"
 		>

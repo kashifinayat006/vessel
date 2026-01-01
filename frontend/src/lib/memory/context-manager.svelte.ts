@@ -253,7 +253,7 @@ export function getContextUsageColor(percentage: number): string {
 	if (percentage >= WARNING_THRESHOLD * 100) {
 		return 'text-yellow-500';
 	}
-	return 'text-slate-400';
+	return 'text-theme-muted';
 }
 
 /**

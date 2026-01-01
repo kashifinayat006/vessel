@@ -95,7 +95,7 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
-			class="mx-4 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 shadow-2xl"
+			class="mx-4 w-full max-w-md rounded-xl border border-theme bg-theme-primary shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 		>
 			<!-- Content -->
@@ -155,10 +155,10 @@
 
 					<!-- Text content -->
 					<div class="flex-1">
-						<h3 id="confirm-dialog-title" class="text-lg font-semibold text-slate-100">
+						<h3 id="confirm-dialog-title" class="text-lg font-semibold text-theme-primary">
 							{title}
 						</h3>
-						<p id="confirm-dialog-description" class="mt-2 text-sm text-slate-400">
+						<p id="confirm-dialog-description" class="mt-2 text-sm text-theme-muted">
 							{message}
 						</p>
 					</div>
@@ -166,18 +166,18 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="flex justify-end gap-3 border-t border-slate-700 px-6 py-4">
+			<div class="flex justify-end gap-3 border-t border-theme px-6 py-4">
 				<button
 					type="button"
 					onclick={onCancel}
-					class="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
+					class="rounded-lg px-4 py-2.5 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-secondary hover:text-theme-primary"
 				>
 					{cancelText}
 				</button>
 				<button
 					type="button"
 					onclick={handleConfirm}
-					class="rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 {confirmButtonStyles}"
+					class="rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme {confirmButtonStyles}"
 				>
 					{confirmText}
 				</button>

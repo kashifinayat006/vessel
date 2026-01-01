@@ -54,7 +54,7 @@
 	<div class="space-y-2 {className}">
 		{#each lineWidths as lineWidth, i}
 			<div
-				class="animate-pulse bg-slate-700/50 {variantClasses}"
+				class="animate-pulse bg-theme-tertiary/50 {variantClasses}"
 				style="width: {lineWidth}; height: {height};"
 				role="status"
 				aria-label="Loading..."
@@ -63,7 +63,7 @@
 	</div>
 {:else}
 	<div
-		class="animate-pulse bg-slate-700/50 {variantClasses} {className}"
+		class="animate-pulse bg-theme-tertiary/50 {variantClasses} {className}"
 		style="width: {width}; height: {height};"
 		role="status"
 		aria-label="Loading..."

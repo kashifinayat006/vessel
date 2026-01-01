@@ -171,19 +171,19 @@
 		onkeydown={(e) => e.key === 'Escape' && onClose()}
 	>
 		<div
-			class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-slate-800 shadow-2xl"
+			class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-theme-secondary shadow-2xl"
 			role="dialog"
 			aria-modal="true"
 		>
 			<!-- Header -->
-			<div class="sticky top-0 flex items-center justify-between border-b border-slate-700 bg-slate-800 px-6 py-4">
-				<h2 class="text-lg font-semibold text-white">
+			<div class="sticky top-0 flex items-center justify-between border-b border-theme bg-theme-secondary px-6 py-4">
+				<h2 class="text-lg font-semibold text-theme-primary">
 					{editingTool ? 'Edit Tool' : 'Create Custom Tool'}
 				</h2>
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-700 hover:text-white"
+					class="rounded-lg p-1.5 text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 						<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -195,13 +195,13 @@
 			<div class="space-y-6 p-6">
 				<!-- Name -->
 				<div>
-					<label for="tool-name" class="block text-sm font-medium text-slate-300">Tool Name</label>
+					<label for="tool-name" class="block text-sm font-medium text-theme-secondary">Tool Name</label>
 					<input
 						id="tool-name"
 						type="text"
 						bind:value={name}
 						placeholder="my_custom_tool"
-						class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						class="mt-1 w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-primary placeholder-theme-muted focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 					/>
 					{#if errors.name}
 						<p class="mt-1 text-sm text-red-400">{errors.name}</p>
@@ -210,13 +210,13 @@
 
 				<!-- Description -->
 				<div>
-					<label for="tool-description" class="block text-sm font-medium text-slate-300">Description</label>
+					<label for="tool-description" class="block text-sm font-medium text-theme-secondary">Description</label>
 					<textarea
 						id="tool-description"
 						bind:value={description}
 						rows="2"
 						placeholder="What does this tool do? The AI uses this to decide when to call it."
-						class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						class="mt-1 w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-primary placeholder-theme-muted focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 					></textarea>
 					{#if errors.description}
 						<p class="mt-1 text-sm text-red-400">{errors.description}</p>
@@ -226,7 +226,7 @@
 				<!-- Parameters -->
 				<div>
 					<div class="flex items-center justify-between">
-						<label class="block text-sm font-medium text-slate-300">Parameters</label>
+						<label class="block text-sm font-medium text-theme-secondary">Parameters</label>
 						<button
 							type="button"
 							onclick={addParameter}
@@ -239,17 +239,17 @@
 					{#if parameters.length > 0}
 						<div class="mt-2 space-y-3">
 							{#each parameters as param, index (index)}
-								<div class="flex gap-2 items-start rounded-lg border border-slate-600 bg-slate-700/50 p-3">
+								<div class="flex gap-2 items-start rounded-lg border border-theme-subtle bg-theme-tertiary/50 p-3">
 									<div class="flex-1 grid grid-cols-2 gap-2">
 										<input
 											type="text"
 											bind:value={param.name}
 											placeholder="param_name"
-											class="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm text-white"
+											class="rounded border border-theme-subtle bg-theme-tertiary px-2 py-1 text-sm text-theme-primary"
 										/>
 										<select
 											bind:value={param.type}
-											class="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm text-white"
+											class="rounded border border-theme-subtle bg-theme-tertiary px-2 py-1 text-sm text-theme-primary"
 										>
 											<option value="string">string</option>
 											<option value="number">number</option>
@@ -260,9 +260,9 @@
 											type="text"
 											bind:value={param.description}
 											placeholder="Description"
-											class="col-span-2 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm text-white"
+											class="col-span-2 rounded border border-theme-subtle bg-theme-tertiary px-2 py-1 text-sm text-theme-primary"
 										/>
-										<label class="col-span-2 flex items-center gap-2 text-sm text-slate-300">
+										<label class="col-span-2 flex items-center gap-2 text-sm text-theme-secondary">
 											<input type="checkbox" bind:checked={param.required} class="rounded" />
 											Required
 										</label>
@@ -270,7 +270,7 @@
 									<button
 										type="button"
 										onclick={() => removeParameter(index)}
-										class="text-slate-400 hover:text-red-400"
+										class="text-theme-muted hover:text-red-400"
 									>
 										<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 											<path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -283,15 +283,15 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="mt-2 text-sm text-slate-500">No parameters defined. Click "Add Parameter" to define inputs.</p>
+						<p class="mt-2 text-sm text-theme-muted">No parameters defined. Click "Add Parameter" to define inputs.</p>
 					{/if}
 				</div>
 
 				<!-- Implementation Type -->
 				<div>
-					<label class="block text-sm font-medium text-slate-300">Implementation</label>
+					<label class="block text-sm font-medium text-theme-secondary">Implementation</label>
 					<div class="mt-2 flex gap-4">
-						<label class="flex items-center gap-2 text-slate-300">
+						<label class="flex items-center gap-2 text-theme-secondary">
 							<input
 								type="radio"
 								bind:group={implementation}
@@ -300,7 +300,7 @@
 							/>
 							JavaScript
 						</label>
-						<label class="flex items-center gap-2 text-slate-300">
+						<label class="flex items-center gap-2 text-theme-secondary">
 							<input
 								type="radio"
 								bind:group={implementation}
@@ -315,15 +315,15 @@
 				<!-- JavaScript Code -->
 				{#if implementation === 'javascript'}
 					<div>
-						<label for="tool-code" class="block text-sm font-medium text-slate-300">JavaScript Code</label>
-						<p class="mt-1 text-xs text-slate-500">
-							Arguments are passed as an <code class="bg-slate-700 px-1 rounded">args</code> object. Return the result.
+						<label for="tool-code" class="block text-sm font-medium text-theme-secondary">JavaScript Code</label>
+						<p class="mt-1 text-xs text-theme-muted">
+							Arguments are passed as an <code class="bg-theme-tertiary px-1 rounded">args</code> object. Return the result.
 						</p>
 						<textarea
 							id="tool-code"
 							bind:value={code}
 							rows="8"
-							class="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 font-mono text-sm text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+							class="mt-2 w-full rounded-lg border border-theme-subtle bg-theme-primary px-3 py-2 font-mono text-sm text-theme-primary placeholder-theme-muted focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 						></textarea>
 						{#if errors.code}
 							<p class="mt-1 text-sm text-red-400">{errors.code}</p>
@@ -335,26 +335,26 @@
 				{#if implementation === 'http'}
 					<div class="space-y-4">
 						<div>
-							<label for="tool-endpoint" class="block text-sm font-medium text-slate-300">Endpoint URL</label>
+							<label for="tool-endpoint" class="block text-sm font-medium text-theme-secondary">Endpoint URL</label>
 							<input
 								id="tool-endpoint"
 								type="url"
 								bind:value={endpoint}
 								placeholder="https://api.example.com/tool"
-								class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+								class="mt-1 w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-primary placeholder-theme-muted focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 							/>
 							{#if errors.endpoint}
 								<p class="mt-1 text-sm text-red-400">{errors.endpoint}</p>
 							{/if}
 						</div>
 						<div>
-							<label class="block text-sm font-medium text-slate-300">HTTP Method</label>
+							<label class="block text-sm font-medium text-theme-secondary">HTTP Method</label>
 							<div class="mt-2 flex gap-4">
-								<label class="flex items-center gap-2 text-slate-300">
+								<label class="flex items-center gap-2 text-theme-secondary">
 									<input type="radio" bind:group={httpMethod} value="GET" />
 									GET
 								</label>
-								<label class="flex items-center gap-2 text-slate-300">
+								<label class="flex items-center gap-2 text-theme-secondary">
 									<input type="radio" bind:group={httpMethod} value="POST" />
 									POST
 								</label>
@@ -365,11 +365,11 @@
 
 				<!-- Enabled Toggle -->
 				<div class="flex items-center justify-between">
-					<span class="text-sm font-medium text-slate-300">Enable tool</span>
+					<span class="text-sm font-medium text-theme-secondary">Enable tool</span>
 					<button
 						type="button"
 						onclick={() => enabled = !enabled}
-						class="relative inline-flex h-6 w-11 cursor-pointer rounded-full transition-colors {enabled ? 'bg-blue-600' : 'bg-slate-600'}"
+						class="relative inline-flex h-6 w-11 cursor-pointer rounded-full transition-colors {enabled ? 'bg-blue-600' : 'bg-theme-tertiary'}"
 						role="switch"
 						aria-checked={enabled}
 					>
@@ -381,11 +381,11 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="sticky bottom-0 flex justify-end gap-3 border-t border-slate-700 bg-slate-800 px-6 py-4">
+			<div class="sticky bottom-0 flex justify-end gap-3 border-t border-theme bg-theme-secondary px-6 py-4">
 				<button
 					type="button"
 					onclick={onClose}
-					class="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+					class="rounded-lg px-4 py-2 text-sm font-medium text-theme-secondary hover:bg-theme-tertiary"
 				>
 					Cancel
 				</button>

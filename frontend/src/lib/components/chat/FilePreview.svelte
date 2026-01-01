@@ -40,10 +40,10 @@
 </script>
 
 <div
-	class="group relative flex items-start gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 transition-colors hover:bg-slate-800"
+	class="group relative flex items-start gap-3 rounded-lg border border-theme/50 bg-theme-secondary/50 p-3 transition-colors hover:bg-theme-secondary"
 >
 	<!-- File icon -->
-	<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-700/50 text-lg">
+	<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-theme-tertiary/50 text-lg">
 		{getFileIcon(attachment.type)}
 	</div>
 
@@ -51,13 +51,13 @@
 	<div class="min-w-0 flex-1">
 		<div class="flex items-start justify-between gap-2">
 			<div class="min-w-0">
-				<p class="truncate text-sm font-medium text-slate-200" title={attachment.filename}>
+				<p class="truncate text-sm font-medium text-theme-secondary" title={attachment.filename}>
 					{attachment.filename}
 				</p>
-				<p class="text-xs text-slate-500">
+				<p class="text-xs text-theme-muted">
 					{formatFileSize(attachment.size)}
 					{#if attachment.type === 'pdf'}
-						<span class="text-slate-600">·</span>
+						<span class="text-theme-muted">·</span>
 						<span class="text-violet-400">PDF</span>
 					{/if}
 				</p>
@@ -68,7 +68,7 @@
 				<button
 					type="button"
 					onclick={handleRemove}
-					class="shrink-0 rounded p-1 text-slate-500 opacity-0 transition-all hover:bg-red-900/30 hover:text-red-400 group-hover:opacity-100"
+					class="shrink-0 rounded p-1 text-theme-muted opacity-0 transition-all hover:bg-red-900/30 hover:text-red-400 group-hover:opacity-100"
 					aria-label="Remove file"
 					title="Remove"
 				>
@@ -94,14 +94,14 @@
 				class="mt-2 w-full text-left"
 			>
 				<div
-					class="rounded border border-slate-700/50 bg-slate-900/50 p-2 text-xs text-slate-400 transition-colors hover:border-slate-600"
+					class="rounded border border-theme/50 bg-theme-primary/50 p-2 text-xs text-theme-muted transition-colors hover:border-theme-subtle"
 				>
 					{#if isExpanded}
 						<pre class="max-h-60 overflow-auto whitespace-pre-wrap break-words font-mono">{attachment.textContent}</pre>
 					{:else}
 						<p class="truncate font-mono">{previewText}</p>
 					{/if}
-					<p class="mt-1 text-[10px] text-slate-600">
+					<p class="mt-1 text-[10px] text-theme-muted">
 						{isExpanded ? 'Click to collapse' : 'Click to expand'}
 					</p>
 				</div>

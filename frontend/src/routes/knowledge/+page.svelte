@@ -128,39 +128,39 @@
 	}
 </script>
 
-<div class="h-full overflow-y-auto bg-slate-900 p-6">
+<div class="h-full overflow-y-auto bg-theme-primary p-6">
 	<div class="mx-auto max-w-4xl">
 		<!-- Header -->
 		<div class="mb-8">
-			<h1 class="text-2xl font-bold text-white">Knowledge Base</h1>
-			<p class="mt-1 text-sm text-slate-400">
+			<h1 class="text-2xl font-bold text-theme-primary">Knowledge Base</h1>
+			<p class="mt-1 text-sm text-theme-muted">
 				Upload documents to enhance AI responses with your own knowledge
 			</p>
 		</div>
 
 		<!-- Stats -->
 		<div class="mb-6 grid grid-cols-3 gap-4">
-			<div class="rounded-lg border border-slate-700 bg-slate-800 p-4">
-				<p class="text-sm text-slate-400">Documents</p>
-				<p class="mt-1 text-2xl font-semibold text-white">{stats.documentCount}</p>
+			<div class="rounded-lg border border-theme bg-theme-secondary p-4">
+				<p class="text-sm text-theme-muted">Documents</p>
+				<p class="mt-1 text-2xl font-semibold text-theme-primary">{stats.documentCount}</p>
 			</div>
-			<div class="rounded-lg border border-slate-700 bg-slate-800 p-4">
-				<p class="text-sm text-slate-400">Chunks</p>
-				<p class="mt-1 text-2xl font-semibold text-white">{stats.chunkCount}</p>
+			<div class="rounded-lg border border-theme bg-theme-secondary p-4">
+				<p class="text-sm text-theme-muted">Chunks</p>
+				<p class="mt-1 text-2xl font-semibold text-theme-primary">{stats.chunkCount}</p>
 			</div>
-			<div class="rounded-lg border border-slate-700 bg-slate-800 p-4">
-				<p class="text-sm text-slate-400">Total Tokens</p>
-				<p class="mt-1 text-2xl font-semibold text-white">{formatTokenCount(stats.totalTokens)}</p>
+			<div class="rounded-lg border border-theme bg-theme-secondary p-4">
+				<p class="text-sm text-theme-muted">Total Tokens</p>
+				<p class="mt-1 text-2xl font-semibold text-theme-primary">{formatTokenCount(stats.totalTokens)}</p>
 			</div>
 		</div>
 
 		<!-- Upload Area -->
 		<div class="mb-8">
 			<div class="mb-3 flex items-center justify-between">
-				<h2 class="text-lg font-semibold text-white">Upload Documents</h2>
+				<h2 class="text-lg font-semibold text-theme-primary">Upload Documents</h2>
 				<select
 					bind:value={selectedModel}
-					class="rounded-md border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					class="rounded-md border border-theme-subtle bg-theme-tertiary px-3 py-1.5 text-sm text-theme-primary focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 				>
 					{#each EMBEDDING_MODELS as model}
 						<option value={model}>{model}</option>
@@ -173,7 +173,7 @@
 				type="button"
 				class="w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors {dragOver
 					? 'border-blue-500 bg-blue-900/20'
-					: 'border-slate-600 hover:border-slate-500'}"
+					: 'border-theme-subtle hover:border-theme'}"
 				ondragover={(e) => {
 					e.preventDefault();
 					dragOver = true;
@@ -189,18 +189,18 @@
 							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
 						</svg>
-						<p class="mt-3 text-sm text-slate-400">
+						<p class="mt-3 text-sm text-theme-muted">
 							Processing... ({uploadProgress.current}/{uploadProgress.total} chunks)
 						</p>
 					</div>
 				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-theme-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
 					</svg>
-					<p class="mt-3 text-sm text-slate-400">
+					<p class="mt-3 text-sm text-theme-muted">
 						Drag and drop files here, or click to browse
 					</p>
-					<p class="mt-1 text-xs text-slate-500">
+					<p class="mt-1 text-xs text-theme-muted">
 						Supports .txt, .md, .json, and other text files
 					</p>
 				{/if}
@@ -218,36 +218,36 @@
 
 		<!-- Documents List -->
 		<div>
-			<h2 class="mb-4 text-lg font-semibold text-white">Documents</h2>
+			<h2 class="mb-4 text-lg font-semibold text-theme-primary">Documents</h2>
 
 			{#if isLoading}
 				<div class="flex items-center justify-center py-8">
-					<svg class="h-8 w-8 animate-spin text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+					<svg class="h-8 w-8 animate-spin text-theme-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
 						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
 					</svg>
 				</div>
 			{:else if documents.length === 0}
-				<div class="rounded-lg border border-dashed border-slate-700 bg-slate-800/50 p-8 text-center">
-					<svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<div class="rounded-lg border border-dashed border-theme bg-theme-secondary/50 p-8 text-center">
+					<svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-theme-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
 					</svg>
-					<h3 class="mt-4 text-sm font-medium text-slate-400">No documents yet</h3>
-					<p class="mt-1 text-sm text-slate-500">
+					<h3 class="mt-4 text-sm font-medium text-theme-muted">No documents yet</h3>
+					<p class="mt-1 text-sm text-theme-muted">
 						Upload documents to build your knowledge base
 					</p>
 				</div>
 			{:else}
 				<div class="space-y-3">
 					{#each documents as doc (doc.id)}
-						<div class="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800 p-4">
+						<div class="flex items-center justify-between rounded-lg border border-theme bg-theme-secondary p-4">
 							<div class="flex items-center gap-3">
 								<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 									<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
 								</svg>
 								<div>
-									<h3 class="font-medium text-white">{doc.name}</h3>
-									<p class="text-xs text-slate-400">
+									<h3 class="font-medium text-theme-primary">{doc.name}</h3>
+									<p class="text-xs text-theme-muted">
 										{formatSize(doc.size)} · {doc.chunkCount} chunks · Added {formatDate(doc.createdAt)}
 									</p>
 								</div>
@@ -256,7 +256,7 @@
 							<button
 								type="button"
 								onclick={() => handleDelete(doc)}
-								class="rounded p-2 text-slate-400 transition-colors hover:bg-red-900/30 hover:text-red-400"
+								class="rounded p-2 text-theme-muted transition-colors hover:bg-red-900/30 hover:text-red-400"
 								aria-label="Delete document"
 							>
 								<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -270,21 +270,21 @@
 		</div>
 
 		<!-- Info Section -->
-		<section class="mt-8 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-			<h3 class="flex items-center gap-2 text-sm font-medium text-slate-300">
+		<section class="mt-8 rounded-lg border border-theme bg-theme-secondary/50 p-4">
+			<h3 class="flex items-center gap-2 text-sm font-medium text-theme-secondary">
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 				</svg>
 				How RAG Works
 			</h3>
-			<p class="mt-2 text-sm text-slate-400">
+			<p class="mt-2 text-sm text-theme-muted">
 				Documents are split into chunks and converted to embeddings (numerical representations).
 				When you ask a question, relevant chunks are found by similarity search and included
 				in the AI's context to provide more accurate, grounded responses.
 			</p>
-			<p class="mt-2 text-sm text-slate-400">
-				<strong class="text-slate-300">Note:</strong> Requires an embedding model to be installed
-				in Ollama (e.g., <code class="rounded bg-slate-700 px-1">ollama pull nomic-embed-text</code>).
+			<p class="mt-2 text-sm text-theme-muted">
+				<strong class="text-theme-secondary">Note:</strong> Requires an embedding model to be installed
+				in Ollama (e.g., <code class="rounded bg-theme-tertiary px-1">ollama pull nomic-embed-text</code>).
 			</p>
 		</section>
 	</div>

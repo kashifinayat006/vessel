@@ -24,7 +24,7 @@
 	<!-- Message content skeleton -->
 	<div class="flex-1 max-w-[80%]" class:max-w-[70%]={isUser}>
 		<div
-			class="rounded-2xl px-4 py-3 {isUser ? 'bg-blue-500/20 rounded-br-md' : 'bg-slate-800 rounded-bl-md'}"
+			class="rounded-2xl px-4 py-3 {isUser ? 'bg-blue-500/20 rounded-br-md' : 'bg-theme-secondary rounded-bl-md'}"
 		>
 			<Skeleton variant="text" {lines} height="0.875rem" />
 		</div>

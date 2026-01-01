@@ -195,7 +195,7 @@
 		<button
 			type="button"
 			onclick={scrollToBottom}
-			class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-slate-700 px-4 py-2 text-sm text-slate-200 shadow-lg transition-all hover:bg-slate-600"
+			class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-theme-tertiary px-4 py-2 text-sm text-theme-secondary shadow-lg transition-all hover:bg-theme-secondary"
 			aria-label="Scroll to latest message"
 		>
 			<span class="flex items-center gap-2">

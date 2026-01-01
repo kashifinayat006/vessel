@@ -22,7 +22,7 @@
 		<!-- Search icon -->
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
-			class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+			class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-muted"
 			fill="none"
 			viewBox="0 0 24 24"
 			stroke="currentColor"
@@ -42,7 +42,7 @@
 			oninput={handleInput}
 			placeholder="Search conversations..."
 			data-search-input
-			class="w-full rounded-lg border border-slate-700 bg-slate-800/50 py-2 pl-10 pr-9 text-sm text-slate-200 placeholder-slate-500 transition-colors focus:border-emerald-500/50 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+			class="w-full rounded-lg border border-theme bg-theme-secondary/50 py-2 pl-10 pr-9 text-sm text-theme-secondary placeholder-theme-muted transition-colors focus:border-emerald-500/50 focus:bg-theme-secondary focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
 		/>
 
 		<!-- Clear button (visible when there's text) -->
@@ -50,7 +50,7 @@
 			<button
 				type="button"
 				onclick={handleClear}
-				class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 transition-colors hover:bg-slate-700 hover:text-slate-300"
+				class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-secondary"
 				aria-label="Clear search"
 			>
 				<svg

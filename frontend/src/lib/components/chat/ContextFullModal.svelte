@@ -35,7 +35,7 @@
 	<!-- Backdrop -->
 	<div class="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
 		<!-- Modal -->
-		<div class="mx-4 w-full max-w-md rounded-2xl border border-red-500/30 bg-slate-900 p-6 shadow-2xl">
+		<div class="mx-4 w-full max-w-md rounded-2xl border border-red-500/30 bg-theme-primary p-6 shadow-2xl">
 			<!-- Header with warning icon -->
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/20">
@@ -44,20 +44,20 @@
 					</svg>
 				</div>
 				<div>
-					<h2 class="text-lg font-semibold text-white">Context Window Full</h2>
-					<p class="text-sm text-slate-400">
+					<h2 class="text-lg font-semibold text-theme-primary">Context Window Full</h2>
+					<p class="text-sm text-theme-muted">
 						{formatTokenCount(usage.usedTokens)} / {formatContextSize(usage.maxTokens)} tokens used
 					</p>
 				</div>
 			</div>
 
 			<!-- Explanation -->
-			<div class="mb-6 rounded-lg bg-slate-800/50 p-4 text-sm text-slate-300">
+			<div class="mb-6 rounded-lg bg-theme-secondary/50 p-4 text-sm text-theme-secondary">
 				<p class="mb-2">
 					The conversation has exceeded the model's context window by
 					<span class="font-medium text-red-400">{formatTokenCount(overflowAmount)} tokens</span>.
 				</p>
-				<p class="text-slate-400">
+				<p class="text-theme-muted">
 					The model cannot process more text until space is freed. Choose how to proceed:
 				</p>
 			</div>
@@ -88,7 +88,7 @@
 							<div class="font-medium text-emerald-300">
 								{isSummarizing ? 'Summarizing...' : 'Summarize & Continue'}
 							</div>
-							<div class="text-xs text-slate-400">
+							<div class="text-xs text-theme-muted">
 								Compress older messages into a summary to free space
 							</div>
 						</div>
@@ -102,16 +102,16 @@
 				<button
 					type="button"
 					onclick={onNewChat}
-					class="flex w-full items-center gap-3 rounded-xl border border-slate-600/50 bg-slate-800/50 p-4 text-left transition-colors hover:bg-slate-700/50"
+					class="flex w-full items-center gap-3 rounded-xl border border-theme-subtle/50 bg-theme-secondary/50 p-4 text-left transition-colors hover:bg-theme-tertiary/50"
 				>
-					<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-700">
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-theme-tertiary">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-theme-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
 						</svg>
 					</div>
 					<div class="flex-1">
-						<div class="font-medium text-slate-200">Start New Chat</div>
-						<div class="text-xs text-slate-400">
+						<div class="font-medium text-theme-secondary">Start New Chat</div>
+						<div class="text-xs text-theme-muted">
 							Begin a fresh conversation (current chat is saved)
 						</div>
 					</div>
@@ -121,16 +121,16 @@
 				<button
 					type="button"
 					onclick={onDismiss}
-					class="flex w-full items-center gap-3 rounded-xl border border-slate-700/50 p-4 text-left transition-colors hover:bg-slate-800/50"
+					class="flex w-full items-center gap-3 rounded-xl border border-theme/50 p-4 text-left transition-colors hover:bg-theme-secondary/50"
 				>
-					<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-800">
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-theme-secondary">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-theme-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 						</svg>
 					</div>
 					<div class="flex-1">
-						<div class="font-medium text-slate-400">Continue Anyway</div>
-						<div class="text-xs text-slate-500">
+						<div class="font-medium text-theme-muted">Continue Anyway</div>
+						<div class="text-xs text-theme-muted">
 							Try to send (may result in errors or truncated responses)
 						</div>
 					</div>

@@ -15,9 +15,9 @@
 	--color-bg-message-user: theme('colors.slate.200');
 	--color-bg-message-assistant: transparent;
 	--color-text-primary: theme('colors.slate.900');
-	--color-text-secondary: theme('colors.slate.600');
-	--color-text-muted: theme('colors.slate.500');
-	--color-text-placeholder: theme('colors.slate.400');
+	--color-text-secondary: theme('colors.slate.700');
+	--color-text-muted: theme('colors.slate.600');
+	--color-text-placeholder: theme('colors.slate.500');
 	--color-border: theme('colors.slate.300');
 	--color-border-subtle: theme('colors.slate.200');
 }

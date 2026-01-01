@@ -25,17 +25,17 @@
 <button
 	type="button"
 	onclick={() => onSelect?.(model)}
-	class="group w-full rounded-lg border border-slate-700 bg-slate-800 p-4 text-left transition-all hover:border-slate-600 hover:bg-slate-750"
+	class="group w-full rounded-lg border border-theme bg-theme-secondary p-4 text-left transition-all hover:border-theme-subtle hover:bg-theme-tertiary"
 >
 	<!-- Header: Name and Type Badge -->
 	<div class="flex items-start justify-between gap-2">
-		<h3 class="font-medium text-white group-hover:text-blue-400">
+		<h3 class="font-medium text-theme-primary group-hover:text-blue-400">
 			{model.name}
 		</h3>
 		<span
 			class="shrink-0 rounded px-2 py-0.5 text-xs {model.modelType === 'official'
 				? 'bg-blue-900/50 text-blue-300'
-				: 'bg-slate-700 text-slate-400'}"
+				: 'bg-theme-tertiary text-theme-muted'}"
 		>
 			{model.modelType}
 		</span>
@@ -43,7 +43,7 @@
 
 	<!-- Description -->
 	{#if model.description}
-		<p class="mt-2 line-clamp-2 text-sm text-slate-400">
+		<p class="mt-2 line-clamp-2 text-sm text-theme-muted">
 			{model.description}
 		</p>
 	{/if}
@@ -64,7 +64,7 @@
 	{/if}
 
 	<!-- Stats Row -->
-	<div class="mt-3 flex items-center gap-4 text-xs text-slate-500">
+	<div class="mt-3 flex items-center gap-4 text-xs text-theme-muted">
 		<!-- Pull Count -->
 		<div class="flex items-center gap-1" title="{model.pullCount.toLocaleString()} pulls">
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

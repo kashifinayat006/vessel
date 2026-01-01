@@ -173,16 +173,16 @@
 		aria-labelledby="import-dialog-title"
 	>
 		<!-- Dialog -->
-		<div class="mx-4 w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+		<div class="mx-4 w-full max-w-lg rounded-xl border border-theme bg-theme-primary shadow-2xl">
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-				<h2 id="import-dialog-title" class="text-lg font-semibold text-slate-100">
+			<div class="flex items-center justify-between border-b border-theme px-6 py-4">
+				<h2 id="import-dialog-title" class="text-lg font-semibold text-theme-primary">
 					Import Conversation
 				</h2>
 				<button
 					type="button"
 					onclick={handleClose}
-					class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+					class="rounded-lg p-1.5 text-theme-muted transition-colors hover:bg-theme-secondary hover:text-theme-secondary"
 					aria-label="Close dialog"
 				>
 					<svg
@@ -218,10 +218,10 @@
 					ondrop={handleDrop}
 					class="w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors {isDragOver
 						? 'border-emerald-500 bg-emerald-500/10'
-						: 'border-slate-600 hover:border-slate-500'}"
+						: 'border-theme-subtle hover:border-theme-subtle'}"
 				>
 					<svg
-						class="mx-auto h-12 w-12 text-slate-500"
+						class="mx-auto h-12 w-12 text-theme-muted"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -233,20 +233,20 @@
 							d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
 						/>
 					</svg>
-					<p class="mt-2 text-sm text-slate-400">
+					<p class="mt-2 text-sm text-theme-muted">
 						{#if isDragOver}
 							Drop file here
 						{:else}
 							Drag and drop a JSON file, or <span class="text-emerald-400">click to browse</span>
 						{/if}
 					</p>
-					<p class="mt-1 text-xs text-slate-500">Only JSON files exported from this app</p>
+					<p class="mt-1 text-xs text-theme-muted">Only JSON files exported from this app</p>
 				</button>
 
 				{#if isValidating}
 					<!-- Validating state -->
 					<div class="flex items-center justify-center py-4">
-						<svg class="h-5 w-5 animate-spin text-slate-400" viewBox="0 0 24 24">
+						<svg class="h-5 w-5 animate-spin text-theme-muted" viewBox="0 0 24 24">
 							<circle
 								class="opacity-25"
 								cx="12"
@@ -262,14 +262,14 @@
 								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
 							/>
 						</svg>
-						<span class="ml-2 text-sm text-slate-400">Validating file...</span>
+						<span class="ml-2 text-sm text-theme-muted">Validating file...</span>
 					</div>
 				{:else if selectedFile && validationResult}
 					<!-- Validation results -->
 					<div class="space-y-3">
 						<!-- File info -->
-						<div class="flex items-center gap-3 rounded-lg bg-slate-800 p-3">
-							<svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<div class="flex items-center gap-3 rounded-lg bg-theme-secondary p-3">
+							<svg class="h-8 w-8 text-theme-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -278,8 +278,8 @@
 								/>
 							</svg>
 							<div class="min-w-0 flex-1">
-								<p class="truncate text-sm font-medium text-slate-200">{selectedFile.name}</p>
-								<p class="text-xs text-slate-500">{formatFileSize(selectedFile.size)}</p>
+								<p class="truncate text-sm font-medium text-theme-secondary">{selectedFile.name}</p>
+								<p class="text-xs text-theme-muted">{formatFileSize(selectedFile.size)}</p>
 							</div>
 							<button
 								type="button"
@@ -287,7 +287,7 @@
 									selectedFile = null;
 									validationResult = null;
 								}}
-								class="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+								class="rounded p-1 text-theme-muted hover:bg-theme-tertiary hover:text-theme-secondary"
 								aria-label="Remove file"
 							>
 								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -305,10 +305,10 @@
 									</svg>
 									<span class="font-medium">Valid conversation file</span>
 								</div>
-								<div class="mt-3 space-y-1 text-sm text-slate-300">
-									<p><span class="text-slate-500">Title:</span> {validationResult.data.title}</p>
-									<p><span class="text-slate-500">Model:</span> {validationResult.data.model}</p>
-									<p><span class="text-slate-500">Messages:</span> {validationResult.data.messages.length}</p>
+								<div class="mt-3 space-y-1 text-sm text-theme-secondary">
+									<p><span class="text-theme-muted">Title:</span> {validationResult.data.title}</p>
+									<p><span class="text-theme-muted">Model:</span> {validationResult.data.model}</p>
+									<p><span class="text-theme-muted">Messages:</span> {validationResult.data.messages.length}</p>
 								</div>
 							</div>
 						{/if}
@@ -351,11 +351,11 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="flex justify-end gap-2 border-t border-slate-700 px-6 py-4">
+			<div class="flex justify-end gap-2 border-t border-theme px-6 py-4">
 				<button
 					type="button"
 					onclick={handleClose}
-					class="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+					class="rounded-lg px-4 py-2.5 text-sm font-medium text-theme-muted transition-colors hover:bg-theme-secondary hover:text-theme-secondary"
 				>
 					Cancel
 				</button>
