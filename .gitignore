@@ -32,3 +32,4 @@ backend/server
 
 # Docker
 *.pid
+docker-compose.override.yml
