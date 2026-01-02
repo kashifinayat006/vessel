@@ -146,7 +146,8 @@ class LocalModelsState {
 			const response = await checkForUpdates();
 
 			this.updatesAvailable = response.updatesAvailable;
-			this.modelsWithUpdates = new Set(response.updates.map(m => m.name));
+			// Handle null/undefined updates array from API
+			this.modelsWithUpdates = new Set((response.updates ?? []).map(m => m.name));
 
 			return response;
 		} catch (err) {

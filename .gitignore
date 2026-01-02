@@ -41,3 +41,4 @@ CLAUDE.md
 dev.env
 backend/vessel-backend
 data/
+backend/data-dev/

@@ -236,7 +236,10 @@
 		// Initialize stores (backend handles heavy operations)
 		localModelsState.init();
 		modelRegistry.init();
-		modelsState.refresh();
+		modelsState.refresh().then(() => {
+			// Fetch capabilities for all installed models
+			modelsState.fetchAllCapabilities();
+		});
 	});
 </script>
 
@@ -493,6 +496,7 @@
 				{:else}
 					<div class="space-y-2">
 						{#each localModelsState.models as model (model.name)}
+							{@const caps = modelsState.getCapabilities(model.name) ?? []}
 							<div class="group rounded-lg border border-theme bg-theme-secondary p-4 transition-colors hover:border-theme-subtle">
 								<div class="flex items-center justify-between">
 									<div class="flex-1">
@@ -513,6 +517,36 @@
 											<span>Parameters: {model.parameterSize}</span>
 											<span>Quantization: {model.quantizationLevel}</span>
 										</div>
+										<!-- Capabilities (from Ollama runtime - verified) -->
+										{#if caps.length > 0}
+											<div class="mt-2 flex flex-wrap gap-1.5">
+												{#if caps.includes('vision')}
+													<span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-purple-900/50 text-purple-300">
+														<span>👁</span><span>Vision</span>
+													</span>
+												{/if}
+												{#if caps.includes('tools')}
+													<span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-blue-900/50 text-blue-300">
+														<span>🔧</span><span>Tools</span>
+													</span>
+												{/if}
+												{#if caps.includes('thinking')}
+													<span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-pink-900/50 text-pink-300">
+														<span>🧠</span><span>Thinking</span>
+													</span>
+												{/if}
+												{#if caps.includes('embedding')}
+													<span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-amber-900/50 text-amber-300">
+														<span>📊</span><span>Embedding</span>
+													</span>
+												{/if}
+												{#if caps.includes('code')}
+													<span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-emerald-900/50 text-emerald-300">
+														<span>💻</span><span>Code</span>
+													</span>
+												{/if}
+											</div>
+										{/if}
 									</div>
 									<div class="flex items-center gap-2">
 										{#if deleteConfirm === model.name}
