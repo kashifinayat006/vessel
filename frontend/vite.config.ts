@@ -4,11 +4,12 @@ import { defineConfig } from 'vite';
 // Use environment variable or default to localhost (works with host network mode)
 const ollamaUrl = process.env.OLLAMA_API_URL || 'http://localhost:11434';
 const backendUrl = process.env.BACKEND_URL || 'http://localhost:9090';
+const devPort = parseInt(process.env.DEV_PORT || '7842', 10);
 
 export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
-		port: 7842,
+		port: devPort,
 		proxy: {
 			// Backend health check
 			'/health': {

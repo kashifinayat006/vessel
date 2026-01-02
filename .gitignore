@@ -36,3 +36,8 @@ docker-compose.override.yml
 
 # Claude Code project instructions (local only)
 CLAUDE.md
+
+# Dev artifacts
+dev.env
+backend/vessel-backend
+data/
