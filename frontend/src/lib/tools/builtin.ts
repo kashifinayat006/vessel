@@ -291,13 +291,14 @@ interface FetchUrlArgs {
 	url: string;
 	extract?: 'text' | 'title' | 'links' | 'all';
 	maxLength?: number;
+	timeout?: number;
 }
 
 const fetchUrlDefinition: ToolDefinition = {
 	type: 'function',
 	function: {
 		name: 'fetch_url',
-		description: 'Fetches and reads content from a specific URL. Use after web_search to read full content from a result URL, or when user provides a URL directly.',
+		description: 'Fetches and reads content from a URL. If content is truncated, you can retry with a larger maxLength. Use after web_search to read full content, or when user provides a URL directly.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -312,7 +313,11 @@ const fetchUrlDefinition: ToolDefinition = {
 				},
 				maxLength: {
 					type: 'number',
-					description: 'Max text length (default: 5000)'
+					description: 'Max content length in bytes. Start with 50000, increase to 200000 or 500000 if truncated. Max: 2000000'
+				},
+				timeout: {
+					type: 'number',
+					description: 'Request timeout in seconds (default: 30, max: 120). Increase for slow sites.'
 				}
 			},
 			required: ['url']
@@ -320,21 +325,35 @@ const fetchUrlDefinition: ToolDefinition = {
 	}
 };
 
+interface ProxyFetchResult {
+	html: string;
+	finalUrl: string;
+	truncated?: boolean;
+	originalSize?: number;
+	returnedSize?: number;
+}
+
 /**
  * Try to fetch URL via backend proxy first (bypasses CORS), fall back to direct fetch
  */
-async function fetchViaProxy(url: string, maxLength: number): Promise<{ html: string; finalUrl: string } | { error: string }> {
+async function fetchViaProxy(url: string, maxLength: number, timeout: number): Promise<ProxyFetchResult | { error: string }> {
 	// Try backend proxy first
 	try {
 		const proxyResponse = await fetch('/api/v1/proxy/fetch', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ url, maxLength })
+			body: JSON.stringify({ url, maxLength, timeout })
 		});
 
 		if (proxyResponse.ok) {
 			const data = await proxyResponse.json();
-			return { html: data.content, finalUrl: data.url };
+			return {
+				html: data.content,
+				finalUrl: data.url,
+				truncated: data.truncated,
+				originalSize: data.originalSize,
+				returnedSize: data.returnedSize
+			};
 		}
 
 		// If proxy returns an error, extract it
@@ -380,7 +399,7 @@ async function fetchViaProxy(url: string, maxLength: number): Promise<{ html: st
 }
 
 const fetchUrlHandler: BuiltinToolHandler<FetchUrlArgs> = async (args) => {
-	const { url, extract = 'text', maxLength = 5000 } = args;
+	const { url, extract = 'text', maxLength = 50000, timeout = 30 } = args;
 
 	try {
 		const parsedUrl = new URL(url);
@@ -389,12 +408,12 @@ const fetchUrlHandler: BuiltinToolHandler<FetchUrlArgs> = async (args) => {
 		}
 
 		// Fetch via proxy or direct
-		const result = await fetchViaProxy(url, maxLength);
+		const result = await fetchViaProxy(url, maxLength, timeout);
 		if ('error' in result) {
 			return result;
 		}
 
-		const { html, finalUrl } = result;
+		const { html, finalUrl, truncated, originalSize, returnedSize } = result;
 
 		const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
 		const title = titleMatch ? titleMatch[1].trim() : null;
@@ -419,21 +438,34 @@ const fetchUrlHandler: BuiltinToolHandler<FetchUrlArgs> = async (args) => {
 		})).filter(link => link.url && !link.url.startsWith('#'));
 
 		if (extract === 'links') {
-			return links;
+			return truncated
+				? { links, warning: `Content was truncated (${returnedSize ?? maxLength} bytes). Some links may be missing.` }
+				: links;
 		}
 
 		const text = stripHtml(html).substring(0, maxLength);
 
+		// Build response with truncation info
+		const buildResponse = (data: unknown) => {
+			if (!truncated) return data;
+			const suggestedSize = originalSize ? Math.min(originalSize * 2, 2000000) : maxLength * 2;
+			return {
+				...(typeof data === 'object' ? data : { content: data }),
+				_truncated: true,
+				_hint: `Content truncated to ${returnedSize ?? maxLength} bytes. ${originalSize ? `Original was ${originalSize} bytes. ` : ''}Retry with larger maxLength (e.g., ${suggestedSize}) to get full content.`
+			};
+		};
+
 		if (extract === 'text') {
-			return text;
+			return buildResponse(text);
 		}
 
-		return {
+		return buildResponse({
 			title,
 			text,
 			links: links.slice(0, 20),
 			url: finalUrl
-		};
+		});
 	} catch (error) {
 		return { error: `Failed to fetch URL: ${error instanceof Error ? error.message : 'Unknown error'}` };
 	}

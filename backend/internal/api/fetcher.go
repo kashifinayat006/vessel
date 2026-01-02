@@ -29,11 +29,13 @@ const (
 
 // FetchResult contains the result of a URL fetch
 type FetchResult struct {
-	Content     string
-	ContentType string
-	FinalURL    string
-	StatusCode  int
-	Method      FetchMethod
+	Content      string
+	ContentType  string
+	FinalURL     string
+	StatusCode   int
+	Method       FetchMethod
+	Truncated    bool // True if content was truncated due to MaxLength
+	OriginalSize int  // Original size before truncation (0 if not truncated)
 }
 
 // FetchOptions configures the fetch behavior
@@ -401,16 +403,22 @@ func (f *Fetcher) fetchWithChrome(ctx context.Context, url string, opts FetchOpt
 	}
 
 	// Truncate if needed
+	var truncated bool
+	var originalSize int
 	if len(content) > opts.MaxLength {
+		originalSize = len(content)
 		content = content[:opts.MaxLength]
+		truncated = true
 	}
 
 	return &FetchResult{
-		Content:     content,
-		ContentType: "text/html",
-		FinalURL:    finalURL,
-		StatusCode:  200,
-		Method:      FetchMethodChrome,
+		Content:      content,
+		ContentType:  "text/html",
+		FinalURL:     finalURL,
+		StatusCode:   200,
+		Method:       FetchMethodChrome,
+		Truncated:    truncated,
+		OriginalSize: originalSize,
 	}, nil
 }
 
@@ -420,7 +428,6 @@ func (f *Fetcher) fetchWithCurl(ctx context.Context, url string, curlPath string
 		"-sS",                          // Silent but show errors
 		"-L",                           // Follow redirects
 		"--max-time", fmt.Sprintf("%d", int(opts.Timeout.Seconds())),
-		"--max-filesize", fmt.Sprintf("%d", opts.MaxLength),
 		"-A", opts.UserAgent,           // User agent
 		"-w", "\n---CURL_INFO---\n%{content_type}\n%{url_effective}\n%{http_code}", // Output metadata
 		"--compressed",                 // Accept compressed responses
@@ -476,16 +483,22 @@ func (f *Fetcher) fetchWithCurl(ctx context.Context, url string, curlPath string
 	fmt.Sscanf(metaLines[2], "%d", &statusCode)
 
 	// Truncate content if needed
+	var truncated bool
+	var originalSize int
 	if len(content) > opts.MaxLength {
+		originalSize = len(content)
 		content = content[:opts.MaxLength]
+		truncated = true
 	}
 
 	return &FetchResult{
-		Content:     content,
-		ContentType: contentType,
-		FinalURL:    finalURL,
-		StatusCode:  statusCode,
-		Method:      FetchMethodCurl,
+		Content:      content,
+		ContentType:  contentType,
+		FinalURL:     finalURL,
+		StatusCode:   statusCode,
+		Method:       FetchMethodCurl,
+		Truncated:    truncated,
+		OriginalSize: originalSize,
 	}, nil
 }
 
@@ -541,17 +554,23 @@ func (f *Fetcher) fetchWithWget(ctx context.Context, url string, wgetPath string
 	content := stdout.String()
 
 	// Truncate content if needed
+	var truncated bool
+	var originalSize int
 	if len(content) > opts.MaxLength {
+		originalSize = len(content)
 		content = content[:opts.MaxLength]
+		truncated = true
 	}
 
 	// wget doesn't easily provide metadata, so we use defaults
 	return &FetchResult{
-		Content:     content,
-		ContentType: "text/html", // Assume HTML (wget doesn't easily give us this)
-		FinalURL:    url,         // wget doesn't easily give us the final URL
-		StatusCode:  200,
-		Method:      FetchMethodWget,
+		Content:      content,
+		ContentType:  "text/html", // Assume HTML (wget doesn't easily give us this)
+		FinalURL:     url,         // wget doesn't easily give us the final URL
+		StatusCode:   200,
+		Method:       FetchMethodWget,
+		Truncated:    truncated,
+		OriginalSize: originalSize,
 	}, nil
 }
 
@@ -599,18 +618,28 @@ func (f *Fetcher) fetchNative(ctx context.Context, url string, opts FetchOptions
 	}
 	defer resp.Body.Close()
 
-	// Read body with limit
-	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(opts.MaxLength)))
+	// Read body with limit + 1 byte to detect truncation
+	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(opts.MaxLength)+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	var truncated bool
+	var originalSize int
+	if len(body) > opts.MaxLength {
+		originalSize = len(body) // Note: this is just maxLength+1, not true original
+		body = body[:opts.MaxLength]
+		truncated = true
+	}
+
 	return &FetchResult{
-		Content:     string(body),
-		ContentType: resp.Header.Get("Content-Type"),
-		FinalURL:    resp.Request.URL.String(),
-		StatusCode:  resp.StatusCode,
-		Method:      FetchMethodNative,
+		Content:      string(body),
+		ContentType:  resp.Header.Get("Content-Type"),
+		FinalURL:     resp.Request.URL.String(),
+		StatusCode:   resp.StatusCode,
+		Method:       FetchMethodNative,
+		Truncated:    truncated,
+		OriginalSize: originalSize,
 	}, nil
 }
 

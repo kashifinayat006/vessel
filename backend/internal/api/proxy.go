@@ -12,6 +12,7 @@ import (
 type URLFetchRequest struct {
 	URL       string `json:"url" binding:"required"`
 	MaxLength int    `json:"maxLength"`
+	Timeout   int    `json:"timeout"` // Timeout in seconds
 }
 
 // URLFetchProxyHandler returns a handler that fetches URLs for the frontend
@@ -42,10 +43,16 @@ func URLFetchProxyHandler() gin.HandlerFunc {
 
 		// Set up fetch options
 		opts := DefaultFetchOptions()
-		opts.Timeout = 30 * time.Second
 
-		// Set max length (default 500KB)
-		if req.MaxLength > 0 && req.MaxLength <= 500000 {
+		// Set timeout (default 30s, max 120s)
+		if req.Timeout > 0 && req.Timeout <= 120 {
+			opts.Timeout = time.Duration(req.Timeout) * time.Second
+		} else {
+			opts.Timeout = 30 * time.Second
+		}
+
+		// Set max length (default 500KB, max 2MB)
+		if req.MaxLength > 0 && req.MaxLength <= 2000000 {
 			opts.MaxLength = req.MaxLength
 		}
 
@@ -66,13 +73,22 @@ func URLFetchProxyHandler() gin.HandlerFunc {
 		}
 
 		// Return the content
-		c.JSON(http.StatusOK, gin.H{
+		response := gin.H{
 			"content":     result.Content,
 			"contentType": result.ContentType,
 			"url":         result.FinalURL,
 			"status":      result.StatusCode,
 			"fetchMethod": string(result.Method),
-		})
+		}
+
+		// Include truncation info if content was truncated
+		if result.Truncated {
+			response["truncated"] = true
+			response["originalSize"] = result.OriginalSize
+			response["returnedSize"] = len(result.Content)
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
 }
 
