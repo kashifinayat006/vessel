@@ -292,7 +292,9 @@ class MathParser {
 const mathParser = new MathParser();
 
 const calculateHandler: BuiltinToolHandler<CalculateArgs> = (args) => {
-	const { expression, precision = 10 } = args;
+	const { expression } = args;
+	// Coerce to number - Ollama models sometimes output numbers as strings
+	const precision = Number(args.precision) || 10;
 
 	try {
 		const result = mathParser.parse(expression);
@@ -423,7 +425,10 @@ async function fetchViaProxy(url: string, maxLength: number, timeout: number): P
 }
 
 const fetchUrlHandler: BuiltinToolHandler<FetchUrlArgs> = async (args) => {
-	const { url, extract = 'text', maxLength = 50000, timeout = 30 } = args;
+	const { url, extract = 'text' } = args;
+	// Coerce to numbers - Ollama models sometimes output numbers as strings
+	const maxLength = Number(args.maxLength) || 50000;
+	const timeout = Number(args.timeout) || 30;
 
 	try {
 		const parsedUrl = new URL(url);
@@ -683,7 +688,10 @@ const webSearchDefinition: ToolDefinition = {
 };
 
 const webSearchHandler: BuiltinToolHandler<WebSearchArgs> = async (args) => {
-	const { query, maxResults = 5, site, freshness, region, timeout } = args;
+	const { query, site, freshness, region } = args;
+	// Coerce to numbers - Ollama models sometimes output numbers as strings
+	const maxResults = Number(args.maxResults) || 5;
+	const timeout = Number(args.timeout) || undefined;
 
 	if (!query || query.trim() === '') {
 		return { error: 'Search query is required' };
