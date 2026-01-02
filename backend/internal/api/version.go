@@ -44,7 +44,7 @@ func getGitHubRepo() string {
 	if repo := os.Getenv("GITHUB_REPO"); repo != "" {
 		return repo
 	}
-	return "vikingowl/vessel"
+	return "VikingOwl91/vessel"
 }
 
 // fetchLatestRelease fetches the latest release from GitHub
