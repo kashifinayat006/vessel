@@ -182,6 +182,15 @@
 		}
 	});
 
+	// Sync custom context limit with settings
+	$effect(() => {
+		if (settingsState.useCustomParameters) {
+			contextManager.setCustomContextLimit(settingsState.num_ctx);
+		} else {
+			contextManager.setCustomContextLimit(null);
+		}
+	});
+
 	// Update context manager when messages change
 	$effect(() => {
 		contextManager.updateMessages(chatState.visibleMessages);

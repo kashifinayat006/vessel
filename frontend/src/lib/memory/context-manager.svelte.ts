@@ -24,8 +24,14 @@ class ContextManager {
 	/** Current model name */
 	currentModel = $state<string>('');
 
-	/** Maximum context length for current model */
-	maxTokens = $state<number>(4096);
+	/** Maximum context length for current model (from model lookup) */
+	modelMaxTokens = $state<number>(4096);
+
+	/** Custom context limit override (from user settings) */
+	customMaxTokens = $state<number | null>(null);
+
+	/** Effective max tokens (custom override or model default) */
+	maxTokens = $derived(this.customMaxTokens ?? this.modelMaxTokens);
 
 	/**
 	 * Cached token estimates for messages (id -> estimate)
@@ -94,7 +100,15 @@ class ContextManager {
 	 */
 	setModel(modelName: string): void {
 		this.currentModel = modelName;
-		this.maxTokens = getModelContextLimit(modelName);
+		this.modelMaxTokens = getModelContextLimit(modelName);
+	}
+
+	/**
+	 * Set custom context limit override
+	 * Pass null to clear and use model default
+	 */
+	setCustomContextLimit(tokens: number | null): void {
+		this.customMaxTokens = tokens;
 	}
 
 	/**
