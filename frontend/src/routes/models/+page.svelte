@@ -641,7 +641,7 @@
 			</div>
 
 			<!-- Capability Filters (matches ollama.com capabilities) -->
-			<div class="mb-6 flex flex-wrap items-center gap-2">
+			<div class="mb-4 flex flex-wrap items-center gap-2">
 				<span class="text-sm text-theme-muted">Capabilities:</span>
 				<button
 					type="button"
@@ -693,14 +693,74 @@
 					<span>☁️</span>
 					<span>Cloud</span>
 				</button>
+			</div>
 
-				{#if modelRegistry.selectedCapabilities.length > 0 || modelRegistry.modelType || modelRegistry.searchQuery || modelRegistry.sortBy !== 'pulls_desc'}
+			<!-- Size Range Filters -->
+			<div class="mb-4 flex flex-wrap items-center gap-2">
+				<span class="text-sm text-theme-muted">Size:</span>
+				<button
+					type="button"
+					onclick={() => modelRegistry.toggleSizeRange('small')}
+					class="rounded-full px-3 py-1 text-sm transition-colors {modelRegistry.hasSizeRange('small')
+						? 'bg-emerald-600 text-theme-primary'
+						: 'bg-theme-secondary text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary'}"
+				>
+					≤3B
+				</button>
+				<button
+					type="button"
+					onclick={() => modelRegistry.toggleSizeRange('medium')}
+					class="rounded-full px-3 py-1 text-sm transition-colors {modelRegistry.hasSizeRange('medium')
+						? 'bg-emerald-600 text-theme-primary'
+						: 'bg-theme-secondary text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary'}"
+				>
+					4-13B
+				</button>
+				<button
+					type="button"
+					onclick={() => modelRegistry.toggleSizeRange('large')}
+					class="rounded-full px-3 py-1 text-sm transition-colors {modelRegistry.hasSizeRange('large')
+						? 'bg-emerald-600 text-theme-primary'
+						: 'bg-theme-secondary text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary'}"
+				>
+					14-70B
+				</button>
+				<button
+					type="button"
+					onclick={() => modelRegistry.toggleSizeRange('xlarge')}
+					class="rounded-full px-3 py-1 text-sm transition-colors {modelRegistry.hasSizeRange('xlarge')
+						? 'bg-emerald-600 text-theme-primary'
+						: 'bg-theme-secondary text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary'}"
+				>
+					>70B
+				</button>
+			</div>
+
+			<!-- Family Filter + Clear All -->
+			<div class="mb-6 flex flex-wrap items-center gap-4">
+				{#if modelRegistry.availableFamilies.length > 0}
+					<div class="flex items-center gap-2">
+						<span class="text-sm text-theme-muted">Family:</span>
+						<select
+							value={modelRegistry.selectedFamily}
+							onchange={(e) => modelRegistry.setFamily((e.target as HTMLSelectElement).value)}
+							class="rounded-lg border border-theme bg-theme-secondary px-3 py-1.5 text-sm text-theme-primary focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						>
+							<option value="">All Families</option>
+							{#each modelRegistry.availableFamilies as family}
+								<option value={family}>{family}</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
+
+				{#if modelRegistry.selectedCapabilities.length > 0 || modelRegistry.selectedSizeRanges.length > 0 || modelRegistry.selectedFamily || modelRegistry.modelType || modelRegistry.searchQuery || modelRegistry.sortBy !== 'pulls_desc'}
 					<button
 						type="button"
 						onclick={() => { modelRegistry.clearFilters(); searchInput = ''; }}
-						class="ml-2 text-sm text-theme-muted hover:text-theme-primary"
+						class="text-sm text-theme-muted hover:text-theme-primary"
 					>
-						Clear filters
+						Clear all filters
 					</button>
 				{/if}
 			</div>

@@ -5,12 +5,15 @@
 
 import {
 	fetchRemoteModels,
+	fetchRemoteFamilies,
 	getSyncStatus,
 	syncModels,
 	type RemoteModel,
 	type SyncStatus,
 	type ModelSearchOptions,
-	type ModelSortOption
+	type ModelSortOption,
+	type SizeRange,
+	type ContextRange
 } from '$lib/api/model-registry';
 
 /** Store state */
@@ -25,6 +28,10 @@ class ModelRegistryState {
 	searchQuery = $state('');
 	modelType = $state<'official' | 'community' | ''>('');
 	selectedCapabilities = $state<string[]>([]);
+	selectedSizeRanges = $state<SizeRange[]>([]);
+	selectedContextRanges = $state<ContextRange[]>([]);
+	selectedFamily = $state<string>('');
+	availableFamilies = $state<string[]>([]);
 	sortBy = $state<ModelSortOption>('pulls_desc');
 	currentPage = $state(0);
 	pageSize = $state(24);
@@ -67,6 +74,18 @@ class ModelRegistryState {
 
 			if (this.selectedCapabilities.length > 0) {
 				options.capabilities = this.selectedCapabilities;
+			}
+
+			if (this.selectedSizeRanges.length > 0) {
+				options.sizeRanges = this.selectedSizeRanges;
+			}
+
+			if (this.selectedContextRanges.length > 0) {
+				options.contextRanges = this.selectedContextRanges;
+			}
+
+			if (this.selectedFamily) {
+				options.family = this.selectedFamily;
 			}
 
 			const response = await fetchRemoteModels(options);
@@ -117,6 +136,68 @@ class ModelRegistryState {
 	 */
 	hasCapability(capability: string): boolean {
 		return this.selectedCapabilities.includes(capability);
+	}
+
+	/**
+	 * Toggle a size range filter
+	 */
+	async toggleSizeRange(size: SizeRange): Promise<void> {
+		const index = this.selectedSizeRanges.indexOf(size);
+		if (index === -1) {
+			this.selectedSizeRanges = [...this.selectedSizeRanges, size];
+		} else {
+			this.selectedSizeRanges = this.selectedSizeRanges.filter((s) => s !== size);
+		}
+		this.currentPage = 0;
+		await this.loadModels();
+	}
+
+	/**
+	 * Check if a size range is selected
+	 */
+	hasSizeRange(size: SizeRange): boolean {
+		return this.selectedSizeRanges.includes(size);
+	}
+
+	/**
+	 * Toggle a context range filter
+	 */
+	async toggleContextRange(range: ContextRange): Promise<void> {
+		const index = this.selectedContextRanges.indexOf(range);
+		if (index === -1) {
+			this.selectedContextRanges = [...this.selectedContextRanges, range];
+		} else {
+			this.selectedContextRanges = this.selectedContextRanges.filter((r) => r !== range);
+		}
+		this.currentPage = 0;
+		await this.loadModels();
+	}
+
+	/**
+	 * Check if a context range is selected
+	 */
+	hasContextRange(range: ContextRange): boolean {
+		return this.selectedContextRanges.includes(range);
+	}
+
+	/**
+	 * Set family filter
+	 */
+	async setFamily(family: string): Promise<void> {
+		this.selectedFamily = family;
+		this.currentPage = 0;
+		await this.loadModels();
+	}
+
+	/**
+	 * Load available families for filter dropdown
+	 */
+	async loadFamilies(): Promise<void> {
+		try {
+			this.availableFamilies = await fetchRemoteFamilies();
+		} catch (err) {
+			console.error('Failed to load families:', err);
+		}
 	}
 
 	/**
@@ -200,6 +281,9 @@ class ModelRegistryState {
 		this.searchQuery = '';
 		this.modelType = '';
 		this.selectedCapabilities = [];
+		this.selectedSizeRanges = [];
+		this.selectedContextRanges = [];
+		this.selectedFamily = '';
 		this.sortBy = 'pulls_desc';
 		this.currentPage = 0;
 		await this.loadModels();
@@ -209,7 +293,7 @@ class ModelRegistryState {
 	 * Initialize the store
 	 */
 	async init(): Promise<void> {
-		await Promise.all([this.loadSyncStatus(), this.loadModels()]);
+		await Promise.all([this.loadSyncStatus(), this.loadModels(), this.loadFamilies()]);
 	}
 }
 

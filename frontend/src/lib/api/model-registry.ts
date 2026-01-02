@@ -49,11 +49,20 @@ export interface SyncStatus {
 /** Sort options for model list */
 export type ModelSortOption = 'name_asc' | 'name_desc' | 'pulls_asc' | 'pulls_desc' | 'updated_desc';
 
+/** Size range filter options */
+export type SizeRange = 'small' | 'medium' | 'large' | 'xlarge';
+
+/** Context length range filter options */
+export type ContextRange = 'standard' | 'extended' | 'large' | 'unlimited';
+
 /** Search/filter options */
 export interface ModelSearchOptions {
 	search?: string;
 	type?: 'official' | 'community';
 	capabilities?: string[];
+	sizeRanges?: SizeRange[];
+	contextRanges?: ContextRange[];
+	family?: string;
 	sort?: ModelSortOption;
 	limit?: number;
 	offset?: number;
@@ -73,6 +82,13 @@ export async function fetchRemoteModels(options: ModelSearchOptions = {}): Promi
 	if (options.capabilities && options.capabilities.length > 0) {
 		params.set('capabilities', options.capabilities.join(','));
 	}
+	if (options.sizeRanges && options.sizeRanges.length > 0) {
+		params.set('sizeRange', options.sizeRanges.join(','));
+	}
+	if (options.contextRanges && options.contextRanges.length > 0) {
+		params.set('contextRange', options.contextRanges.join(','));
+	}
+	if (options.family) params.set('family', options.family);
 	if (options.sort) params.set('sort', options.sort);
 	if (options.limit) params.set('limit', String(options.limit));
 	if (options.offset) params.set('offset', String(options.offset));
@@ -85,6 +101,20 @@ export async function fetchRemoteModels(options: ModelSearchOptions = {}): Promi
 	}
 
 	return response.json();
+}
+
+/**
+ * Get unique model families for filter dropdowns (remote models)
+ */
+export async function fetchRemoteFamilies(): Promise<string[]> {
+	const response = await fetch(`${API_BASE}/remote/families`);
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch families: ${response.statusText}`);
+	}
+
+	const data = await response.json();
+	return data.families;
 }
 
 /**

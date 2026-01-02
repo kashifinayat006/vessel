@@ -12,6 +12,28 @@
 
 	let { model, onSelect }: Props = $props();
 
+	/**
+	 * Format a date as relative time (e.g., "2d ago", "3w ago")
+	 */
+	function formatRelativeTime(date: string | Date | undefined): string {
+		if (!date) return '';
+		const now = Date.now();
+		const then = new Date(date).getTime();
+		const diff = now - then;
+
+		const minutes = Math.floor(diff / 60000);
+		const hours = Math.floor(diff / 3600000);
+		const days = Math.floor(diff / 86400000);
+		const weeks = Math.floor(days / 7);
+		const months = Math.floor(days / 30);
+
+		if (minutes < 60) return `${minutes}m ago`;
+		if (hours < 24) return `${hours}h ago`;
+		if (days < 7) return `${days}d ago`;
+		if (weeks < 4) return `${weeks}w ago`;
+		return `${months}mo ago`;
+	}
+
 	// Capability badges config (matches ollama.com capabilities)
 	const capabilityBadges: Record<string, { icon: string; color: string; label: string }> = {
 		vision: { icon: '👁', color: 'bg-purple-900/50 text-purple-300', label: 'Vision' },
@@ -90,6 +112,16 @@
 					<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
 				</svg>
 				<span>{formatContextLength(model.contextLength)}</span>
+			</div>
+		{/if}
+
+		<!-- Last Updated -->
+		{#if model.ollamaUpdatedAt}
+			<div class="flex items-center gap-1" title="Last updated on Ollama: {new Date(model.ollamaUpdatedAt).toLocaleDateString()}">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+				<span>{formatRelativeTime(model.ollamaUpdatedAt)}</span>
 			</div>
 		{/if}
 	</div>

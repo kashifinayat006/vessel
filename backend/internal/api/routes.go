@@ -83,6 +83,8 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string, appVersion string)
 			// === Remote Models (from ollama.com cache) ===
 			// List/search remote models (from cache)
 			models.GET("/remote", modelRegistry.ListRemoteModelsHandler())
+			// Get unique model families for filter dropdowns
+			models.GET("/remote/families", modelRegistry.GetRemoteFamiliesHandler())
 			// Get single model details
 			models.GET("/remote/:slug", modelRegistry.GetRemoteModelHandler())
 			// Fetch detailed info from Ollama (requires model to be pulled)

@@ -70,6 +70,7 @@ type ScrapedModel struct {
 	PullCount    int64
 	Tags         []string
 	Capabilities []string
+	UpdatedAt    string // Relative time like "2 weeks ago" converted to RFC3339
 }
 
 // scrapeOllamaLibrary fetches the model list from ollama.com/library
@@ -168,6 +169,14 @@ func parseLibraryHTML(html string) ([]ScrapedModel, error) {
 			capabilities = append(capabilities, "cloud")
 		}
 
+		// Extract updated time from <span x-test-updated>2 weeks ago</span>
+		updatedPattern := regexp.MustCompile(`<span[^>]*x-test-updated[^>]*>([^<]+)</span>`)
+		updatedAt := ""
+		if um := updatedPattern.FindStringSubmatch(cardContent); len(um) > 1 {
+			relativeTime := strings.TrimSpace(um[1])
+			updatedAt = parseRelativeTime(relativeTime)
+		}
+
 		models[slug] = &ScrapedModel{
 			Slug:         slug,
 			Name:         slug,
@@ -176,6 +185,7 @@ func parseLibraryHTML(html string) ([]ScrapedModel, error) {
 			PullCount:    pullCount,
 			Tags:         tags,
 			Capabilities: capabilities,
+			UpdatedAt:    updatedAt,
 		}
 	}
 
@@ -209,6 +219,52 @@ func decodeHTMLEntities(s string) string {
 		s = strings.ReplaceAll(s, entity, char)
 	}
 	return s
+}
+
+// parseRelativeTime converts relative time strings like "2 weeks ago" to RFC3339 timestamps
+func parseRelativeTime(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return ""
+	}
+
+	now := time.Now()
+
+	// Parse patterns like "2 weeks ago", "1 month ago", "3 days ago"
+	pattern := regexp.MustCompile(`(\d+)\s*(second|minute|hour|day|week|month|year)s?\s*ago`)
+	matches := pattern.FindStringSubmatch(s)
+	if len(matches) < 3 {
+		return ""
+	}
+
+	num, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return ""
+	}
+
+	unit := matches[2]
+	var duration time.Duration
+
+	switch unit {
+	case "second":
+		duration = time.Duration(num) * time.Second
+	case "minute":
+		duration = time.Duration(num) * time.Minute
+	case "hour":
+		duration = time.Duration(num) * time.Hour
+	case "day":
+		duration = time.Duration(num) * 24 * time.Hour
+	case "week":
+		duration = time.Duration(num) * 7 * 24 * time.Hour
+	case "month":
+		duration = time.Duration(num) * 30 * 24 * time.Hour
+	case "year":
+		duration = time.Duration(num) * 365 * 24 * time.Hour
+	default:
+		return ""
+	}
+
+	return now.Add(-duration).Format(time.RFC3339)
 }
 
 // extractDescription tries to find the description for a model
@@ -417,15 +473,16 @@ func (s *ModelRegistryService) SyncModels(ctx context.Context, fetchDetails bool
 		modelType := inferModelType(model.Slug)
 
 		_, err := s.db.ExecContext(ctx, `
-			INSERT INTO remote_models (slug, name, description, model_type, url, pull_count, tags, capabilities, scraped_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO remote_models (slug, name, description, model_type, url, pull_count, tags, capabilities, ollama_updated_at, scraped_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(slug) DO UPDATE SET
 				description = COALESCE(NULLIF(excluded.description, ''), remote_models.description),
 				model_type = excluded.model_type,
 				pull_count = excluded.pull_count,
 				capabilities = excluded.capabilities,
+				ollama_updated_at = COALESCE(excluded.ollama_updated_at, remote_models.ollama_updated_at),
 				scraped_at = excluded.scraped_at
-		`, model.Slug, model.Name, model.Description, modelType, model.URL, model.PullCount, string(tagsJSON), string(capsJSON), now)
+		`, model.Slug, model.Name, model.Description, modelType, model.URL, model.PullCount, string(tagsJSON), string(capsJSON), model.UpdatedAt, now)
 
 		if err != nil {
 			log.Printf("Failed to upsert model %s: %v", model.Slug, err)
@@ -572,6 +629,106 @@ func formatParamCount(n int64) string {
 	return fmt.Sprintf("%d", n)
 }
 
+// parseParamSizeToFloat extracts numeric value from parameter size strings like "8b", "70b", "1.5b"
+// Returns value in billions (e.g., "8b" -> 8.0, "70b" -> 70.0, "500m" -> 0.5)
+func parseParamSizeToFloat(s string) float64 {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return 0
+	}
+
+	// Handle suffix
+	multiplier := 1.0
+	if strings.HasSuffix(s, "b") {
+		s = strings.TrimSuffix(s, "b")
+	} else if strings.HasSuffix(s, "m") {
+		s = strings.TrimSuffix(s, "m")
+		multiplier = 0.001 // Convert millions to billions
+	}
+
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return f * multiplier
+	}
+	return 0
+}
+
+// getSizeRange returns the size range category for a given parameter size
+// small: ≤3B, medium: 4-13B, large: 14-70B, xlarge: >70B
+func getSizeRange(paramSize string) string {
+	size := parseParamSizeToFloat(paramSize)
+	if size <= 0 {
+		return ""
+	}
+	if size <= 3 {
+		return "small"
+	}
+	if size <= 13 {
+		return "medium"
+	}
+	if size <= 70 {
+		return "large"
+	}
+	return "xlarge"
+}
+
+// modelMatchesSizeRanges checks if any of the model's tags fall within the requested size ranges
+// A model matches if at least one of its tags is in any of the requested ranges
+func modelMatchesSizeRanges(tags []string, sizeRanges []string) bool {
+	if len(tags) == 0 || len(sizeRanges) == 0 {
+		return false
+	}
+	for _, tag := range tags {
+		tagRange := getSizeRange(tag)
+		if tagRange == "" {
+			continue
+		}
+		for _, sr := range sizeRanges {
+			if sr == tagRange {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// getContextRange returns the context range category for a given context length
+// standard: ≤8K, extended: 8K-32K, large: 32K-128K, unlimited: >128K
+func getContextRange(ctxLen int64) string {
+	if ctxLen <= 0 {
+		return ""
+	}
+	if ctxLen <= 8192 {
+		return "standard"
+	}
+	if ctxLen <= 32768 {
+		return "extended"
+	}
+	if ctxLen <= 131072 {
+		return "large"
+	}
+	return "unlimited"
+}
+
+// extractFamily extracts the model family from slug (e.g., "llama3.2" -> "llama", "qwen2.5" -> "qwen")
+func extractFamily(slug string) string {
+	// Remove namespace prefix for community models
+	if idx := strings.LastIndex(slug, "/"); idx != -1 {
+		slug = slug[idx+1:]
+	}
+	// Extract letters before any digits
+	family := ""
+	for _, r := range slug {
+		if r >= '0' && r <= '9' {
+			break
+		}
+		if r == '-' || r == '_' || r == '.' {
+			break
+		}
+		family += string(r)
+	}
+	return strings.ToLower(family)
+}
+
 // GetModel retrieves a single model from the database
 func (s *ModelRegistryService) GetModel(ctx context.Context, slug string) (*RemoteModel, error) {
 	row := s.db.QueryRowContext(ctx, `
@@ -584,40 +741,65 @@ func (s *ModelRegistryService) GetModel(ctx context.Context, slug string) (*Remo
 	return scanRemoteModel(row)
 }
 
+// ModelSearchParams holds all search/filter parameters
+type ModelSearchParams struct {
+	Query         string
+	ModelType     string
+	Capabilities  []string
+	SizeRanges    []string // small, medium, large, xlarge
+	ContextRanges []string // standard, extended, large, unlimited
+	Family        string
+	SortBy        string
+	Limit         int
+	Offset        int
+}
+
 // SearchModels searches for models in the database
 func (s *ModelRegistryService) SearchModels(ctx context.Context, query string, modelType string, capabilities []string, sortBy string, limit, offset int) ([]RemoteModel, int, error) {
+	return s.SearchModelsAdvanced(ctx, ModelSearchParams{
+		Query:        query,
+		ModelType:    modelType,
+		Capabilities: capabilities,
+		SortBy:       sortBy,
+		Limit:        limit,
+		Offset:       offset,
+	})
+}
+
+// SearchModelsAdvanced searches for models with all filter options
+func (s *ModelRegistryService) SearchModelsAdvanced(ctx context.Context, params ModelSearchParams) ([]RemoteModel, int, error) {
 	// Build query
 	baseQuery := `FROM remote_models WHERE 1=1`
 	args := []any{}
 
-	if query != "" {
+	if params.Query != "" {
 		baseQuery += ` AND (slug LIKE ? OR name LIKE ? OR description LIKE ?)`
-		q := "%" + query + "%"
+		q := "%" + params.Query + "%"
 		args = append(args, q, q, q)
 	}
 
-	if modelType != "" {
+	if params.ModelType != "" {
 		baseQuery += ` AND model_type = ?`
-		args = append(args, modelType)
+		args = append(args, params.ModelType)
 	}
 
 	// Filter by capabilities (JSON array contains)
-	for _, cap := range capabilities {
+	for _, cap := range params.Capabilities {
 		// Use JSON contains for SQLite - capabilities column stores JSON array like ["vision","code"]
 		baseQuery += ` AND capabilities LIKE ?`
 		args = append(args, `%"`+cap+`"%`)
 	}
 
-	// Get total count
-	var total int
-	countQuery := "SELECT COUNT(*) " + baseQuery
-	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
+	// Filter by family (extracted from slug)
+	if params.Family != "" {
+		// Match slugs that start with the family name
+		baseQuery += ` AND (slug LIKE ? OR slug LIKE ?)`
+		args = append(args, params.Family+"%", "%/"+params.Family+"%")
 	}
 
 	// Build ORDER BY clause based on sort parameter
 	orderBy := "pull_count DESC" // default: most popular
-	switch sortBy {
+	switch params.SortBy {
 	case "name_asc":
 		orderBy = "name ASC"
 	case "name_desc":
@@ -630,12 +812,25 @@ func (s *ModelRegistryService) SearchModels(ctx context.Context, query string, m
 		orderBy = "ollama_updated_at DESC NULLS LAST, scraped_at DESC"
 	}
 
-	// Get models
-	selectQuery := `SELECT slug, name, description, model_type, architecture, parameter_size,
-		context_length, embedding_length, quantization, capabilities, default_params,
-		license, pull_count, tags, tag_sizes, ollama_updated_at, details_fetched_at, scraped_at, url ` +
-		baseQuery + ` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`
-	args = append(args, limit, offset)
+	// For size/context filtering, we need to fetch all matching models first
+	// then filter and paginate in memory (these filters require computed values)
+	needsPostFilter := len(params.SizeRanges) > 0 || len(params.ContextRanges) > 0
+
+	var selectQuery string
+	if needsPostFilter {
+		// Fetch all (no limit/offset) for post-filtering
+		selectQuery = `SELECT slug, name, description, model_type, architecture, parameter_size,
+			context_length, embedding_length, quantization, capabilities, default_params,
+			license, pull_count, tags, tag_sizes, ollama_updated_at, details_fetched_at, scraped_at, url ` +
+			baseQuery + ` ORDER BY ` + orderBy
+	} else {
+		// Direct pagination
+		selectQuery = `SELECT slug, name, description, model_type, architecture, parameter_size,
+			context_length, embedding_length, quantization, capabilities, default_params,
+			license, pull_count, tags, tag_sizes, ollama_updated_at, details_fetched_at, scraped_at, url ` +
+			baseQuery + ` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`
+		args = append(args, params.Limit, params.Offset)
+	}
 
 	rows, err := s.db.QueryContext(ctx, selectQuery, args...)
 	if err != nil {
@@ -649,10 +844,64 @@ func (s *ModelRegistryService) SearchModels(ctx context.Context, query string, m
 		if err != nil {
 			return nil, 0, err
 		}
+
+		// Apply size range filter based on tags
+		if len(params.SizeRanges) > 0 {
+			if !modelMatchesSizeRanges(m.Tags, params.SizeRanges) {
+				continue // Skip models without matching size tags
+			}
+		}
+
+		// Apply context range filter
+		if len(params.ContextRanges) > 0 {
+			modelCtxRange := getContextRange(m.ContextLength)
+			if modelCtxRange == "" {
+				continue // Skip models without context info
+			}
+			found := false
+			for _, cr := range params.ContextRanges {
+				if cr == modelCtxRange {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+
 		models = append(models, *m)
 	}
 
-	return models, total, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	// Get total after filtering
+	total := len(models)
+
+	// Apply pagination for post-filtered results
+	if needsPostFilter {
+		if params.Offset >= len(models) {
+			models = []RemoteModel{}
+		} else {
+			end := params.Offset + params.Limit
+			if end > len(models) {
+				end = len(models)
+			}
+			models = models[params.Offset:end]
+		}
+	} else {
+		// Get total count from DB for non-post-filtered queries
+		countQuery := "SELECT COUNT(*) " + baseQuery
+		// Remove the limit/offset args we added
+		countArgs := args[:len(args)-2]
+		if err := s.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return models, total, nil
 }
 
 // GetSyncStatus returns info about when models were last synced
@@ -764,31 +1013,53 @@ func scanRemoteModelRows(rows *sql.Rows) (*RemoteModel, error) {
 // ListRemoteModelsHandler returns a handler for listing/searching remote models
 func (s *ModelRegistryService) ListRemoteModelsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		query := c.Query("search")
-		modelType := c.Query("type")
-		sortBy := c.Query("sort") // name_asc, name_desc, pulls_asc, pulls_desc, updated_desc
-		limit := 50
-		offset := 0
+		params := ModelSearchParams{
+			Query:     c.Query("search"),
+			ModelType: c.Query("type"),
+			SortBy:    c.Query("sort"), // name_asc, name_desc, pulls_asc, pulls_desc, updated_desc
+			Family:    c.Query("family"),
+			Limit:     50,
+			Offset:    0,
+		}
 
 		if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 200 {
-			limit = l
+			params.Limit = l
 		}
 		if o, err := strconv.Atoi(c.Query("offset")); err == nil && o >= 0 {
-			offset = o
+			params.Offset = o
 		}
 
 		// Parse capabilities filter (comma-separated)
-		var capabilities []string
 		if caps := c.Query("capabilities"); caps != "" {
 			for _, cap := range strings.Split(caps, ",") {
 				cap = strings.TrimSpace(cap)
 				if cap != "" {
-					capabilities = append(capabilities, cap)
+					params.Capabilities = append(params.Capabilities, cap)
 				}
 			}
 		}
 
-		models, total, err := s.SearchModels(c.Request.Context(), query, modelType, capabilities, sortBy, limit, offset)
+		// Parse size range filter (comma-separated: small,medium,large,xlarge)
+		if sizes := c.Query("sizeRange"); sizes != "" {
+			for _, sz := range strings.Split(sizes, ",") {
+				sz = strings.TrimSpace(strings.ToLower(sz))
+				if sz == "small" || sz == "medium" || sz == "large" || sz == "xlarge" {
+					params.SizeRanges = append(params.SizeRanges, sz)
+				}
+			}
+		}
+
+		// Parse context range filter (comma-separated: standard,extended,large,unlimited)
+		if ctx := c.Query("contextRange"); ctx != "" {
+			for _, cr := range strings.Split(ctx, ",") {
+				cr = strings.TrimSpace(strings.ToLower(cr))
+				if cr == "standard" || cr == "extended" || cr == "large" || cr == "unlimited" {
+					params.ContextRanges = append(params.ContextRanges, cr)
+				}
+			}
+		}
+
+		models, total, err := s.SearchModelsAdvanced(c.Request.Context(), params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -797,8 +1068,8 @@ func (s *ModelRegistryService) ListRemoteModelsHandler() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"models": models,
 			"total":  total,
-			"limit":  limit,
-			"offset": offset,
+			"limit":  params.Limit,
+			"offset": params.Offset,
 		})
 	}
 }
@@ -1126,6 +1397,39 @@ func (s *ModelRegistryService) GetLocalFamiliesHandler() gin.HandlerFunc {
 		for _, m := range resp.Models {
 			if m.Details.Family != "" {
 				familySet[m.Details.Family] = true
+			}
+		}
+
+		families := make([]string, 0, len(familySet))
+		for f := range familySet {
+			families = append(families, f)
+		}
+		sort.Strings(families)
+
+		c.JSON(http.StatusOK, gin.H{"families": families})
+	}
+}
+
+// GetRemoteFamiliesHandler returns unique model families from remote models
+// Useful for populating filter dropdowns
+func (s *ModelRegistryService) GetRemoteFamiliesHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		rows, err := s.db.QueryContext(c.Request.Context(), `SELECT DISTINCT slug FROM remote_models`)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		familySet := make(map[string]bool)
+		for rows.Next() {
+			var slug string
+			if err := rows.Scan(&slug); err != nil {
+				continue
+			}
+			family := extractFamily(slug)
+			if family != "" {
+				familySet[family] = true
 			}
 		}
 
