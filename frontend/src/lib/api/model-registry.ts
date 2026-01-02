@@ -165,9 +165,11 @@ export async function fetchTagSizes(slug: string): Promise<RemoteModel> {
 
 /**
  * Sync models from ollama.com
+ * @param fetchDetails - If true, also fetches real capabilities from Ollama for installed models
  */
-export async function syncModels(): Promise<SyncResponse> {
-	const response = await fetch(`${API_BASE}/remote/sync`, {
+export async function syncModels(fetchDetails: boolean = true): Promise<SyncResponse> {
+	const url = fetchDetails ? `${API_BASE}/remote/sync?details=true` : `${API_BASE}/remote/sync`;
+	const response = await fetch(url, {
 		method: 'POST'
 	});
 

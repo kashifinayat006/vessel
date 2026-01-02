@@ -40,12 +40,14 @@
 	let pullProgress = $state<{ status: string; completed?: number; total?: number } | null>(null);
 	let pullError = $state<string | null>(null);
 	let loadingSizes = $state(false);
+	let capabilitiesVerified = $state(false); // True if capabilities come from Ollama (installed model)
 
 	async function handleSelectModel(model: RemoteModel): Promise<void> {
 		selectedModel = model;
 		selectedTag = model.tags[0] || '';
 		pullProgress = null;
 		pullError = null;
+		capabilitiesVerified = false;
 
 		// Fetch tag sizes if not already loaded
 		if (!model.tagSizes || Object.keys(model.tagSizes).length === 0) {
@@ -59,6 +61,21 @@
 			} finally {
 				loadingSizes = false;
 			}
+		}
+
+		// Try to fetch real capabilities from Ollama if model is installed locally
+		// This overrides scraped capabilities from ollama.com with accurate runtime data
+		try {
+			const realCapabilities = await modelsState.fetchCapabilities(model.slug);
+			// fetchCapabilities returns empty array on error, but we check hasCapability to confirm model exists
+			if (modelsState.hasCapability(model.slug, 'completion') || realCapabilities.length > 0) {
+				// Model is installed - use real capabilities from Ollama
+				selectedModel = { ...selectedModel!, capabilities: realCapabilities };
+				capabilitiesVerified = true;
+			}
+		} catch {
+			// Model not installed locally - keep scraped capabilities
+			capabilitiesVerified = false;
 		}
 	}
 
@@ -693,6 +710,14 @@
 					<span>☁️</span>
 					<span>Cloud</span>
 				</button>
+
+				<!-- Capability info notice -->
+				<span class="ml-2 text-xs text-theme-muted" title="Capability data is sourced from ollama.com and may not be accurate. Actual capabilities are verified once a model is installed locally.">
+					<svg xmlns="http://www.w3.org/2000/svg" class="inline h-3.5 w-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+					<span class="opacity-60">from ollama.com</span>
+				</span>
 			</div>
 
 			<!-- Size Range Filters -->
@@ -886,14 +911,40 @@
 			{/if}
 
 			<!-- Capabilities -->
-			{#if selectedModel.capabilities.length > 0}
+			{#if selectedModel.capabilities.length > 0 || !capabilitiesVerified}
 				<div class="mb-6">
-					<h3 class="mb-2 text-sm font-medium text-theme-secondary">Capabilities</h3>
-					<div class="flex flex-wrap gap-2">
-						{#each selectedModel.capabilities as cap}
-							<span class="rounded bg-theme-tertiary px-2 py-1 text-xs text-theme-secondary">{cap}</span>
-						{/each}
-					</div>
+					<h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-theme-secondary">
+						<span>Capabilities</span>
+						{#if capabilitiesVerified}
+							<span class="inline-flex items-center gap-1 rounded bg-green-900/30 px-1.5 py-0.5 text-xs text-green-400" title="Capabilities verified from installed model">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+								</svg>
+								verified
+							</span>
+						{:else}
+							<span class="inline-flex items-center gap-1 rounded bg-amber-900/30 px-1.5 py-0.5 text-xs text-amber-400" title="Capabilities sourced from ollama.com - install model for verified data">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+								</svg>
+								unverified
+							</span>
+						{/if}
+					</h3>
+					{#if selectedModel.capabilities.length > 0}
+						<div class="flex flex-wrap gap-2">
+							{#each selectedModel.capabilities as cap}
+								<span class="rounded bg-theme-tertiary px-2 py-1 text-xs text-theme-secondary">{cap}</span>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-xs text-theme-muted">No capabilities reported</p>
+					{/if}
+					{#if !capabilitiesVerified}
+						<p class="mt-2 text-xs text-theme-muted">
+							Install model to verify actual capabilities
+						</p>
+					{/if}
 				</div>
 			{/if}
 

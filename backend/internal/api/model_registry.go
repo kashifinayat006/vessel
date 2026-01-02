@@ -491,6 +491,55 @@ func (s *ModelRegistryService) SyncModels(ctx context.Context, fetchDetails bool
 		count++
 	}
 
+	// If fetchDetails is true and we have an Ollama client, update capabilities
+	// for installed models using the actual /api/show response (more accurate than scraped data)
+	if fetchDetails && s.ollamaClient != nil {
+		installedModels, err := s.ollamaClient.List(ctx)
+		if err != nil {
+			log.Printf("Warning: failed to list installed models for capability sync: %v", err)
+		} else {
+			log.Printf("Syncing capabilities for %d installed models", len(installedModels.Models))
+
+			for _, installed := range installedModels.Models {
+				select {
+				case <-ctx.Done():
+					return count, ctx.Err()
+				default:
+				}
+
+				// Extract base model name (e.g., "deepseek-r1" from "deepseek-r1:14b")
+				modelName := installed.Model
+				baseName := strings.Split(modelName, ":")[0]
+
+				// Fetch real capabilities from Ollama
+				details, err := s.fetchModelDetails(ctx, modelName)
+				if err != nil {
+					log.Printf("Warning: failed to fetch details for %s: %v", modelName, err)
+					continue
+				}
+
+				// Extract capabilities from the actual Ollama response
+				capabilities := []string{}
+				if details.Capabilities != nil {
+					for _, cap := range details.Capabilities {
+						capabilities = append(capabilities, string(cap))
+					}
+				}
+				capsJSON, _ := json.Marshal(capabilities)
+
+				// Update capabilities for the base model name
+				_, err = s.db.ExecContext(ctx, `
+					UPDATE remote_models SET capabilities = ? WHERE slug = ?
+				`, string(capsJSON), baseName)
+				if err != nil {
+					log.Printf("Warning: failed to update capabilities for %s: %v", baseName, err)
+				} else {
+					log.Printf("Updated capabilities for %s: %v", baseName, capabilities)
+				}
+			}
+		}
+	}
+
 	return count, nil
 }
 
