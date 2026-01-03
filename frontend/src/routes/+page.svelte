@@ -7,6 +7,7 @@
 
 	import { onMount } from 'svelte';
 	import { chatState, conversationsState, modelsState, toolsState, promptsState } from '$lib/stores';
+	import { resolveSystemPrompt } from '$lib/services/prompt-resolution.js';
 	import { streamingMetricsState } from '$lib/stores/streaming-metrics.svelte';
 	import { settingsState } from '$lib/stores/settings.svelte';
 	import { createConversation as createStoredConversation, addMessage as addStoredMessage, updateConversation } from '$lib/storage';
@@ -132,14 +133,13 @@
 				images
 			}];
 
-			// Build system prompt from active prompt + RAG context
+			// Build system prompt from resolution service + RAG context
 			const systemParts: string[] = [];
 
-			// Wait for prompts to be loaded, then add system prompt if active
-			await promptsState.ready();
-			const activePrompt = promptsState.activePrompt;
-			if (activePrompt) {
-				systemParts.push(activePrompt.content);
+			// Resolve system prompt using priority chain (model-aware)
+			const resolvedPrompt = await resolveSystemPrompt(model, null, null);
+			if (resolvedPrompt.content) {
+				systemParts.push(resolvedPrompt.content);
 			}
 
 			// Add RAG context if available

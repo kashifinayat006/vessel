@@ -123,5 +123,17 @@ func RunMigrations(db *sql.DB) error {
 		}
 	}
 
+	// Add system_prompt_id column to chats table if it doesn't exist
+	err = db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('chats') WHERE name='system_prompt_id'`).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check system_prompt_id column: %w", err)
+	}
+	if count == 0 {
+		_, err = db.Exec(`ALTER TABLE chats ADD COLUMN system_prompt_id TEXT`)
+		if err != nil {
+			return fmt.Errorf("failed to add system_prompt_id column: %w", err)
+		}
+	}
+
 	return nil
 }

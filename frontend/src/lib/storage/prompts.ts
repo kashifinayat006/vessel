@@ -42,6 +42,7 @@ export async function createPrompt(data: {
 	content: string;
 	description?: string;
 	isDefault?: boolean;
+	targetCapabilities?: string[];
 }): Promise<StorageResult<StoredPrompt>> {
 	return withErrorHandling(async () => {
 		const now = Date.now();
@@ -51,6 +52,7 @@ export async function createPrompt(data: {
 			content: data.content,
 			description: data.description ?? '',
 			isDefault: data.isDefault ?? false,
+			targetCapabilities: data.targetCapabilities,
 			createdAt: now,
 			updatedAt: now
 		};

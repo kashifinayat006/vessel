@@ -9,6 +9,7 @@ export interface BackendChat {
 	model: string;
 	pinned: boolean;
 	archived: boolean;
+	system_prompt_id?: string | null;
 	created_at: string;
 	updated_at: string;
 	sync_version: number;

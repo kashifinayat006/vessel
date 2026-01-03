@@ -15,7 +15,16 @@
 	let formDescription = $state('');
 	let formContent = $state('');
 	let formIsDefault = $state(false);
+	let formTargetCapabilities = $state<string[]>([]);
 	let isSaving = $state(false);
+
+	// Available capabilities for targeting
+	const CAPABILITIES = [
+		{ id: 'code', label: 'Code', description: 'Auto-use with coding models' },
+		{ id: 'vision', label: 'Vision', description: 'Auto-use with vision models' },
+		{ id: 'thinking', label: 'Thinking', description: 'Auto-use with reasoning models' },
+		{ id: 'tools', label: 'Tools', description: 'Auto-use with tool-capable models' }
+	] as const;
 
 	function openCreateEditor(): void {
 		editingPrompt = null;
@@ -23,6 +32,7 @@
 		formDescription = '';
 		formContent = '';
 		formIsDefault = false;
+		formTargetCapabilities = [];
 		showEditor = true;
 	}
 
@@ -32,6 +42,7 @@
 		formDescription = prompt.description;
 		formContent = prompt.content;
 		formIsDefault = prompt.isDefault;
+		formTargetCapabilities = prompt.targetCapabilities ?? [];
 		showEditor = true;
 	}
 
@@ -45,24 +56,35 @@
 
 		isSaving = true;
 		try {
+			const capabilities = formTargetCapabilities.length > 0 ? formTargetCapabilities : undefined;
 			if (editingPrompt) {
 				await promptsState.update(editingPrompt.id, {
 					name: formName.trim(),
 					description: formDescription.trim(),
 					content: formContent,
-					isDefault: formIsDefault
+					isDefault: formIsDefault,
+					targetCapabilities: capabilities ?? []
 				});
 			} else {
 				await promptsState.add({
 					name: formName.trim(),
 					description: formDescription.trim(),
 					content: formContent,
-					isDefault: formIsDefault
+					isDefault: formIsDefault,
+					targetCapabilities: capabilities
 				});
 			}
 			closeEditor();
 		} finally {
 			isSaving = false;
+		}
+	}
+
+	function toggleCapability(capId: string): void {
+		if (formTargetCapabilities.includes(capId)) {
+			formTargetCapabilities = formTargetCapabilities.filter(c => c !== capId);
+		} else {
+			formTargetCapabilities = [...formTargetCapabilities, capId];
 		}
 	}
 
@@ -166,7 +188,7 @@
 					>
 						<div class="flex items-start justify-between gap-4">
 							<div class="min-w-0 flex-1">
-								<div class="flex items-center gap-2">
+								<div class="flex flex-wrap items-center gap-2">
 									<h3 class="font-medium text-theme-primary">{prompt.name}</h3>
 									{#if prompt.isDefault}
 										<span class="rounded bg-blue-900 px-2 py-0.5 text-xs text-blue-300">
@@ -177,6 +199,13 @@
 										<span class="rounded bg-emerald-900 px-2 py-0.5 text-xs text-emerald-300">
 											active
 										</span>
+									{/if}
+									{#if prompt.targetCapabilities && prompt.targetCapabilities.length > 0}
+										{#each prompt.targetCapabilities as cap (cap)}
+											<span class="rounded bg-purple-900/50 px-2 py-0.5 text-xs text-purple-300">
+												{cap}
+											</span>
+										{/each}
 									{/if}
 								</div>
 								{#if prompt.description}
@@ -259,8 +288,9 @@
 				(e.g., code reviewer, writing helper) or to enforce specific response formats.
 			</p>
 			<p class="mt-2 text-sm text-theme-muted">
-				<strong class="text-theme-secondary">Default prompt:</strong> Automatically used for all new chats.
+				<strong class="text-theme-secondary">Default prompt:</strong> Used for all new chats unless overridden.
 				<strong class="text-theme-secondary">Active prompt:</strong> Currently selected for your session.
+				<strong class="text-theme-secondary">Capability targeting:</strong> Auto-matches prompts to models with specific capabilities (code, vision, thinking, tools).
 			</p>
 		</section>
 	</div>
@@ -352,6 +382,28 @@
 						<label for="prompt-default" class="text-sm text-theme-secondary">
 							Set as default for new chats
 						</label>
+					</div>
+
+					<!-- Capability targeting -->
+					<div>
+						<label class="mb-2 block text-sm font-medium text-theme-secondary">
+							Auto-use for model types
+						</label>
+						<p class="mb-3 text-xs text-theme-muted">
+							When a model has these capabilities and no other prompt is selected, this prompt will be used automatically.
+						</p>
+						<div class="flex flex-wrap gap-2">
+							{#each CAPABILITIES as cap (cap.id)}
+								<button
+									type="button"
+									onclick={() => toggleCapability(cap.id)}
+									class="rounded-lg border px-3 py-1.5 text-sm transition-colors {formTargetCapabilities.includes(cap.id) ? 'border-blue-500 bg-blue-500/20 text-blue-300' : 'border-theme-subtle bg-theme-tertiary text-theme-muted hover:border-theme hover:text-theme-secondary'}"
+									title={cap.description}
+								>
+									{cap.label}
+								</button>
+							{/each}
+						</div>
 					</div>
 				</div>
 

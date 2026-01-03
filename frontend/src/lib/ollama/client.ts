@@ -20,6 +20,8 @@ import type {
 	OllamaGenerateRequest,
 	OllamaGenerateResponse,
 	OllamaPullProgress,
+	OllamaCreateRequest,
+	OllamaCreateProgress,
 	JsonSchema
 } from './types.js';
 import {
@@ -211,6 +213,75 @@ export class OllamaClient {
 
 		if (!response.ok) {
 			throw await createErrorFromResponse(response, '/api/delete');
+		}
+	}
+
+	/**
+	 * Creates a custom model with an embedded system prompt
+	 * POST /api/create with streaming progress
+	 * @param request Create request with model name, base model, and system prompt
+	 * @param onProgress Callback for progress updates
+	 * @param signal Optional abort signal
+	 */
+	async createModel(
+		request: OllamaCreateRequest,
+		onProgress: (progress: OllamaCreateProgress) => void,
+		signal?: AbortSignal
+	): Promise<void> {
+		const url = `${this.config.baseUrl}/api/create`;
+
+		const response = await this.fetchFn(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ ...request, stream: true }),
+			signal
+		});
+
+		if (!response.ok) {
+			throw await createErrorFromResponse(response, '/api/create');
+		}
+
+		if (!response.body) {
+			throw new Error('No response body for create stream');
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+
+				// Process complete lines
+				let newlineIndex: number;
+				while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+					const line = buffer.slice(0, newlineIndex).trim();
+					buffer = buffer.slice(newlineIndex + 1);
+
+					if (!line) continue;
+
+					try {
+						const progress = JSON.parse(line) as OllamaCreateProgress;
+						// Check for error in response
+						if ('error' in progress) {
+							throw new Error((progress as { error: string }).error);
+						}
+						onProgress(progress);
+					} catch (e) {
+						if (e instanceof Error && e.message !== line) {
+							throw e;
+						}
+						console.warn('[Ollama] Failed to parse create progress:', line);
+					}
+				}
+			}
+		} finally {
+			reader.releaseLock();
 		}
 	}
 

@@ -11,7 +11,10 @@
 	import { modelOperationsState } from '$lib/stores/model-operations.svelte';
 	import { ModelCard } from '$lib/components/models';
 	import PullModelDialog from '$lib/components/models/PullModelDialog.svelte';
+	import ModelEditorDialog from '$lib/components/models/ModelEditorDialog.svelte';
 	import { fetchTagSizes, type RemoteModel } from '$lib/api/model-registry';
+	import { modelInfoService, type ModelInfo } from '$lib/services/model-info-service';
+	import type { ModelEditorMode } from '$lib/stores/model-creation.svelte';
 
 	// Search debounce
 	let searchInput = $state('');
@@ -184,6 +187,70 @@
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
 
+	// Model editor dialog state
+	let modelEditorOpen = $state(false);
+	let modelEditorMode = $state<ModelEditorMode>('create');
+	let editingModelName = $state<string | undefined>(undefined);
+	let editingSystemPrompt = $state<string | undefined>(undefined);
+	let editingBaseModel = $state<string | undefined>(undefined);
+
+	// Cache for model info (to know which models have embedded prompts)
+	let modelInfoCache = $state<Map<string, ModelInfo>>(new Map());
+
+	function openCreateDialog(): void {
+		modelEditorMode = 'create';
+		editingModelName = undefined;
+		editingSystemPrompt = undefined;
+		editingBaseModel = undefined;
+		modelEditorOpen = true;
+	}
+
+	async function openEditDialog(modelName: string): Promise<void> {
+		// Fetch model info to get the current system prompt and base model
+		const info = await modelInfoService.getModelInfo(modelName);
+		if (!info.systemPrompt) {
+			// No embedded prompt - shouldn't happen if we only show edit for models with prompts
+			return;
+		}
+
+		// Get base model from family - if a model has an embedded prompt, its parent is typically
+		// the family base model (e.g., llama3.2). For now, use the model name itself as fallback.
+		const localModel = localModelsState.models.find((m) => m.name === modelName);
+		const baseModel = localModel?.family || modelName;
+
+		modelEditorMode = 'edit';
+		editingModelName = modelName;
+		editingSystemPrompt = info.systemPrompt;
+		editingBaseModel = baseModel;
+		modelEditorOpen = true;
+	}
+
+	function closeModelEditor(): void {
+		modelEditorOpen = false;
+		// Refresh models list after closing (in case a model was created/updated)
+		localModelsState.refresh();
+	}
+
+	// Fetch model info for all local models to determine which have embedded prompts
+	async function fetchModelInfoForLocalModels(): Promise<void> {
+		const newCache = new Map<string, ModelInfo>();
+		for (const model of localModelsState.models) {
+			try {
+				const info = await modelInfoService.getModelInfo(model.name);
+				newCache.set(model.name, info);
+			} catch {
+				// Ignore errors - model might not be accessible
+			}
+		}
+		modelInfoCache = newCache;
+	}
+
+	// Check if a model has an embedded prompt (and thus can be edited)
+	function hasEmbeddedPrompt(modelName: string): boolean {
+		const info = modelInfoCache.get(modelName);
+		return info?.systemPrompt !== null && info?.systemPrompt !== undefined && info.systemPrompt.length > 0;
+	}
+
 	// Delete a local model
 	async function deleteModel(modelName: string): Promise<void> {
 		if (deleting) return;
@@ -230,6 +297,13 @@
 			localModelsState.search(value);
 		}, 300);
 	}
+
+	// Fetch model info when local models change
+	$effect(() => {
+		if (localModelsState.models.length > 0) {
+			fetchModelInfoForLocalModels();
+		}
+	});
 
 	// Initialize on mount
 	onMount(() => {
@@ -285,6 +359,17 @@
 							{/if}
 						</button>
 					{:else}
+						<!-- Create Custom Model Button -->
+						<button
+							type="button"
+							onclick={openCreateDialog}
+							class="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-violet-500"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+							</svg>
+							<span>Create Custom</span>
+						</button>
 						<!-- Pull Model Button -->
 						<button
 							type="button"
@@ -510,6 +595,11 @@
 													Update
 												</span>
 											{/if}
+											{#if hasEmbeddedPrompt(model.name)}
+												<span class="rounded bg-violet-900/50 px-2 py-0.5 text-xs text-violet-300" title="Custom model with embedded system prompt">
+													Custom
+												</span>
+											{/if}
 										</div>
 										<div class="mt-1 flex items-center gap-4 text-xs text-theme-muted">
 											<span>{formatBytes(model.size)}</span>
@@ -568,6 +658,18 @@
 												No
 											</button>
 										{:else}
+											{#if hasEmbeddedPrompt(model.name)}
+												<button
+													type="button"
+													onclick={() => openEditDialog(model.name)}
+													class="rounded p-2 text-theme-muted opacity-0 transition-opacity hover:bg-theme-tertiary hover:text-violet-400 group-hover:opacity-100"
+													title="Edit system prompt"
+												>
+													<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+														<path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+													</svg>
+												</button>
+											{/if}
 											<button
 												type="button"
 												onclick={() => deleteConfirm = model.name}
@@ -1175,6 +1277,16 @@
 
 <!-- Pull Model Dialog -->
 <PullModelDialog />
+
+<!-- Model Editor Dialog (Create/Edit) -->
+<ModelEditorDialog
+	isOpen={modelEditorOpen}
+	mode={modelEditorMode}
+	editingModel={editingModelName}
+	currentSystemPrompt={editingSystemPrompt}
+	baseModel={editingBaseModel}
+	onClose={closeModelEditor}
+/>
 
 <!-- Active Pulls Progress (fixed bottom bar) -->
 {#if modelOperationsState.activePulls.size > 0}

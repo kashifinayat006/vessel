@@ -5,6 +5,7 @@
 	 */
 
 	import { chatState, modelsState, conversationsState, toolsState, promptsState, toastState } from '$lib/stores';
+	import { resolveSystemPrompt } from '$lib/services/prompt-resolution.js';
 	import { serverConversationsState } from '$lib/stores/server-conversations.svelte';
 	import { streamingMetricsState } from '$lib/stores/streaming-metrics.svelte';
 	import { ollamaClient } from '$lib/ollama';
@@ -462,33 +463,25 @@
 			let messages = getMessagesForApi();
 			const tools = getToolsForApi();
 
-			// Build system prompt from active prompt + thinking + RAG context
+			// Build system prompt from resolution service + RAG context
 			const systemParts: string[] = [];
 
-			// Wait for prompts to be loaded
-			await promptsState.ready();
+			// Resolve system prompt using priority chain:
+			// 1. Per-conversation prompt
+			// 2. New chat selection
+			// 3. Model-prompt mapping
+			// 4. Model-embedded prompt (from Modelfile)
+			// 5. Capability-matched prompt
+			// 6. Global active prompt
+			// 7. None
+			const resolvedPrompt = await resolveSystemPrompt(
+				model,
+				conversation?.systemPromptId,
+				newChatPromptId
+			);
 
-			// Priority: per-conversation prompt > new chat prompt > global active prompt > none
-			let promptContent: string | null = null;
-			if (conversation?.systemPromptId) {
-				// Use per-conversation prompt
-				const conversationPrompt = promptsState.get(conversation.systemPromptId);
-				if (conversationPrompt) {
-					promptContent = conversationPrompt.content;
-				}
-			} else if (newChatPromptId) {
-				// Use new chat selected prompt (before conversation is created)
-				const newChatPrompt = promptsState.get(newChatPromptId);
-				if (newChatPrompt) {
-					promptContent = newChatPrompt.content;
-				}
-			} else if (promptsState.activePrompt) {
-				// Fall back to global active prompt
-				promptContent = promptsState.activePrompt.content;
-			}
-
-			if (promptContent) {
-				systemParts.push(promptContent);
+			if (resolvedPrompt.content) {
+				systemParts.push(resolvedPrompt.content);
 			}
 
 			// RAG: Retrieve relevant context for the last user message
@@ -932,10 +925,12 @@
 						<SystemPromptSelector
 							conversationId={conversation.id}
 							currentPromptId={conversation.systemPromptId}
+							modelName={modelsState.selectedId ?? undefined}
 						/>
 					{:else if mode === 'new'}
 						<SystemPromptSelector
 							currentPromptId={newChatPromptId}
+							modelName={modelsState.selectedId ?? undefined}
 							onSelect={(promptId) => (newChatPromptId = promptId)}
 						/>
 					{/if}

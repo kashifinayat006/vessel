@@ -137,6 +137,36 @@ export interface StoredPrompt {
 	isDefault: boolean;
 	createdAt: number;
 	updatedAt: number;
+	/** Capabilities this prompt is optimized for (for auto-matching) */
+	targetCapabilities?: string[];
+}
+
+/**
+ * Cached model info including embedded system prompt (from Ollama /api/show)
+ */
+export interface StoredModelSystemPrompt {
+	/** Model name (e.g., "llama3.2:8b") - Primary key */
+	modelName: string;
+	/** System prompt extracted from modelfile, null if none */
+	systemPrompt: string | null;
+	/** Model capabilities (vision, code, thinking, tools, etc.) */
+	capabilities: string[];
+	/** Timestamp when this info was fetched */
+	extractedAt: number;
+}
+
+/**
+ * User-configured model-to-prompt mapping
+ * Allows users to set default prompts for specific models
+ */
+export interface StoredModelPromptMapping {
+	id: string;
+	/** Ollama model name (e.g., "llama3.2:8b") */
+	modelName: string;
+	/** Reference to StoredPrompt.id */
+	promptId: string;
+	createdAt: number;
+	updatedAt: number;
 }
 
 /**
@@ -151,6 +181,8 @@ class OllamaDatabase extends Dexie {
 	documents!: Table<StoredDocument>;
 	chunks!: Table<StoredChunk>;
 	prompts!: Table<StoredPrompt>;
+	modelSystemPrompts!: Table<StoredModelSystemPrompt>;
+	modelPromptMappings!: Table<StoredModelPromptMapping>;
 
 	constructor() {
 		super('vessel');
@@ -202,6 +234,22 @@ class OllamaDatabase extends Dexie {
 			documents: 'id, name, createdAt, updatedAt',
 			chunks: 'id, documentId',
 			prompts: 'id, name, isDefault, updatedAt'
+		});
+
+		// Version 5: Model-specific system prompts
+		// Adds: cached model info (with embedded prompts) and user model-prompt mappings
+		this.version(5).stores({
+			conversations: 'id, updatedAt, isPinned, isArchived, systemPromptId',
+			messages: 'id, conversationId, parentId, createdAt',
+			attachments: 'id, messageId',
+			syncQueue: 'id, entityType, createdAt',
+			documents: 'id, name, createdAt, updatedAt',
+			chunks: 'id, documentId',
+			prompts: 'id, name, isDefault, updatedAt',
+			// Cached model info from Ollama /api/show (includes embedded system prompts)
+			modelSystemPrompts: 'modelName',
+			// User-configured model-to-prompt mappings
+			modelPromptMappings: 'id, modelName, promptId'
 		});
 	}
 }

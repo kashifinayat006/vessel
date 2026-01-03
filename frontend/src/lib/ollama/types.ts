@@ -81,6 +81,28 @@ export interface OllamaDeleteRequest {
 }
 
 // ============================================================================
+// Model Create Types
+// ============================================================================
+
+/** Request body for POST /api/create */
+export interface OllamaCreateRequest {
+	/** Name for the new model */
+	model: string;
+	/** Base model to derive from (e.g., "llama3.2:8b") */
+	from: string;
+	/** System prompt to embed in the model */
+	system?: string;
+	/** Whether to stream progress (default: true) */
+	stream?: boolean;
+}
+
+/** Progress chunk from POST /api/create streaming response */
+export interface OllamaCreateProgress {
+	/** Status message (e.g., "creating new layer", "writing manifest", "success") */
+	status: string;
+}
+
+// ============================================================================
 // Message Types
 // ============================================================================
 

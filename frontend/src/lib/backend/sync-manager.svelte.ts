@@ -330,6 +330,7 @@ class SyncManager {
 			updatedAt: new Date(backendChat.updated_at).getTime(),
 			isPinned: backendChat.pinned,
 			isArchived: backendChat.archived,
+			systemPromptId: backendChat.system_prompt_id ?? null,
 			messageCount: backendChat.messages?.length ?? existing?.messageCount ?? 0,
 			syncVersion: backendChat.sync_version
 		};
@@ -378,6 +379,7 @@ class SyncManager {
 			model: conv.model,
 			pinned: conv.isPinned,
 			archived: conv.isArchived,
+			system_prompt_id: conv.systemPromptId ?? undefined,
 			created_at: new Date(conv.createdAt).toISOString(),
 			updated_at: new Date(conv.updatedAt).toISOString(),
 			sync_version: conv.syncVersion ?? 1

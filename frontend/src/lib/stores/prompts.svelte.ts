@@ -21,6 +21,7 @@ export interface Prompt {
 	content: string;
 	description: string;
 	isDefault: boolean;
+	targetCapabilities?: string[];
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -127,6 +128,7 @@ class PromptsState {
 		content: string;
 		description?: string;
 		isDefault?: boolean;
+		targetCapabilities?: string[];
 	}): Promise<Prompt | null> {
 		try {
 			const result = await createPrompt(data);
@@ -158,7 +160,7 @@ class PromptsState {
 	 */
 	async update(
 		id: string,
-		updates: Partial<{ name: string; content: string; description: string; isDefault: boolean }>
+		updates: Partial<{ name: string; content: string; description: string; isDefault: boolean; targetCapabilities: string[] }>
 	): Promise<boolean> {
 		try {
 			const result = await updatePrompt(id, updates);

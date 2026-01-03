@@ -336,6 +336,56 @@ func (s *OllamaService) CopyModelHandler() gin.HandlerFunc {
 	}
 }
 
+// CreateModelHandler handles custom model creation with progress streaming
+// Creates a new model derived from an existing one with a custom system prompt
+func (s *OllamaService) CreateModelHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req api.CreateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+			return
+		}
+
+		c.Header("Content-Type", "application/x-ndjson")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+
+		ctx := c.Request.Context()
+		flusher, ok := c.Writer.(http.Flusher)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
+			return
+		}
+
+		err := s.client.Create(ctx, &req, func(resp api.ProgressResponse) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			data, err := json.Marshal(resp)
+			if err != nil {
+				return err
+			}
+
+			_, err = c.Writer.Write(append(data, '\n'))
+			if err != nil {
+				return err
+			}
+			flusher.Flush()
+			return nil
+		})
+
+		if err != nil && err != context.Canceled {
+			errResp := gin.H{"error": err.Error()}
+			data, _ := json.Marshal(errResp)
+			c.Writer.Write(append(data, '\n'))
+			flusher.Flush()
+		}
+	}
+}
+
 // VersionHandler returns Ollama version
 func (s *OllamaService) VersionHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {

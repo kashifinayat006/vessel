@@ -4,11 +4,45 @@
 	 * Comprehensive settings for appearance, models, memory, and more
 	 */
 
-	import { modelsState, uiState, settingsState } from '$lib/stores';
+	import { onMount } from 'svelte';
+	import { modelsState, uiState, settingsState, promptsState } from '$lib/stores';
+	import { modelPromptMappingsState } from '$lib/stores/model-prompt-mappings.svelte.js';
+	import { modelInfoService, type ModelInfo } from '$lib/services/model-info-service.js';
 	import { getPrimaryModifierDisplay } from '$lib/utils';
 	import { PARAMETER_RANGES, PARAMETER_LABELS, PARAMETER_DESCRIPTIONS, AUTO_COMPACT_RANGES } from '$lib/types/settings';
 
 	const modifierKey = getPrimaryModifierDisplay();
+
+	// Model info cache for the settings page
+	let modelInfoCache = $state<Map<string, ModelInfo>>(new Map());
+	let isLoadingModelInfo = $state(false);
+
+	// Load model info for all available models
+	onMount(async () => {
+		isLoadingModelInfo = true;
+		try {
+			const models = modelsState.chatModels;
+			const infos = await Promise.all(
+				models.map(async (model) => {
+					const info = await modelInfoService.getModelInfo(model.name);
+					return [model.name, info] as [string, ModelInfo];
+				})
+			);
+			modelInfoCache = new Map(infos);
+		} finally {
+			isLoadingModelInfo = false;
+		}
+	});
+
+	// Handle prompt selection for a model
+	async function handleModelPromptChange(modelName: string, promptId: string | null): Promise<void> {
+		await modelPromptMappingsState.setMapping(modelName, promptId);
+	}
+
+	// Get the currently mapped prompt ID for a model
+	function getMappedPromptId(modelName: string): string | null {
+		return modelPromptMappingsState.getMapping(modelName);
+	}
 
 	// Local state for default model selection
 	let defaultModel = $state<string | null>(modelsState.selectedId);
@@ -106,6 +140,83 @@
 						{/each}
 					</select>
 				</div>
+			</div>
+		</section>
+
+		<!-- Model-Prompt Defaults Section -->
+		<section class="mb-8">
+			<h2 class="mb-4 flex items-center gap-2 text-lg font-semibold text-theme-primary">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+				</svg>
+				Model-Prompt Defaults
+			</h2>
+
+			<div class="rounded-lg border border-theme bg-theme-secondary p-4">
+				<p class="text-sm text-theme-muted mb-4">
+					Set default system prompts for specific models. When no other prompt is selected, the model's default will be used automatically.
+				</p>
+
+				{#if isLoadingModelInfo}
+					<div class="flex items-center justify-center py-8">
+						<div class="h-6 w-6 animate-spin rounded-full border-2 border-theme-subtle border-t-violet-500"></div>
+						<span class="ml-2 text-sm text-theme-muted">Loading model info...</span>
+					</div>
+				{:else if modelsState.chatModels.length === 0}
+					<p class="text-sm text-theme-muted py-4 text-center">
+						No models available. Make sure Ollama is running.
+					</p>
+				{:else}
+					<div class="space-y-3">
+						{#each modelsState.chatModels as model (model.name)}
+							{@const modelInfo = modelInfoCache.get(model.name)}
+							{@const mappedPromptId = getMappedPromptId(model.name)}
+							<div class="rounded-lg border border-theme-subtle bg-theme-tertiary p-3">
+								<div class="flex items-start justify-between gap-4">
+									<div class="min-w-0 flex-1">
+										<div class="flex flex-wrap items-center gap-2">
+											<span class="font-medium text-theme-primary text-sm">{model.name}</span>
+											{#if modelInfo?.capabilities && modelInfo.capabilities.length > 0}
+												{#each modelInfo.capabilities as cap (cap)}
+													<span class="rounded bg-violet-900/50 px-1.5 py-0.5 text-xs text-violet-300">
+														{cap}
+													</span>
+												{/each}
+											{/if}
+											{#if modelInfo?.systemPrompt}
+												<span class="rounded bg-amber-900/50 px-1.5 py-0.5 text-xs text-amber-300" title="This model has a built-in system prompt">
+													embedded
+												</span>
+											{/if}
+										</div>
+									</div>
+
+									<select
+										value={mappedPromptId ?? ''}
+										onchange={(e) => {
+											const value = e.currentTarget.value;
+											handleModelPromptChange(model.name, value === '' ? null : value);
+										}}
+										class="rounded-lg border border-theme-subtle bg-theme-secondary px-2 py-1 text-sm text-theme-secondary focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+									>
+										<option value="">
+											{modelInfo?.systemPrompt ? 'Use embedded prompt' : 'No default'}
+										</option>
+										{#each promptsState.prompts as prompt (prompt.id)}
+											<option value={prompt.id}>{prompt.name}</option>
+										{/each}
+									</select>
+								</div>
+
+								{#if modelInfo?.systemPrompt}
+									<p class="mt-2 text-xs text-theme-muted line-clamp-2">
+										<span class="font-medium text-amber-400">Embedded:</span> {modelInfo.systemPrompt}
+									</p>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</section>
 

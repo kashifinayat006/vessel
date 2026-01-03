@@ -10,15 +10,16 @@ import (
 
 // Chat represents a chat conversation
 type Chat struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Model       string    `json:"model"`
-	Pinned      bool      `json:"pinned"`
-	Archived    bool      `json:"archived"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	SyncVersion int64     `json:"sync_version"`
-	Messages    []Message `json:"messages,omitempty"`
+	ID             string    `json:"id"`
+	Title          string    `json:"title"`
+	Model          string    `json:"model"`
+	Pinned         bool      `json:"pinned"`
+	Archived       bool      `json:"archived"`
+	SystemPromptID *string   `json:"system_prompt_id,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	SyncVersion    int64     `json:"sync_version"`
+	Messages       []Message `json:"messages,omitempty"`
 }
 
 // Message represents a chat message
@@ -54,9 +55,9 @@ func CreateChat(db *sql.DB, chat *Chat) error {
 	chat.SyncVersion = 1
 
 	_, err := db.Exec(`
-		INSERT INTO chats (id, title, model, pinned, archived, created_at, updated_at, sync_version)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		chat.ID, chat.Title, chat.Model, chat.Pinned, chat.Archived,
+		INSERT INTO chats (id, title, model, pinned, archived, system_prompt_id, created_at, updated_at, sync_version)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		chat.ID, chat.Title, chat.Model, chat.Pinned, chat.Archived, chat.SystemPromptID,
 		chat.CreatedAt.Format(time.RFC3339), chat.UpdatedAt.Format(time.RFC3339), chat.SyncVersion,
 	)
 	if err != nil {
@@ -70,11 +71,12 @@ func GetChat(db *sql.DB, id string) (*Chat, error) {
 	chat := &Chat{}
 	var createdAt, updatedAt string
 	var pinned, archived int
+	var systemPromptID sql.NullString
 
 	err := db.QueryRow(`
-		SELECT id, title, model, pinned, archived, created_at, updated_at, sync_version
+		SELECT id, title, model, pinned, archived, system_prompt_id, created_at, updated_at, sync_version
 		FROM chats WHERE id = ?`, id).Scan(
-		&chat.ID, &chat.Title, &chat.Model, &pinned, &archived,
+		&chat.ID, &chat.Title, &chat.Model, &pinned, &archived, &systemPromptID,
 		&createdAt, &updatedAt, &chat.SyncVersion,
 	)
 	if err == sql.ErrNoRows {
@@ -86,6 +88,9 @@ func GetChat(db *sql.DB, id string) (*Chat, error) {
 
 	chat.Pinned = pinned == 1
 	chat.Archived = archived == 1
+	if systemPromptID.Valid {
+		chat.SystemPromptID = &systemPromptID.String
+	}
 	chat.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 	chat.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 
@@ -102,7 +107,7 @@ func GetChat(db *sql.DB, id string) (*Chat, error) {
 // ListChats retrieves all chats ordered by updated_at
 func ListChats(db *sql.DB, includeArchived bool) ([]Chat, error) {
 	query := `
-		SELECT id, title, model, pinned, archived, created_at, updated_at, sync_version
+		SELECT id, title, model, pinned, archived, system_prompt_id, created_at, updated_at, sync_version
 		FROM chats`
 	if !includeArchived {
 		query += " WHERE archived = 0"
@@ -120,14 +125,18 @@ func ListChats(db *sql.DB, includeArchived bool) ([]Chat, error) {
 		var chat Chat
 		var createdAt, updatedAt string
 		var pinned, archived int
+		var systemPromptID sql.NullString
 
-		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Model, &pinned, &archived,
+		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Model, &pinned, &archived, &systemPromptID,
 			&createdAt, &updatedAt, &chat.SyncVersion); err != nil {
 			return nil, fmt.Errorf("failed to scan chat: %w", err)
 		}
 
 		chat.Pinned = pinned == 1
 		chat.Archived = archived == 1
+		if systemPromptID.Valid {
+			chat.SystemPromptID = &systemPromptID.String
+		}
 		chat.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		chat.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 		chats = append(chats, chat)
@@ -142,10 +151,10 @@ func UpdateChat(db *sql.DB, chat *Chat) error {
 	chat.SyncVersion++
 
 	result, err := db.Exec(`
-		UPDATE chats SET title = ?, model = ?, pinned = ?, archived = ?,
+		UPDATE chats SET title = ?, model = ?, pinned = ?, archived = ?, system_prompt_id = ?,
 		updated_at = ?, sync_version = ?
 		WHERE id = ?`,
-		chat.Title, chat.Model, chat.Pinned, chat.Archived,
+		chat.Title, chat.Model, chat.Pinned, chat.Archived, chat.SystemPromptID,
 		chat.UpdatedAt.Format(time.RFC3339), chat.SyncVersion, chat.ID,
 	)
 	if err != nil {
@@ -234,7 +243,7 @@ func GetMessagesByChatID(db *sql.DB, chatID string) ([]Message, error) {
 // GetChangedChats retrieves chats changed since a given sync version
 func GetChangedChats(db *sql.DB, sinceVersion int64) ([]Chat, error) {
 	rows, err := db.Query(`
-		SELECT id, title, model, pinned, archived, created_at, updated_at, sync_version
+		SELECT id, title, model, pinned, archived, system_prompt_id, created_at, updated_at, sync_version
 		FROM chats WHERE sync_version > ? ORDER BY sync_version ASC`, sinceVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get changed chats: %w", err)
@@ -246,14 +255,18 @@ func GetChangedChats(db *sql.DB, sinceVersion int64) ([]Chat, error) {
 		var chat Chat
 		var createdAt, updatedAt string
 		var pinned, archived int
+		var systemPromptID sql.NullString
 
-		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Model, &pinned, &archived,
+		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Model, &pinned, &archived, &systemPromptID,
 			&createdAt, &updatedAt, &chat.SyncVersion); err != nil {
 			return nil, fmt.Errorf("failed to scan chat: %w", err)
 		}
 
 		chat.Pinned = pinned == 1
 		chat.Archived = archived == 1
+		if systemPromptID.Valid {
+			chat.SystemPromptID = &systemPromptID.String
+		}
 		chat.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		chat.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 
@@ -285,13 +298,14 @@ const (
 
 // GroupedChat represents a chat in a grouped list (without messages for efficiency)
 type GroupedChat struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Model     string    `json:"model"`
-	Pinned    bool      `json:"pinned"`
-	Archived  bool      `json:"archived"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID             string    `json:"id"`
+	Title          string    `json:"title"`
+	Model          string    `json:"model"`
+	Pinned         bool      `json:"pinned"`
+	Archived       bool      `json:"archived"`
+	SystemPromptID *string   `json:"system_prompt_id,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // ChatGroup represents a group of chats with a date label
@@ -349,7 +363,7 @@ func getDateGroup(t time.Time, now time.Time) DateGroup {
 func ListChatsGrouped(db *sql.DB, search string, includeArchived bool, limit, offset int) (*GroupedChatsResponse, error) {
 	// Build query with optional search filter
 	query := `
-		SELECT id, title, model, pinned, archived, created_at, updated_at
+		SELECT id, title, model, pinned, archived, system_prompt_id, created_at, updated_at
 		FROM chats
 		WHERE 1=1`
 	args := []interface{}{}
@@ -390,14 +404,18 @@ func ListChatsGrouped(db *sql.DB, search string, includeArchived bool, limit, of
 		var chat GroupedChat
 		var createdAt, updatedAt string
 		var pinned, archived int
+		var systemPromptID sql.NullString
 
-		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Model, &pinned, &archived,
+		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Model, &pinned, &archived, &systemPromptID,
 			&createdAt, &updatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan chat: %w", err)
 		}
 
 		chat.Pinned = pinned == 1
 		chat.Archived = archived == 1
+		if systemPromptID.Valid {
+			chat.SystemPromptID = &systemPromptID.String
+		}
 		chat.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		chat.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 		chats = append(chats, chat)

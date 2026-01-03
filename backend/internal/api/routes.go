@@ -105,6 +105,7 @@ func SetupRoutes(r *gin.Engine, db *sql.DB, ollamaURL string, appVersion string)
 				ollama.GET("/api/tags", ollamaService.ListModelsHandler())
 				ollama.POST("/api/show", ollamaService.ShowModelHandler())
 				ollama.POST("/api/pull", ollamaService.PullModelHandler())
+				ollama.POST("/api/create", ollamaService.CreateModelHandler())
 				ollama.DELETE("/api/delete", ollamaService.DeleteModelHandler())
 				ollama.POST("/api/copy", ollamaService.CopyModelHandler())
 
