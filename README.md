@@ -68,6 +68,12 @@ Vessel deliberately avoids becoming a platform. Its scope is narrow by design.
 - **Syntax highlighting** — Beautiful code blocks powered by Shiki with 100+ languages
 - **Dark/Light mode** — Seamless theme switching with system preference detection
 
+### System Prompts
+- **Prompt library** — Save and organize reusable system prompts
+- **Model-specific prompts** — Assign default prompts to specific models
+- **Capability-based defaults** — Auto-select prompts based on model capabilities (vision, tools, thinking, code)
+- **Quick selection** — Switch prompts mid-conversation with the prompt selector
+
 ### Built-in Tools (Function Calling)
 Vessel includes five powerful tools that models can invoke automatically:
 
@@ -79,11 +85,24 @@ Vessel includes five powerful tools that models can invoke automatically:
 | **Get Location** | Detect user location via GPS or IP for local queries |
 | **Get Time** | Current date/time with timezone support |
 
+### Custom Tools
+Create your own tools that models can invoke:
+- **JavaScript tools** — Run in-browser with full access to browser APIs
+- **Python tools** — Execute on the backend with any Python libraries
+- **HTTP tools** — Call external REST APIs (GET/POST)
+- **Built-in templates** — Start from 8 pre-built templates
+- **Test before saving** — Interactive testing panel validates your tools
+
+See the [Custom Tools Guide](#custom-tools-guide) for detailed documentation.
+
 ### Model Management
 - **Model browser** — Browse, search, and pull models from Ollama registry
+- **Custom models** — Create models with embedded system prompts
+- **Edit custom models** — Update system prompts of existing custom models
 - **Live status** — See which models are currently loaded in memory
 - **Quick switch** — Change models mid-conversation
 - **Model metadata** — View parameters, quantization, and capabilities
+- **Update detection** — See which models have newer versions available
 
 ### Developer Experience
 - **Beautiful code generation** — Syntax-highlighted output for any language
@@ -369,13 +388,235 @@ docker compose -f docker-compose.dev.yml up
 | `POST` | `/api/v1/proxy/search` | Web search via DuckDuckGo |
 | `POST` | `/api/v1/proxy/fetch` | Fetch URL content |
 | `GET` | `/api/v1/location` | Get user location from IP |
-| `GET` | `/api/v1/models/registry` | Browse Ollama model registry |
-| `GET` | `/api/v1/models/search` | Search models |
-| `POST` | `/api/v1/chats/sync` | Sync conversations |
+| `POST` | `/api/v1/tools/execute` | Execute Python/JS tools |
+| `GET` | `/api/v1/models/local` | List local models with filtering |
+| `GET` | `/api/v1/models/local/updates` | Check for model updates |
+| `GET` | `/api/v1/models/remote` | Browse Ollama model registry |
+| `POST` | `/api/v1/models/remote/sync` | Sync registry from ollama.com |
+| `POST` | `/api/v1/chats` | Create new chat |
+| `GET` | `/api/v1/chats/grouped` | List chats grouped by date |
+| `POST` | `/api/v1/sync/push` | Push local changes to backend |
+| `GET` | `/api/v1/sync/pull` | Pull changes from backend |
 
-### Ollama Proxy
+### Ollama API Proxy
 
-All requests to `/ollama/*` are proxied to the Ollama API, enabling CORS.
+All Ollama API endpoints are proxied through `/api/v1/ollama/*`:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/ollama/api/tags` | List installed models |
+| `POST` | `/api/v1/ollama/api/show` | Get model details |
+| `POST` | `/api/v1/ollama/api/pull` | Pull a model (streaming) |
+| `POST` | `/api/v1/ollama/api/create` | Create custom model (streaming) |
+| `DELETE` | `/api/v1/ollama/api/delete` | Delete a model |
+| `POST` | `/api/v1/ollama/api/chat` | Chat completion (streaming) |
+| `POST` | `/api/v1/ollama/api/embed` | Generate embeddings |
+
+---
+
+## Custom Tools Guide
+
+Vessel allows you to create custom tools that LLMs can invoke during conversations. Tools extend the model's capabilities beyond text generation.
+
+### Creating a Tool
+
+1. Navigate to **Tools** in the sidebar
+2. Click **Create Custom Tool**
+3. Fill in the tool details:
+   - **Name** — Unique identifier (alphanumeric + underscores)
+   - **Description** — Explains to the model when to use this tool
+   - **Parameters** — Define inputs the model should provide
+   - **Implementation** — Choose JavaScript, Python, or HTTP
+   - **Code/Endpoint** — Your tool's logic
+
+### Tool Types
+
+#### JavaScript Tools
+
+JavaScript tools run directly in the browser. They have access to browser APIs and execute instantly.
+
+```javascript
+// Example: Format a date
+// Parameters: { date: string, format: string }
+
+const d = new Date(args.date);
+const formats = {
+  'short': d.toLocaleDateString(),
+  'long': d.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  }),
+  'iso': d.toISOString()
+};
+return formats[args.format] || formats.short;
+```
+
+**Key points:**
+- Access parameters via the `args` object
+- Return any JSON-serializable value
+- Use `await` for async operations
+- Full access to browser APIs (fetch, localStorage, etc.)
+
+#### Python Tools
+
+Python tools execute on the backend server. They can use any Python libraries installed on the server.
+
+```python
+# Example: Calculate statistics
+# Parameters: { numbers: array }
+
+import json
+import sys
+import statistics
+
+# Read args from stdin
+args = json.loads(sys.stdin.read())
+numbers = args['numbers']
+
+result = {
+    'mean': statistics.mean(numbers),
+    'median': statistics.median(numbers),
+    'stdev': statistics.stdev(numbers) if len(numbers) > 1 else 0
+}
+
+# Output JSON result
+print(json.dumps(result))
+```
+
+**Key points:**
+- Read arguments from `stdin` as JSON
+- Print JSON result to `stdout`
+- 30-second timeout (configurable up to 60s)
+- Use any installed Python packages
+- Stderr is captured for debugging
+
+#### HTTP Tools
+
+HTTP tools call external REST APIs. Configure the endpoint and Vessel handles the request.
+
+**Configuration:**
+- **Endpoint** — Full URL (e.g., `https://api.example.com/data`)
+- **Method** — GET or POST
+- **Parameters** — Sent as query params (GET) or JSON body (POST)
+
+The tool returns the JSON response from the API.
+
+### Defining Parameters
+
+Parameters tell the model what inputs your tool expects:
+
+| Field | Description |
+|-------|-------------|
+| **Name** | Parameter identifier (e.g., `query`, `count`) |
+| **Type** | `string`, `number`, `integer`, `boolean`, `array`, `object` |
+| **Description** | Explains what this parameter is for |
+| **Required** | Whether the model must provide this parameter |
+| **Enum** | Optional list of allowed values |
+
+### Built-in Templates
+
+Vessel provides 8 starter templates to help you get started:
+
+**JavaScript:**
+- API Request — Fetch data from REST APIs
+- JSON Transform — Filter and reshape JSON data
+- String Utilities — Text manipulation functions
+- Date Utilities — Date formatting and timezone conversion
+
+**Python:**
+- API Request — HTTP requests with urllib
+- Data Analysis — Statistical calculations
+- Text Analysis — Word frequency and sentiment
+- Hash & Encode — MD5, SHA256, Base64 operations
+
+### Testing Tools
+
+Before saving, use the **Test** panel:
+
+1. Enter sample parameter values
+2. Click **Run Test**
+3. View the result or error message
+4. Iterate until the tool works correctly
+
+### Enabling/Disabling Tools
+
+- **Global toggle** — Enable/disable all tools at once
+- **Per-tool toggle** — Enable/disable individual tools
+- Disabled tools won't be sent to the model
+
+### Security Considerations
+
+- **JavaScript** runs in the browser with your session's permissions
+- **Python** runs on the backend with server permissions
+- **HTTP** tools can call any URL — be careful with sensitive endpoints
+- Tools are stored locally in your browser (IndexedDB)
+
+### Programmatic Tool Creation
+
+Tools are stored in localStorage. You can manage them programmatically:
+
+```typescript
+// Tool definition structure
+interface CustomTool {
+  id: string;
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, {
+      type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+      description: string;
+      enum?: string[];
+    }>;
+    required: string[];
+  };
+  implementation: 'javascript' | 'python' | 'http';
+  code?: string;        // For JS/Python
+  endpoint?: string;    // For HTTP
+  httpMethod?: 'GET' | 'POST';
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Access via localStorage
+const tools = JSON.parse(localStorage.getItem('customTools') || '[]');
+```
+
+### Example: Weather Tool
+
+Here's a complete example of a JavaScript tool that fetches weather:
+
+**Name:** `get_weather`
+
+**Description:** Get current weather for a city. Use this when the user asks about weather conditions.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| city | string | Yes | City name (e.g., "London", "New York") |
+| units | string | No | Temperature units: "celsius" or "fahrenheit" |
+
+**Code (JavaScript):**
+```javascript
+const city = encodeURIComponent(args.city);
+const units = args.units === 'fahrenheit' ? 'imperial' : 'metric';
+
+const response = await fetch(
+  `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=${units}&appid=YOUR_API_KEY`
+);
+
+if (!response.ok) {
+  throw new Error(`Weather API error: ${response.status}`);
+}
+
+const data = await response.json();
+return {
+  city: data.name,
+  temperature: data.main.temp,
+  description: data.weather[0].description,
+  humidity: data.main.humidity
+};
+```
 
 ---
 
@@ -388,9 +629,19 @@ The roadmap prioritizes **usability, clarity, and low friction** over feature br
 
 These improve the existing experience without expanding scope.
 
-- [ ] Improve model browser & search
-  - better filtering (size, tags, quantization)
+- [x] Improve model browser & search
+  - better filtering (size, tags, quantization, capabilities)
   - clearer metadata presentation
+  - update detection for installed models
+- [x] Custom tools system
+  - JavaScript, Python, and HTTP tool creation
+  - built-in templates and testing panel
+- [x] System prompt management
+  - prompt library with model-specific defaults
+  - capability-based auto-selection
+- [x] Custom model creation
+  - embed system prompts into Ollama models
+  - edit existing custom models
 - [ ] Keyboard-first workflows
   - model switching
   - prompt navigation
