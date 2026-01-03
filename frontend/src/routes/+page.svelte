@@ -10,13 +10,15 @@
 	import { resolveSystemPrompt } from '$lib/services/prompt-resolution.js';
 	import { streamingMetricsState } from '$lib/stores/streaming-metrics.svelte';
 	import { settingsState } from '$lib/stores/settings.svelte';
-	import { createConversation as createStoredConversation, addMessage as addStoredMessage, updateConversation } from '$lib/storage';
+	import { createConversation as createStoredConversation, addMessage as addStoredMessage, updateConversation, saveAttachments } from '$lib/storage';
 	import { ollamaClient } from '$lib/ollama';
 	import type { OllamaMessage, OllamaToolDefinition, OllamaToolCall } from '$lib/ollama';
 	import { getFunctionModel, USE_FUNCTION_MODEL, runToolCalls, formatToolResultsForChat } from '$lib/tools';
 	import { searchSimilar, formatResultsAsContext, getKnowledgeBaseStats } from '$lib/memory';
 	import ChatWindow from '$lib/components/chat/ChatWindow.svelte';
 	import type { Conversation } from '$lib/types/conversation';
+	import type { FileAttachment } from '$lib/types/attachment.js';
+	import { fileAnalyzer, analyzeFilesInBatches, formatAnalyzedAttachment, type AnalysisResult } from '$lib/services/fileAnalyzer.js';
 
 	// RAG state
 	let ragEnabled = $state(true);
@@ -24,6 +26,10 @@
 
 	// Thinking mode state (for reasoning models)
 	let thinkingEnabled = $state(true);
+
+	// File analysis state
+	let isAnalyzingFiles = $state(false);
+	let analyzingFileNames = $state<string[]>([]);
 
 	// Derived: Check if selected model supports thinking
 	const supportsThinking = $derived.by(() => {
@@ -70,7 +76,7 @@
 	 * Handle first message submission
 	 * Creates a new conversation and starts streaming the response
 	 */
-	async function handleFirstMessage(content: string, images?: string[]): Promise<void> {
+	async function handleFirstMessage(content: string, images?: string[], attachments?: FileAttachment[]): Promise<void> {
 		const model = modelsState.selectedId;
 		if (!model) {
 			console.error('No model selected');
@@ -104,21 +110,134 @@
 		// Set up chat state for the new conversation
 		chatState.conversationId = conversationId;
 
-		// Add user message to tree
+		// Collect attachment IDs if we have attachments to save
+		let attachmentIds: string[] | undefined;
+		if (attachments && attachments.length > 0) {
+			attachmentIds = attachments.map(a => a.id);
+		}
+
+		// Add user message to tree (including attachmentIds for display)
 		const userMessageId = chatState.addMessage({
 			role: 'user',
 			content,
-			images
+			images,
+			attachmentIds
 		});
 
+		// Save attachments to IndexedDB
+		if (attachments && attachments.length > 0) {
+			const files = await Promise.all(attachments.map(async (a) => {
+				if (a.base64Data) {
+					const binary = atob(a.base64Data);
+					const bytes = new Uint8Array(binary.length);
+					for (let i = 0; i < binary.length; i++) {
+						bytes[i] = binary.charCodeAt(i);
+					}
+					return new File([bytes], a.filename, { type: a.mimeType });
+				} else if (a.textContent) {
+					return new File([a.textContent], a.filename, { type: a.mimeType });
+				} else {
+					return new File([], a.filename, { type: a.mimeType });
+				}
+			}));
+
+			const saveResult = await saveAttachments(userMessageId, files, attachments);
+			if (!saveResult.success) {
+				console.error('Failed to save attachments:', saveResult.error);
+			}
+		}
+
 		// Persist user message to IndexedDB with the SAME ID as chatState
-		await addStoredMessage(conversationId, { role: 'user', content, images }, null, userMessageId);
+		await addStoredMessage(conversationId, { role: 'user', content, images, attachmentIds }, null, userMessageId);
 
 		// Update URL without navigation (keeps ChatWindow mounted)
 		history.replaceState({}, '', `/chat/${conversationId}`);
 
-		// Start streaming response
-		const assistantMessageId = chatState.startStreaming();
+		// Process attachments if any
+		let contentForOllama = content;
+		let assistantMessageId: string | null = null;
+
+		if (attachments && attachments.length > 0) {
+			// Show processing indicator - this message will become the assistant response
+			isAnalyzingFiles = true;
+			analyzingFileNames = attachments.map(a => a.filename);
+			assistantMessageId = chatState.startStreaming();
+			const fileCount = attachments.length;
+			const fileLabel = fileCount === 1 ? 'file' : 'files';
+			chatState.setStreamContent(`Processing ${fileCount} ${fileLabel}...`);
+
+			try {
+				// Check if any files need actual LLM analysis
+				const filesToAnalyze = attachments.filter(a => fileAnalyzer.shouldAnalyze(a));
+
+				if (filesToAnalyze.length > 0) {
+					// Update indicator to show analysis
+					chatState.setStreamContent(`Analyzing ${filesToAnalyze.length} ${filesToAnalyze.length === 1 ? 'file' : 'files'}...`);
+
+					const analysisResults = await analyzeFilesInBatches(filesToAnalyze, model, 2);
+
+					// Update attachments with results
+					filesToAnalyze.forEach((file) => {
+						const result = analysisResults.get(file.id);
+						if (result) {
+							file.analyzed = result.analyzed;
+							file.summary = result.summary;
+						}
+					});
+
+					// Build formatted content with file summaries
+					const formattedParts: string[] = [content];
+					for (const attachment of attachments) {
+						const result = analysisResults.get(attachment.id);
+						if (result) {
+							formattedParts.push(formatAnalyzedAttachment(attachment, result));
+						} else if (attachment.textContent) {
+							formattedParts.push(`<file name="${attachment.filename}">\n${attachment.textContent}\n</file>`);
+						}
+					}
+					contentForOllama = formattedParts.join('\n\n');
+				} else {
+					// No files need analysis, just format with content
+					const parts: string[] = [content];
+					for (const a of attachments) {
+						if (a.textContent) {
+							parts.push(`<file name="${a.filename}">\n${a.textContent}\n</file>`);
+						}
+					}
+					contentForOllama = parts.join('\n\n');
+				}
+
+				// Keep "Processing..." visible - LLM streaming will replace it
+
+			} catch (error) {
+				console.error('[NewChat] File processing failed:', error);
+				chatState.setStreamContent('Processing failed, proceeding with original content...');
+				await new Promise(r => setTimeout(r, 1000));
+
+				// Fallback: use original content with raw file text
+				const parts: string[] = [content];
+				for (const a of attachments) {
+					if (a.textContent) {
+						parts.push(`<file name="${a.filename}">\n${a.textContent}\n</file>`);
+					}
+				}
+				contentForOllama = parts.join('\n\n');
+			} finally {
+				isAnalyzingFiles = false;
+				analyzingFileNames = [];
+			}
+		}
+
+		// Start streaming response (reuse existing message if processing files)
+		const hadProcessingMessage = !!assistantMessageId;
+		if (!assistantMessageId) {
+			assistantMessageId = chatState.startStreaming();
+		}
+
+		// Clear any existing content (e.g., "Processing..." text) before LLM starts streaming
+		if (hadProcessingMessage) {
+			chatState.setStreamContent('');
+		}
 
 		// Start streaming metrics tracking
 		streamingMetricsState.startStream();
@@ -129,7 +248,7 @@
 		try {
 			let messages: OllamaMessage[] = [{
 				role: 'user',
-				content,
+				content: contentForOllama,
 				images
 			}];
 

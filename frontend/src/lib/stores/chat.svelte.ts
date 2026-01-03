@@ -150,6 +150,28 @@ export class ChatState {
 	}
 
 	/**
+	 * Set the content of the currently streaming message (replaces entirely)
+	 * @param content The new content
+	 */
+	setStreamContent(content: string): void {
+		if (!this.streamingMessageId) return;
+
+		this.streamBuffer = content;
+
+		const node = this.messageTree.get(this.streamingMessageId);
+		if (node) {
+			const updatedNode: MessageNode = {
+				...node,
+				message: {
+					...node.message,
+					content
+				}
+			};
+			this.messageTree = new Map(this.messageTree).set(this.streamingMessageId, updatedNode);
+		}
+	}
+
+	/**
 	 * Complete the streaming process
 	 */
 	finishStreaming(): void {
@@ -508,6 +530,41 @@ export class ChatState {
 		this.isStreaming = false;
 		this.streamingMessageId = null;
 		this.streamBuffer = '';
+	}
+
+	/**
+	 * Remove a message from the tree
+	 * Used for temporary messages (like analysis progress indicators)
+	 * @param messageId The message ID to remove
+	 */
+	removeMessage(messageId: string): void {
+		const node = this.messageTree.get(messageId);
+		if (!node) return;
+
+		const newTree = new Map(this.messageTree);
+
+		// Remove from parent's childIds
+		if (node.parentId) {
+			const parent = newTree.get(node.parentId);
+			if (parent) {
+				newTree.set(node.parentId, {
+					...parent,
+					childIds: parent.childIds.filter((id) => id !== messageId)
+				});
+			}
+		}
+
+		// Update root if this was the root
+		if (this.rootMessageId === messageId) {
+			this.rootMessageId = null;
+		}
+
+		// Remove the node
+		newTree.delete(messageId);
+		this.messageTree = newTree;
+
+		// Remove from active path
+		this.activePath = this.activePath.filter((id) => id !== messageId);
 	}
 
 	/**

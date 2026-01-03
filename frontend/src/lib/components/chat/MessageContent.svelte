@@ -29,6 +29,9 @@
 	// Supports both <thinking>...</thinking> and <think>...</think> (qwen3 format)
 	const THINKING_PATTERN = /<(?:thinking|think)>([\s\S]*?)<\/(?:thinking|think)>/g;
 
+	// Pattern to find file attachment blocks (content shown via AttachmentDisplay badges instead)
+	const FILE_BLOCK_PATTERN = /<file\s+[^>]*>[\s\S]*?<\/file>/g;
+
 	// Pattern to detect JSON tool call objects (for models that output them as text)
 	// Matches: {"name": "...", "arguments": {...}}
 	const JSON_TOOL_CALL_PATTERN = /^(\s*\{[\s\S]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[\s\S]*\}\s*\}\s*)$/;
@@ -70,6 +73,13 @@
 			.replace(TOOL_EXEC_HEADER_PATTERN, '')
 			.replace(/^Based on these results.*$/gm, '')
 			.trim();
+	}
+
+	/**
+	 * Strip file attachment blocks (content shown via AttachmentDisplay)
+	 */
+	function stripFileBlocks(text: string): string {
+		return text.replace(FILE_BLOCK_PATTERN, '').trim();
 	}
 
 	/**
@@ -319,7 +329,8 @@
 	}
 
 	// Clean and parse content into parts
-	const cleanedContent = $derived(cleanToolText(content));
+	// Strip file blocks (shown via AttachmentDisplay) and tool text
+	const cleanedContent = $derived(stripFileBlocks(cleanToolText(content)));
 	const parsedContent = $derived.by(() => {
 		const result = parseContent(cleanedContent);
 		// Debug: Log if thinking blocks were found

@@ -24,6 +24,9 @@ export { default as ChatInput } from './ChatInput.svelte';
 export { default as ImageUpload } from './ImageUpload.svelte';
 export { default as ImagePreview } from './ImagePreview.svelte';
 
+// Attachment display
+export { default as AttachmentDisplay } from './AttachmentDisplay.svelte';
+
 // Code display
 export { default as CodeBlock } from './CodeBlock.svelte';
 

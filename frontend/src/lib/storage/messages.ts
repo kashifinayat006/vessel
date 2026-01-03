@@ -18,7 +18,8 @@ function toMessageNode(stored: StoredMessage, childIds: string[]): MessageNode {
 			role: stored.role,
 			content: stored.content,
 			images: stored.images,
-			toolCalls: stored.toolCalls
+			toolCalls: stored.toolCalls,
+			attachmentIds: stored.attachmentIds
 		},
 		parentId: stored.parentId,
 		childIds,
@@ -131,6 +132,7 @@ export async function addMessage(
 			content: message.content,
 			images: message.images,
 			toolCalls: message.toolCalls,
+			attachmentIds: message.attachmentIds,
 			siblingIndex,
 			createdAt: now
 		};

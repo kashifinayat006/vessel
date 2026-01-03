@@ -73,17 +73,21 @@
 
 	/**
 	 * Process multiple files
+	 * @param files - Files to process
+	 * @param fromPaste - Whether files came from a paste event (affects image handling)
 	 */
-	async function processFiles(files: File[]) {
+	async function processFiles(files: File[], fromPaste = false) {
 		isProcessing = true;
 		errorMessage = null;
 
 		const newAttachments: FileAttachment[] = [];
 		const errors: string[] = [];
+		const imageFiles: File[] = [];
 
 		for (const file of files) {
-			// Skip images - they're handled by ImageUpload
+			// Collect images separately
 			if (isImageMimeType(file.type)) {
+				imageFiles.push(file);
 				continue;
 			}
 
@@ -92,6 +96,17 @@
 				newAttachments.push(result.attachment);
 			} else {
 				errors.push(`${file.name}: ${result.error}`);
+			}
+		}
+
+		// Handle collected image files
+		if (imageFiles.length > 0) {
+			if (supportsVision) {
+				// Forward to image processing
+				await processImageFiles(imageFiles);
+			} else if (!fromPaste) {
+				// Only show error if user explicitly selected images (not paste)
+				errors.push(`Images require a vision-capable model (e.g., llava, bakllava)`);
 			}
 		}
 
@@ -152,7 +167,8 @@
 
 		// Handle non-image files
 		if (files.length > 0) {
-			processFiles(files);
+			event.preventDefault(); // Prevent browser from pasting as text
+			processFiles(files, true);
 		}
 
 		// Handle image files

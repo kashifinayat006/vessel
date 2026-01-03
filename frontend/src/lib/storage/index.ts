@@ -48,16 +48,31 @@ export type { MessageSearchResult } from './messages.js';
 
 // Attachment operations
 export {
+	// Query
 	getAttachmentsForMessage,
 	getAttachmentMetaForMessage,
 	getAttachment,
-	addAttachment,
+	getAttachmentsByIds,
+	getAttachmentMetaByIds,
+	// Create
+	saveAttachment,
+	saveAttachments,
 	addAttachmentFromBlob,
+	// Update
+	updateAttachmentAnalysis,
+	// Delete
 	deleteAttachment,
 	deleteAttachmentsForMessage,
+	deleteAttachmentsByIds,
+	// Data conversion
 	getAttachmentDataUrl,
+	getAttachmentBase64,
+	getAttachmentTextContent,
+	createDownloadUrl,
+	// Statistics
 	getTotalAttachmentSize,
-	getConversationAttachmentSize
+	getConversationAttachmentSize,
+	getAttachmentCountForMessage
 } from './attachments.js';
 export type { AttachmentMeta } from './attachments.js';
 

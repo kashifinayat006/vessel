@@ -9,7 +9,9 @@
 	import { serverConversationsState } from '$lib/stores/server-conversations.svelte';
 	import { streamingMetricsState } from '$lib/stores/streaming-metrics.svelte';
 	import { ollamaClient } from '$lib/ollama';
-	import { addMessage as addStoredMessage, updateConversation, createConversation as createStoredConversation } from '$lib/storage';
+	import { addMessage as addStoredMessage, updateConversation, createConversation as createStoredConversation, saveAttachments } from '$lib/storage';
+	import type { FileAttachment } from '$lib/types/attachment.js';
+	import { fileAnalyzer, analyzeFilesInBatches, formatAnalyzedAttachment, type AnalysisResult } from '$lib/services/fileAnalyzer.js';
 	import {
 		contextManager,
 		generateSummary,
@@ -42,7 +44,7 @@
 	 */
 	interface Props {
 		mode?: 'new' | 'conversation';
-		onFirstMessage?: (content: string, images?: string[]) => Promise<void>;
+		onFirstMessage?: (content: string, images?: string[], attachments?: FileAttachment[]) => Promise<void>;
 		conversation?: Conversation | null;
 		/** Bindable prop for thinking mode - synced with parent in 'new' mode */
 		thinkingEnabled?: boolean;
@@ -63,10 +65,14 @@
 
 	// Context full modal state
 	let showContextFullModal = $state(false);
-	let pendingMessage: { content: string; images?: string[] } | null = $state(null);
+	let pendingMessage: { content: string; images?: string[]; attachments?: FileAttachment[] } | null = $state(null);
 
 	// Tool execution state
 	let isExecutingTools = $state(false);
+
+	// File analysis state
+	let isAnalyzingFiles = $state(false);
+	let analyzingFileNames = $state<string[]>([]);
 
 	// RAG (Retrieval-Augmented Generation) state
 	let ragEnabled = $state(true);
@@ -328,9 +334,9 @@
 
 		// After summarization, try to send the pending message
 		if (pendingMessage && contextManager.contextUsage.percentage < 100) {
-			const { content, images } = pendingMessage;
+			const { content, images, attachments } = pendingMessage;
 			pendingMessage = null;
-			await handleSendMessage(content, images);
+			await handleSendMessage(content, images, attachments);
 		} else if (pendingMessage) {
 			// Still full after summarization - show toast
 			toastState.warning('Context still full after summarization. Try starting a new chat.');
@@ -357,10 +363,10 @@
 
 		// Try to send the message anyway (may fail or get truncated)
 		if (pendingMessage) {
-			const { content, images } = pendingMessage;
+			const { content, images, attachments } = pendingMessage;
 			pendingMessage = null;
 			// Bypass the context check by calling the inner logic directly
-			await sendMessageInternal(content, images);
+			await sendMessageInternal(content, images, attachments);
 		}
 	}
 
@@ -372,7 +378,7 @@
 	/**
 	 * Send a message - checks context and may show modal
 	 */
-	async function handleSendMessage(content: string, images?: string[]): Promise<void> {
+	async function handleSendMessage(content: string, images?: string[], attachments?: FileAttachment[]): Promise<void> {
 		const selectedModel = modelsState.selectedId;
 
 		if (!selectedModel) {
@@ -383,24 +389,24 @@
 		// Check if context is full (100%+)
 		if (contextManager.contextUsage.percentage >= 100) {
 			// Store pending message and show modal
-			pendingMessage = { content, images };
+			pendingMessage = { content, images, attachments };
 			showContextFullModal = true;
 			return;
 		}
 
-		await sendMessageInternal(content, images);
+		await sendMessageInternal(content, images, attachments);
 	}
 
 	/**
 	 * Internal: Send message and stream response (bypasses context check)
 	 */
-	async function sendMessageInternal(content: string, images?: string[]): Promise<void> {
+	async function sendMessageInternal(content: string, images?: string[], attachments?: FileAttachment[]): Promise<void> {
 		const selectedModel = modelsState.selectedId;
 		if (!selectedModel) return;
 
 		// In 'new' mode with no messages yet, create conversation first
 		if (mode === 'new' && !hasMessages && onFirstMessage) {
-			await onFirstMessage(content, images);
+			await onFirstMessage(content, images, attachments);
 			return;
 		}
 
@@ -423,35 +429,158 @@
 			}
 		}
 
-		// Add user message to tree
+		// Collect attachment IDs if we have attachments to save
+		let attachmentIds: string[] | undefined;
+		if (attachments && attachments.length > 0) {
+			attachmentIds = attachments.map(a => a.id);
+		}
+
+		// Add user message to tree (including attachmentIds for display)
 		const userMessageId = chatState.addMessage({
 			role: 'user',
 			content,
-			images
+			images,
+			attachmentIds
 		});
 
-		// Persist user message to IndexedDB with the SAME ID as chatState
+		// Persist user message and attachments to IndexedDB
 		if (conversationId) {
 			const parentId = chatState.activePath.length >= 2
 				? chatState.activePath[chatState.activePath.length - 2]
 				: null;
-			await addStoredMessage(conversationId, { role: 'user', content, images }, parentId, userMessageId);
+
+			// Save attachments first (they need the messageId)
+			if (attachments && attachments.length > 0) {
+				// Use original File objects for storage (preserves binary data)
+				const files = attachments.map((a) => {
+					if (a.originalFile) {
+						return a.originalFile;
+					}
+					// Fallback: reconstruct from processed data (shouldn't be needed normally)
+					if (a.base64Data) {
+						const binary = atob(a.base64Data);
+						const bytes = new Uint8Array(binary.length);
+						for (let i = 0; i < binary.length; i++) {
+							bytes[i] = binary.charCodeAt(i);
+						}
+						return new File([bytes], a.filename, { type: a.mimeType });
+					}
+					// For text/PDF without original, create placeholder (download won't work)
+					console.warn(`No original file for attachment ${a.filename}, download may not work`);
+					return new File([a.textContent || ''], a.filename, { type: a.mimeType });
+				});
+
+				const saveResult = await saveAttachments(userMessageId, files, attachments);
+				if (!saveResult.success) {
+					console.error('Failed to save attachments:', saveResult.error);
+				}
+			}
+
+			// Save message with attachmentIds
+			await addStoredMessage(conversationId, { role: 'user', content, images, attachmentIds }, parentId, userMessageId);
 		}
 
-		// Stream assistant message with optional tool support
-		await streamAssistantResponse(selectedModel, userMessageId, conversationId);
+		// Process attachments if any
+		let contentForOllama = content;
+		let processingMessageId: string | undefined;
+
+		if (attachments && attachments.length > 0) {
+			// Show processing indicator - this message will become the assistant response
+			isAnalyzingFiles = true;
+			analyzingFileNames = attachments.map(a => a.filename);
+			processingMessageId = chatState.startStreaming();
+			const fileCount = attachments.length;
+			const fileLabel = fileCount === 1 ? 'file' : 'files';
+			chatState.setStreamContent(`Processing ${fileCount} ${fileLabel}...`);
+
+			try {
+				// Check if any files need actual LLM analysis
+				const filesToAnalyze = attachments.filter(a => fileAnalyzer.shouldAnalyze(a));
+
+				if (filesToAnalyze.length > 0) {
+					// Update indicator to show analysis
+					chatState.setStreamContent(`Analyzing ${filesToAnalyze.length} ${filesToAnalyze.length === 1 ? 'file' : 'files'}...`);
+
+					const analysisResults = await analyzeFilesInBatches(filesToAnalyze, selectedModel, 2);
+
+					// Update attachments with results
+					filesToAnalyze.forEach((file) => {
+						const result = analysisResults.get(file.id);
+						if (result) {
+							file.analyzed = result.analyzed;
+							file.summary = result.summary;
+						}
+					});
+
+					// Build formatted content with file summaries
+					const formattedParts: string[] = [content];
+
+					for (const attachment of attachments) {
+						const result = analysisResults.get(attachment.id);
+						if (result) {
+							formattedParts.push(formatAnalyzedAttachment(attachment, result));
+						} else if (attachment.textContent) {
+							// Non-analyzed text attachment
+							formattedParts.push(`<file name="${attachment.filename}">\n${attachment.textContent}\n</file>`);
+						}
+					}
+
+					contentForOllama = formattedParts.join('\n\n');
+				} else {
+					// No files need analysis, just format with content
+					const parts: string[] = [content];
+					for (const a of attachments) {
+						if (a.textContent) {
+							parts.push(`<file name="${a.filename}">\n${a.textContent}\n</file>`);
+						}
+					}
+					contentForOllama = parts.join('\n\n');
+				}
+
+				// Keep "Processing..." visible - LLM streaming will replace it
+
+			} catch (error) {
+				console.error('[ChatWindow] File processing failed:', error);
+				chatState.setStreamContent('Processing failed, proceeding with original content...');
+				await new Promise(r => setTimeout(r, 1000));
+
+				// Fallback: use original content with raw file text
+				const parts: string[] = [content];
+				for (const a of attachments) {
+					if (a.textContent) {
+						parts.push(`<file name="${a.filename}">\n${a.textContent}\n</file>`);
+					}
+				}
+				contentForOllama = parts.join('\n\n');
+			} finally {
+				isAnalyzingFiles = false;
+				analyzingFileNames = [];
+			}
+		}
+
+		// Stream assistant message (reuse processing message if it exists)
+		await streamAssistantResponse(selectedModel, userMessageId, conversationId, contentForOllama, processingMessageId);
 	}
 
 	/**
 	 * Stream assistant response with tool call handling and RAG context
+	 * @param contentOverride Optional content to use instead of the last user message content (for formatted attachments)
 	 */
 	async function streamAssistantResponse(
 		model: string,
 		parentMessageId: string,
-		conversationId: string | null
+		conversationId: string | null,
+		contentOverride?: string,
+		existingMessageId?: string
 	): Promise<void> {
-		const assistantMessageId = chatState.startStreaming();
+		// Reuse existing message (e.g., from "Processing..." indicator) or create new one
+		const assistantMessageId = existingMessageId || chatState.startStreaming();
 		abortController = new AbortController();
+
+		// Clear any existing content (e.g., "Processing..." text) before LLM starts streaming
+		if (existingMessageId) {
+			chatState.setStreamContent('');
+		}
 
 		// Start streaming metrics tracking
 		streamingMetricsState.startStream();
@@ -462,6 +591,18 @@
 		try {
 			let messages = getMessagesForApi();
 			const tools = getToolsForApi();
+
+			// If we have a content override (formatted attachments), replace the last user message content
+			if (contentOverride && messages.length > 0) {
+				const lastUserIndex = messages.findLastIndex(m => m.role === 'user');
+				if (lastUserIndex !== -1) {
+					messages = [
+						...messages.slice(0, lastUserIndex),
+						{ ...messages[lastUserIndex], content: contentOverride },
+						...messages.slice(lastUserIndex + 1)
+					];
+				}
+			}
 
 			// Build system prompt from resolution service + RAG context
 			const systemParts: string[] = [];

@@ -10,6 +10,7 @@
 	import BranchNavigator from './BranchNavigator.svelte';
 	import StreamingIndicator from './StreamingIndicator.svelte';
 	import ToolCallDisplay from './ToolCallDisplay.svelte';
+	import AttachmentDisplay from './AttachmentDisplay.svelte';
 
 	interface Props {
 		node: MessageNode;
@@ -43,6 +44,7 @@
 	const isSystem = $derived(node.message.role === 'system');
 	const hasContent = $derived(node.message.content.length > 0);
 	const hasToolCalls = $derived(node.message.toolCalls && node.message.toolCalls.length > 0);
+	const hasAttachments = $derived(node.message.attachmentIds && node.message.attachmentIds.length > 0);
 
 	// Detect summary messages (compressed conversation history)
 	const isSummaryMessage = $derived(node.message.isSummary === true);
@@ -226,6 +228,10 @@
 						{isStreaming}
 						{showThinking}
 					/>
+				{/if}
+
+				{#if hasAttachments && node.message.attachmentIds}
+					<AttachmentDisplay attachmentIds={node.message.attachmentIds} />
 				{/if}
 
 				{#if hasToolCalls && node.message.toolCalls}

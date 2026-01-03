@@ -7,13 +7,14 @@
 
 	import { modelsState } from '$lib/stores';
 	import type { FileAttachment } from '$lib/types/attachment.js';
-	import { formatAttachmentsForMessage, processFile } from '$lib/utils/file-processor.js';
+	import { processFile } from '$lib/utils/file-processor.js';
 	import { isImageMimeType } from '$lib/types/attachment.js';
 	import { estimateMessageTokens, formatTokenCount } from '$lib/memory/tokenizer';
 	import FileUpload from './FileUpload.svelte';
 
 	interface Props {
-		onSend?: (content: string, images?: string[]) => void;
+		/** Callback when message is sent. Includes content, images for vision models, and pending file attachments to persist */
+		onSend?: (content: string, images?: string[], pendingAttachments?: FileAttachment[]) => void;
 		onStop?: () => void;
 		isStreaming?: boolean;
 		disabled?: boolean;
@@ -47,6 +48,7 @@
 	// Drag overlay state
 	let isDragOver = $state(false);
 	let dragCounter = 0; // Track enter/leave for nested elements
+	let dragResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Derived state
 	const hasContent = $derived(
@@ -98,20 +100,14 @@
 
 	/**
 	 * Send the message
+	 * Passes raw attachments to ChatWindow which handles analysis
 	 */
 	function handleSend(): void {
 		if (!canSend) return;
 
-		let content = inputValue.trim();
+		const content = inputValue.trim();
 		const images = pendingImages.length > 0 ? [...pendingImages] : undefined;
-
-		// Prepend file attachments content to the message
-		if (pendingAttachments.length > 0) {
-			const attachmentContent = formatAttachmentsForMessage(pendingAttachments);
-			if (attachmentContent) {
-				content = attachmentContent + (content ? '\n\n' + content : '');
-			}
-		}
+		const attachments = pendingAttachments.length > 0 ? [...pendingAttachments] : undefined;
 
 		// Clear input, images, and attachments
 		inputValue = '';
@@ -123,7 +119,8 @@
 			textareaElement.style.height = 'auto';
 		}
 
-		onSend?.(content, images);
+		// Pass raw content + attachments to parent (ChatWindow handles analysis)
+		onSend?.(content, images, attachments);
 
 		// Keep focus on input after sending
 		requestAnimationFrame(() => focusInput());
@@ -172,19 +169,44 @@
 	$effect(() => {
 		if (disabled) return;
 
+		// Helper to reset drag state with optional delay
+		function resetDragState(): void {
+			dragCounter = 0;
+			isDragOver = false;
+			if (dragResetTimeout) {
+				clearTimeout(dragResetTimeout);
+				dragResetTimeout = null;
+			}
+		}
+
+		// Schedule a fallback reset in case events get lost
+		function scheduleFallbackReset(): void {
+			if (dragResetTimeout) {
+				clearTimeout(dragResetTimeout);
+			}
+			// Reset after 100ms of no drag activity
+			dragResetTimeout = setTimeout(() => {
+				if (isDragOver) {
+					resetDragState();
+				}
+			}, 100);
+		}
+
 		function onDragEnter(event: DragEvent): void {
 			if (!event.dataTransfer?.types.includes('Files')) return;
 			event.preventDefault();
 			dragCounter++;
 			isDragOver = true;
+			scheduleFallbackReset();
 		}
 
 		function onDragLeave(event: DragEvent): void {
 			event.preventDefault();
 			dragCounter--;
 			if (dragCounter <= 0) {
-				dragCounter = 0;
-				isDragOver = false;
+				resetDragState();
+			} else {
+				scheduleFallbackReset();
 			}
 		}
 
@@ -194,12 +216,13 @@
 			if (event.dataTransfer) {
 				event.dataTransfer.dropEffect = 'copy';
 			}
+			// Keep resetting the timeout while actively dragging
+			scheduleFallbackReset();
 		}
 
 		function onDrop(event: DragEvent): void {
 			event.preventDefault();
-			isDragOver = false;
-			dragCounter = 0;
+			resetDragState();
 
 			if (!event.dataTransfer?.files.length) return;
 			const files = Array.from(event.dataTransfer.files);
@@ -216,6 +239,9 @@
 			document.removeEventListener('dragleave', onDragLeave);
 			document.removeEventListener('dragover', onDragOver);
 			document.removeEventListener('drop', onDrop);
+			if (dragResetTimeout) {
+				clearTimeout(dragResetTimeout);
+			}
 		};
 	});
 
@@ -360,7 +386,7 @@
 		></textarea>
 
 		<!-- Action buttons -->
-		<div class="flex items-center">
+		<div class="flex items-center gap-2">
 			{#if showStopButton}
 				<!-- Stop button -->
 				<button

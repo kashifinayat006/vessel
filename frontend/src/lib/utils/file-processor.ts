@@ -17,7 +17,8 @@ import {
 	MAX_IMAGE_SIZE,
 	MAX_TEXT_SIZE,
 	MAX_PDF_SIZE,
-	MAX_IMAGE_DIMENSION
+	MAX_IMAGE_DIMENSION,
+	MAX_EXTRACTED_CONTENT
 } from '$lib/types/attachment.js';
 
 // ============================================================================
@@ -52,20 +53,73 @@ export function detectFileType(file: File): AttachmentType | null {
 }
 
 // ============================================================================
+// Content Truncation
+// ============================================================================
+
+/**
+ * Result of content truncation
+ */
+interface TruncateResult {
+	content: string;
+	truncated: boolean;
+	originalLength: number;
+}
+
+/**
+ * Truncate content to maximum allowed length
+ * Tries to truncate at a natural boundary (newline or space)
+ */
+function truncateContent(content: string, maxLength: number = MAX_EXTRACTED_CONTENT): TruncateResult {
+	const originalLength = content.length;
+
+	if (originalLength <= maxLength) {
+		return { content, truncated: false, originalLength };
+	}
+
+	// Try to find a natural break point (newline or space) near the limit
+	let cutPoint = maxLength;
+	const searchStart = Math.max(0, maxLength - 500);
+
+	// Look for last newline before cutoff
+	const lastNewline = content.lastIndexOf('\n', maxLength);
+	if (lastNewline > searchStart) {
+		cutPoint = lastNewline;
+	} else {
+		// Look for last space
+		const lastSpace = content.lastIndexOf(' ', maxLength);
+		if (lastSpace > searchStart) {
+			cutPoint = lastSpace;
+		}
+	}
+
+	const truncatedContent = content.slice(0, cutPoint) +
+		`\n\n[... content truncated: ${formatFileSize(originalLength)} total, showing first ${formatFileSize(cutPoint)} ...]`;
+
+	return {
+		content: truncatedContent,
+		truncated: true,
+		originalLength
+	};
+}
+
+// ============================================================================
 // Text File Processing
 // ============================================================================
 
 /**
- * Read a text file and return its content
+ * Read a text file and return its content with truncation info
  */
-export async function readTextFile(file: File): Promise<string> {
+export async function readTextFile(file: File): Promise<TruncateResult> {
 	if (file.size > MAX_TEXT_SIZE) {
 		throw new Error(`File too large. Maximum size is ${MAX_TEXT_SIZE / 1024 / 1024}MB`);
 	}
 
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
-		reader.onload = () => resolve(reader.result as string);
+		reader.onload = () => {
+			const rawContent = reader.result as string;
+			resolve(truncateContent(rawContent));
+		};
 		reader.onerror = () => reject(new Error('Failed to read file'));
 		reader.readAsText(file);
 	});
@@ -170,9 +224,9 @@ async function loadPdfJs(): Promise<typeof import('pdfjs-dist')> {
 }
 
 /**
- * Extract text content from a PDF file
+ * Extract text content from a PDF file with error handling and content limits
  */
-export async function extractPdfText(file: File): Promise<string> {
+export async function extractPdfText(file: File): Promise<TruncateResult> {
 	if (file.size > MAX_PDF_SIZE) {
 		throw new Error(`PDF too large. Maximum size is ${MAX_PDF_SIZE / 1024 / 1024}MB`);
 	}
@@ -183,20 +237,63 @@ export async function extractPdfText(file: File): Promise<string> {
 	const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
 
 	const textParts: string[] = [];
+	let totalChars = 0;
+	let stoppedEarly = false;
+	const failedPages: number[] = [];
 
 	for (let i = 1; i <= pdf.numPages; i++) {
-		const page = await pdf.getPage(i);
-		const textContent = await page.getTextContent();
-		const pageText = textContent.items
-			.filter((item): item is import('pdfjs-dist/types/src/display/api').TextItem =>
-				'str' in item
-			)
-			.map((item) => item.str)
-			.join(' ');
-		textParts.push(pageText);
+		// Stop if we've already collected enough content
+		if (totalChars >= MAX_EXTRACTED_CONTENT) {
+			stoppedEarly = true;
+			break;
+		}
+
+		try {
+			const page = await pdf.getPage(i);
+			const textContent = await page.getTextContent();
+
+			// Null check for textContent.items
+			if (!textContent?.items) {
+				console.warn(`PDF page ${i}: No text content items`);
+				failedPages.push(i);
+				continue;
+			}
+
+			const pageText = textContent.items
+				.filter((item): item is import('pdfjs-dist/types/src/display/api').TextItem =>
+					'str' in item && typeof item.str === 'string'
+				)
+				.map((item) => item.str)
+				.join(' ')
+				.trim();
+
+			if (pageText) {
+				textParts.push(pageText);
+				totalChars += pageText.length;
+			}
+		} catch (pageError) {
+			console.warn(`PDF page ${i} extraction failed:`, pageError);
+			failedPages.push(i);
+			// Continue with other pages instead of failing entirely
+		}
 	}
 
-	return textParts.join('\n\n');
+	let rawContent = textParts.join('\n\n');
+
+	// Add metadata about extraction issues
+	const metadata: string[] = [];
+	if (failedPages.length > 0) {
+		metadata.push(`[Note: Failed to extract pages: ${failedPages.join(', ')}]`);
+	}
+	if (stoppedEarly) {
+		metadata.push(`[Note: Extraction stopped at page ${textParts.length} of ${pdf.numPages} due to content limit]`);
+	}
+
+	if (metadata.length > 0) {
+		rawContent = metadata.join('\n') + '\n\n' + rawContent;
+	}
+
+	return truncateContent(rawContent);
 }
 
 // ============================================================================
@@ -236,29 +333,36 @@ export async function processFile(file: File): Promise<ProcessFileOutcome> {
 					attachment: {
 						...baseAttachment,
 						base64Data: base64,
-						previewUrl
+						previewUrl,
+						originalFile: file
 					}
 				};
 			}
 
 			case 'text': {
-				const textContent = await readTextFile(file);
+				const result = await readTextFile(file);
 				return {
 					success: true,
 					attachment: {
 						...baseAttachment,
-						textContent
+						textContent: result.content,
+						truncated: result.truncated,
+						originalLength: result.originalLength,
+						originalFile: file
 					}
 				};
 			}
 
 			case 'pdf': {
-				const textContent = await extractPdfText(file);
+				const result = await extractPdfText(file);
 				return {
 					success: true,
 					attachment: {
 						...baseAttachment,
-						textContent
+						textContent: result.content,
+						truncated: result.truncated,
+						originalLength: result.originalLength,
+						originalFile: file
 					}
 				};
 			}
@@ -312,11 +416,27 @@ export function getFileIcon(type: AttachmentType): string {
 
 /**
  * Format attachment content for inclusion in message
- * Prepends file content with a header showing filename
+ * Uses XML-style tags for cleaner parsing by LLMs
  */
 export function formatAttachmentsForMessage(attachments: FileAttachment[]): string {
 	return attachments
 		.filter((a) => a.textContent)
-		.map((a) => `--- ${a.filename} ---\n${a.textContent}`)
+		.map((a) => {
+			const truncatedAttr = a.truncated ? ' truncated="true"' : '';
+			const sizeAttr = ` size="${formatFileSize(a.size)}"`;
+			return `<file name="${escapeXmlAttr(a.filename)}"${sizeAttr}${truncatedAttr}>\n${a.textContent}\n</file>`;
+		})
 		.join('\n\n');
+}
+
+/**
+ * Escape special characters for XML attribute values
+ */
+function escapeXmlAttr(str: string): string {
+	return str
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&apos;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
 }

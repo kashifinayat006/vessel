@@ -59,6 +59,8 @@ export interface StoredMessage {
 	siblingIndex: number;
 	createdAt: number;
 	syncVersion?: number;
+	/** References to attachments stored in the attachments table */
+	attachmentIds?: string[];
 }
 
 /**
@@ -85,6 +87,36 @@ export interface StoredAttachment {
 	mimeType: string;
 	data: Blob;
 	filename: string;
+	/** File size in bytes */
+	size: number;
+	/** Attachment type category */
+	type: 'image' | 'text' | 'pdf' | 'audio' | 'video' | 'binary';
+	/** Timestamp when attachment was created */
+	createdAt: number;
+	/** Cached extracted text (for text/PDF files) */
+	textContent?: string;
+	/** Whether the text content was truncated */
+	truncated?: boolean;
+	/** Whether this attachment was analyzed by the file analyzer */
+	analyzed?: boolean;
+	/** Summary from file analyzer (if analyzed) */
+	summary?: string;
+}
+
+/**
+ * Attachment metadata (without the binary data)
+ * Used for displaying attachment info without loading the full blob
+ */
+export interface AttachmentMeta {
+	id: string;
+	messageId: string;
+	filename: string;
+	mimeType: string;
+	size: number;
+	type: 'image' | 'text' | 'pdf' | 'audio' | 'video' | 'binary';
+	createdAt: number;
+	truncated?: boolean;
+	analyzed?: boolean;
 }
 
 /**

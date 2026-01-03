@@ -28,6 +28,8 @@ export interface Message {
 	isSummarized?: boolean;
 	/** If true, this is a summary message representing compressed conversation history */
 	isSummary?: boolean;
+	/** References to attachments stored in IndexedDB */
+	attachmentIds?: string[];
 }
 
 /** A node in the message tree structure (for branching conversations) */

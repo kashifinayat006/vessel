@@ -48,7 +48,12 @@
 	 * Process and add files to the images array
 	 */
 	async function handleFiles(files: FileList | File[]): Promise<void> {
-		if (!canAddMore) return;
+		if (!canAddMore) {
+			// Show error when max reached
+			errorMessage = `Maximum ${maxImages} images allowed`;
+			setTimeout(() => { errorMessage = null; }, 3000);
+			return;
+		}
 
 		const fileArray = Array.from(files);
 		const validFiles = fileArray.filter(isValidImageType);
@@ -63,13 +68,15 @@
 		const remainingSlots = maxImages - images.length;
 		const filesToProcess = validFiles.slice(0, remainingSlots);
 
+		// Clear previous error when starting new upload
+		errorMessage = null;
+
 		if (filesToProcess.length < validFiles.length) {
 			errorMessage = `Only ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} can be added. Maximum: ${maxImages}`;
 			setTimeout(() => { errorMessage = null; }, 3000);
 		}
 
 		isProcessing = true;
-		errorMessage = null;
 
 		try {
 			const newImages: string[] = [];

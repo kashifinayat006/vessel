@@ -28,6 +28,16 @@ export interface FileAttachment {
 	base64Data?: string;
 	/** Preview thumbnail for images (data URI with prefix for display) */
 	previewUrl?: string;
+	/** Whether content was truncated due to size limits */
+	truncated?: boolean;
+	/** Original content length before truncation */
+	originalLength?: number;
+	/** Original File object for storage (not serializable, transient) */
+	originalFile?: File;
+	/** Whether this file was analyzed by the FileAnalyzer agent */
+	analyzed?: boolean;
+	/** AI-generated summary from FileAnalyzer (for large/truncated files) */
+	summary?: string;
 }
 
 // ============================================================================
@@ -120,6 +130,16 @@ export const MAX_PDF_SIZE = 10 * 1024 * 1024;
 
 /** Maximum image dimensions (LLaVA limit) */
 export const MAX_IMAGE_DIMENSION = 1344;
+
+/** Maximum extracted content length (chars) - prevents context overflow
+ * 8K chars ≈ 2K tokens per file, allowing ~3 files in an 8K context model
+ */
+export const MAX_EXTRACTED_CONTENT = 8000;
+
+/** Threshold for auto-analysis of large files (chars)
+ * Files larger than this would benefit from summarization (future feature)
+ */
+export const ANALYSIS_THRESHOLD = 8000;
 
 // ============================================================================
 // Type Guards
