@@ -12,6 +12,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Copy PDF.js worker to static directory for local serving
+# This avoids CDN dependency and CORS issues with ESM modules
+RUN cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs static/
+
 # Build the application
 RUN npm run build
 

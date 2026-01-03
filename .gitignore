@@ -42,3 +42,6 @@ dev.env
 backend/vessel-backend
 data/
 backend/data-dev/
+
+# Generated files
+frontend/static/pdf.worker.min.mjs

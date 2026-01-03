@@ -150,8 +150,18 @@ async function loadPdfJs(): Promise<typeof import('pdfjs-dist')> {
 	try {
 		pdfjsLib = await import('pdfjs-dist');
 
-		// Set worker source using CDN for reliability
-		pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+		// Use locally bundled worker (copied to static/ during build)
+		// Falls back to CDN if local worker isn't available
+		const localWorkerPath = '/pdf.worker.min.mjs';
+		const cdnWorkerPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+		// Try local first, with CDN fallback
+		try {
+			const response = await fetch(localWorkerPath, { method: 'HEAD' });
+			pdfjsLib.GlobalWorkerOptions.workerSrc = response.ok ? localWorkerPath : cdnWorkerPath;
+		} catch {
+			pdfjsLib.GlobalWorkerOptions.workerSrc = cdnWorkerPath;
+		}
 
 		return pdfjsLib;
 	} catch (error) {

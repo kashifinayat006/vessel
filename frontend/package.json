@@ -1,6 +1,6 @@
 {
   "name": "vessel",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,8 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs static/ 2>/dev/null || true"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^4.0.0",
