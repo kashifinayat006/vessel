@@ -9,6 +9,7 @@ export { UIState, uiState } from './ui.svelte.js';
 export { ToastState, toastState } from './toast.svelte.js';
 export { toolsState } from './tools.svelte.js';
 export { promptsState } from './prompts.svelte.js';
+export { SettingsState, settingsState } from './settings.svelte.js';
 export type { Prompt } from './prompts.svelte.js';
 export { VersionState, versionState } from './version.svelte.js';
 

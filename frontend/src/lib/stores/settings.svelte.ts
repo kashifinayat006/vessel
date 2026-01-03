@@ -6,9 +6,12 @@
 import {
 	type ModelParameters,
 	type ChatSettings,
+	type AutoCompactSettings,
 	DEFAULT_MODEL_PARAMETERS,
 	DEFAULT_CHAT_SETTINGS,
-	PARAMETER_RANGES
+	DEFAULT_AUTO_COMPACT_SETTINGS,
+	PARAMETER_RANGES,
+	AUTO_COMPACT_RANGES
 } from '$lib/types/settings';
 import type { ModelDefaults } from './models.svelte';
 
@@ -29,6 +32,11 @@ export class SettingsState {
 
 	// Panel visibility
 	isPanelOpen = $state(false);
+
+	// Auto-compact settings
+	autoCompactEnabled = $state(DEFAULT_AUTO_COMPACT_SETTINGS.enabled);
+	autoCompactThreshold = $state(DEFAULT_AUTO_COMPACT_SETTINGS.threshold);
+	autoCompactPreserveCount = $state(DEFAULT_AUTO_COMPACT_SETTINGS.preserveCount);
 
 	// Derived: Current model parameters object
 	modelParameters = $derived.by((): ModelParameters => ({
@@ -142,6 +150,32 @@ export class SettingsState {
 	}
 
 	/**
+	 * Toggle auto-compact enabled state
+	 */
+	toggleAutoCompact(): void {
+		this.autoCompactEnabled = !this.autoCompactEnabled;
+		this.saveToStorage();
+	}
+
+	/**
+	 * Update auto-compact threshold
+	 */
+	updateAutoCompactThreshold(value: number): void {
+		const range = AUTO_COMPACT_RANGES.threshold;
+		this.autoCompactThreshold = Math.max(range.min, Math.min(range.max, value));
+		this.saveToStorage();
+	}
+
+	/**
+	 * Update auto-compact preserve count
+	 */
+	updateAutoCompactPreserveCount(value: number): void {
+		const range = AUTO_COMPACT_RANGES.preserveCount;
+		this.autoCompactPreserveCount = Math.max(range.min, Math.min(range.max, Math.round(value)));
+		this.saveToStorage();
+	}
+
+	/**
 	 * Load settings from localStorage
 	 */
 	private loadFromStorage(): void {
@@ -151,11 +185,17 @@ export class SettingsState {
 
 			const settings: ChatSettings = JSON.parse(stored);
 
+			// Model parameters
 			this.useCustomParameters = settings.useCustomParameters ?? false;
 			this.temperature = settings.modelParameters?.temperature ?? DEFAULT_MODEL_PARAMETERS.temperature;
 			this.top_k = settings.modelParameters?.top_k ?? DEFAULT_MODEL_PARAMETERS.top_k;
 			this.top_p = settings.modelParameters?.top_p ?? DEFAULT_MODEL_PARAMETERS.top_p;
 			this.num_ctx = settings.modelParameters?.num_ctx ?? DEFAULT_MODEL_PARAMETERS.num_ctx;
+
+			// Auto-compact settings
+			this.autoCompactEnabled = settings.autoCompact?.enabled ?? DEFAULT_AUTO_COMPACT_SETTINGS.enabled;
+			this.autoCompactThreshold = settings.autoCompact?.threshold ?? DEFAULT_AUTO_COMPACT_SETTINGS.threshold;
+			this.autoCompactPreserveCount = settings.autoCompact?.preserveCount ?? DEFAULT_AUTO_COMPACT_SETTINGS.preserveCount;
 		} catch (error) {
 			console.warn('[Settings] Failed to load from localStorage:', error);
 		}
@@ -168,7 +208,12 @@ export class SettingsState {
 		try {
 			const settings: ChatSettings = {
 				useCustomParameters: this.useCustomParameters,
-				modelParameters: this.modelParameters
+				modelParameters: this.modelParameters,
+				autoCompact: {
+					enabled: this.autoCompactEnabled,
+					threshold: this.autoCompactThreshold,
+					preserveCount: this.autoCompactPreserveCount
+				}
 			};
 
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));

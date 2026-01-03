@@ -79,18 +79,22 @@ export async function generateSummary(
 /**
  * Determine which messages should be summarized
  * Returns indices of messages to summarize (older messages) and messages to keep
+ * @param messages - All messages in the conversation
+ * @param targetFreeTokens - Not currently used (preserved for API compatibility)
+ * @param preserveCount - Number of recent messages to keep (defaults to PRESERVE_RECENT_MESSAGES)
  */
 export function selectMessagesForSummarization(
 	messages: MessageNode[],
-	targetFreeTokens: number
+	targetFreeTokens: number,
+	preserveCount: number = PRESERVE_RECENT_MESSAGES
 ): { toSummarize: MessageNode[]; toKeep: MessageNode[] } {
-	if (messages.length <= PRESERVE_RECENT_MESSAGES) {
+	if (messages.length <= preserveCount) {
 		return { toSummarize: [], toKeep: messages };
 	}
 
 	// Calculate how many messages to summarize
 	// Keep the recent ones, summarize the rest
-	const cutoffIndex = Math.max(0, messages.length - PRESERVE_RECENT_MESSAGES);
+	const cutoffIndex = Math.max(0, messages.length - preserveCount);
 
 	// Filter out system messages from summarization (they should stay)
 	const toSummarize: MessageNode[] = [];

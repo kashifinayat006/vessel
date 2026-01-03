@@ -78,6 +78,37 @@ export const PARAMETER_DESCRIPTIONS: Record<keyof ModelParameters, string> = {
 };
 
 /**
+ * Auto-compact settings for automatic context management
+ */
+export interface AutoCompactSettings {
+	/** Whether auto-compact is enabled */
+	enabled: boolean;
+
+	/** Context usage threshold (percentage) to trigger auto-compact */
+	threshold: number;
+
+	/** Number of recent messages to preserve when compacting */
+	preserveCount: number;
+}
+
+/**
+ * Default auto-compact settings
+ */
+export const DEFAULT_AUTO_COMPACT_SETTINGS: AutoCompactSettings = {
+	enabled: false,
+	threshold: 70,
+	preserveCount: 6
+};
+
+/**
+ * Auto-compact parameter ranges for UI
+ */
+export const AUTO_COMPACT_RANGES = {
+	threshold: { min: 50, max: 90, step: 5 },
+	preserveCount: { min: 2, max: 20, step: 1 }
+} as const;
+
+/**
  * Chat settings including model parameters
  */
 export interface ChatSettings {
@@ -86,6 +117,9 @@ export interface ChatSettings {
 
 	/** Custom model parameters (used when useCustomParameters is true) */
 	modelParameters: ModelParameters;
+
+	/** Auto-compact settings for context management */
+	autoCompact?: AutoCompactSettings;
 }
 
 /**
@@ -93,5 +127,6 @@ export interface ChatSettings {
  */
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
 	useCustomParameters: false,
-	modelParameters: { ...DEFAULT_MODEL_PARAMETERS }
+	modelParameters: { ...DEFAULT_MODEL_PARAMETERS },
+	autoCompact: { ...DEFAULT_AUTO_COMPACT_SETTINGS }
 };

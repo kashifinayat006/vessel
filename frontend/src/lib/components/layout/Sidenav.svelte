@@ -8,13 +8,9 @@
 	import SidenavHeader from './SidenavHeader.svelte';
 	import SidenavSearch from './SidenavSearch.svelte';
 	import ConversationList from './ConversationList.svelte';
-	import { SettingsModal } from '$lib/components/shared';
 
 	// Check if a path is active
 	const isActive = (path: string) => $page.url.pathname === path;
-
-	// Settings modal state
-	let settingsOpen = $state(false);
 </script>
 
 <!-- Overlay for mobile (closes sidenav when clicking outside) -->
@@ -137,11 +133,10 @@
 				<span>Prompts</span>
 			</a>
 
-			<!-- Settings button -->
-			<button
-				type="button"
-				onclick={() => (settingsOpen = true)}
-				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-primary"
+			<!-- Settings link -->
+			<a
+				href="/settings"
+				class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors {isActive('/settings') ? 'bg-gray-500/20 text-gray-600 dark:bg-gray-700/30 dark:text-gray-300' : 'text-theme-muted hover:bg-theme-hover hover:text-theme-primary'}"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -159,10 +154,7 @@
 					<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
 				</svg>
 				<span>Settings</span>
-			</button>
+			</a>
 		</div>
 	</div>
 </aside>
-
-<!-- Settings Modal -->
-<SettingsModal isOpen={settingsOpen} onClose={() => (settingsOpen = false)} />

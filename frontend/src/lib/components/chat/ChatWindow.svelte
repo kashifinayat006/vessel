@@ -22,7 +22,7 @@
 	import { runToolCalls, formatToolResultsForChat, getFunctionModel, USE_FUNCTION_MODEL } from '$lib/tools';
 	import type { OllamaMessage, OllamaToolCall, OllamaToolDefinition } from '$lib/ollama';
 	import type { Conversation } from '$lib/types/conversation';
-	import MessageList from './MessageList.svelte';
+	import VirtualMessageList from './VirtualMessageList.svelte';
 	import ChatInput from './ChatInput.svelte';
 	import EmptyState from './EmptyState.svelte';
 	import ContextUsageBar from './ContextUsageBar.svelte';
@@ -266,6 +266,49 @@
 		} catch (error) {
 			console.error('Summarization failed:', error);
 			toastState.error('Summarization failed. Please try again.');
+		} finally {
+			isSummarizing = false;
+		}
+	}
+
+	/**
+	 * Handle automatic compaction of older messages
+	 * Called after assistant response completes when auto-compact is enabled
+	 */
+	async function handleAutoCompact(): Promise<void> {
+		// Check if auto-compact should be triggered
+		if (!contextManager.shouldAutoCompact()) return;
+
+		const selectedModel = modelsState.selectedId;
+		if (!selectedModel || isSummarizing) return;
+
+		const messages = chatState.visibleMessages;
+		const preserveCount = contextManager.getAutoCompactPreserveCount();
+		const { toSummarize } = selectMessagesForSummarization(messages, 0, preserveCount);
+
+		if (toSummarize.length < 2) return;
+
+		isSummarizing = true;
+
+		try {
+			// Generate summary using the LLM
+			const summary = await generateSummary(toSummarize, selectedModel);
+
+			// Mark original messages as summarized
+			const messageIdsToSummarize = toSummarize.map((node) => node.id);
+			chatState.markAsSummarized(messageIdsToSummarize);
+
+			// Insert the summary message (inline indicator will be shown by MessageList)
+			chatState.insertSummaryMessage(summary);
+
+			// Force context recalculation
+			contextManager.updateMessages(chatState.visibleMessages, true);
+
+			// Subtle notification for auto-compact (inline indicator is the primary feedback)
+			console.log(`[Auto-compact] Summarized ${toSummarize.length} messages`);
+		} catch (error) {
+			console.error('[Auto-compact] Failed:', error);
+			// Silent failure for auto-compact - don't interrupt user flow
 		} finally {
 			isSummarizing = false;
 		}
@@ -549,6 +592,9 @@
 								conversationsState.update(conversationId, {});
 							}
 						}
+
+						// Check for auto-compact after response completes
+						await handleAutoCompact();
 					},
 					onError: (error) => {
 						console.error('Streaming error:', error);
@@ -826,7 +872,7 @@
 <div class="flex h-full flex-col bg-theme-primary">
 	{#if hasMessages}
 		<div class="flex-1 overflow-hidden">
-			<MessageList
+			<VirtualMessageList
 				onRegenerate={handleRegenerate}
 				onEditMessage={handleEditMessage}
 				showThinking={thinkingEnabled}

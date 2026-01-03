@@ -7,6 +7,7 @@
 	import { chatState } from '$lib/stores';
 	import type { MessageNode, BranchInfo } from '$lib/types';
 	import MessageItem from './MessageItem.svelte';
+	import SummarizationIndicator from './SummarizationIndicator.svelte';
 
 	interface Props {
 		onRegenerate?: () => void;
@@ -208,6 +209,10 @@
 	>
 		<div class="mx-auto max-w-4xl px-4 py-6">
 			{#each chatState.visibleMessages as node, index (node.id)}
+				<!-- Show summarization indicator before summary messages -->
+				{#if node.message.isSummary}
+					<SummarizationIndicator />
+				{/if}
 				<MessageItem
 					{node}
 					branchInfo={getBranchInfo(node)}

@@ -9,6 +9,7 @@ import type { MessageNode } from '$lib/types/chat.js';
 import type { ContextUsage, TokenEstimate, MessageWithTokens } from './types.js';
 import { estimateMessageTokens, estimateFormatOverhead, formatTokenCount } from './tokenizer.js';
 import { getModelContextLimit, formatContextSize } from './model-limits.js';
+import { settingsState } from '$lib/stores/settings.svelte.js';
 
 /** Warning threshold as percentage of context (0.85 = 85%) */
 const WARNING_THRESHOLD = 0.85;
@@ -251,6 +252,43 @@ class ContextManager {
 		// Clear cache and messages
 		this.tokenCache.clear();
 		this.messagesWithTokens = [];
+	}
+
+	/**
+	 * Check if auto-compact should be triggered
+	 * Returns true if:
+	 * - Auto-compact is enabled in settings
+	 * - Context usage exceeds the configured threshold
+	 * - There are enough messages to summarize
+	 */
+	shouldAutoCompact(): boolean {
+		// Check if auto-compact is enabled
+		if (!settingsState.autoCompactEnabled) {
+			return false;
+		}
+
+		// Check context usage against threshold
+		const threshold = settingsState.autoCompactThreshold;
+		if (this.contextUsage.percentage < threshold) {
+			return false;
+		}
+
+		// Check if there are enough messages to summarize
+		// Need at least preserveCount + 2 messages to have anything to summarize
+		const preserveCount = settingsState.autoCompactPreserveCount;
+		const minMessages = preserveCount + 2;
+		if (this.messagesWithTokens.length < minMessages) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get the number of recent messages to preserve during auto-compact
+	 */
+	getAutoCompactPreserveCount(): number {
+		return settingsState.autoCompactPreserveCount;
 	}
 }
 
