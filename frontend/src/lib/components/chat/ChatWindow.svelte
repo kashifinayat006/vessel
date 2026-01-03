@@ -635,6 +635,9 @@
 				}
 			}
 
+			// Always add language instruction
+			systemParts.push('Always respond in the same language the user writes in. Default to English if unclear.');
+
 			// Inject combined system message
 			if (systemParts.length > 0) {
 				const systemMessage: OllamaMessage = {

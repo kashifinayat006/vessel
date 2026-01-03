@@ -267,6 +267,9 @@
 				systemParts.push(`You have access to a knowledge base. Use the following relevant context to help answer the user's question. If the context isn't relevant, you can ignore it.\n\n${ragContext}`);
 			}
 
+			// Always add language instruction
+			systemParts.push('Always respond in the same language the user writes in. Default to English if unclear.');
+
 			// Inject combined system message
 			if (systemParts.length > 0) {
 				const systemMessage: OllamaMessage = {
