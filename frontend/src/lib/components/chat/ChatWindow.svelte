@@ -577,10 +577,8 @@
 		const assistantMessageId = existingMessageId || chatState.startStreaming();
 		abortController = new AbortController();
 
-		// Clear any existing content (e.g., "Processing..." text) before LLM starts streaming
-		if (existingMessageId) {
-			chatState.setStreamContent('');
-		}
+		// Track if we need to clear the "Processing..." text on first token
+		let needsClearOnFirstToken = !!existingMessageId;
 
 		// Start streaming metrics tracking
 		streamingMetricsState.startStream();
@@ -669,6 +667,11 @@
 				},
 				{
 					onThinkingToken: (token) => {
+						// Clear "Processing..." on first token
+						if (needsClearOnFirstToken) {
+							chatState.setStreamContent('');
+							needsClearOnFirstToken = false;
+						}
 						// Accumulate thinking and update the message
 						if (!streamingThinking) {
 							// Start the thinking block
@@ -680,6 +683,11 @@
 						streamingMetricsState.incrementTokens();
 					},
 					onToken: (token) => {
+						// Clear "Processing..." on first token
+						if (needsClearOnFirstToken) {
+							chatState.setStreamContent('');
+							needsClearOnFirstToken = false;
+						}
 						// Close thinking block when content starts
 						if (streamingThinking && !thinkingClosed) {
 							chatState.appendToStreaming('</think>\n\n');
