@@ -19,6 +19,7 @@
 	import type { Conversation } from '$lib/types/conversation';
 	import type { FileAttachment } from '$lib/types/attachment.js';
 	import { fileAnalyzer, analyzeFilesInBatches, formatAnalyzedAttachment, type AnalysisResult } from '$lib/services/fileAnalyzer.js';
+	import { replaceState } from '$app/navigation';
 
 	// RAG state
 	let ragEnabled = $state(true);
@@ -150,8 +151,8 @@
 		// Persist user message to IndexedDB with the SAME ID as chatState
 		await addStoredMessage(conversationId, { role: 'user', content, images, attachmentIds }, null, userMessageId);
 
-		// Update URL without navigation (keeps ChatWindow mounted)
-		history.replaceState({}, '', `/chat/${conversationId}`);
+		// NOTE: URL update moved to onComplete to avoid aborting the stream
+		// The URL will update after the first response completes
 
 		// Process attachments if any
 		let contentForOllama = content;
@@ -168,13 +169,17 @@
 
 			try {
 				// Check if any files need actual LLM analysis
-				const filesToAnalyze = attachments.filter(a => fileAnalyzer.shouldAnalyze(a));
+				// Force analysis when >3 files to prevent context overflow (max 5 files allowed)
+				const forceAnalysis = attachments.length > 3;
+				const filesToAnalyze = forceAnalysis
+					? attachments.filter(a => a.textContent && a.textContent.length > 2000)
+					: attachments.filter(a => fileAnalyzer.shouldAnalyze(a));
 
 				if (filesToAnalyze.length > 0) {
 					// Update indicator to show analysis
 					chatState.setStreamContent(`Analyzing ${filesToAnalyze.length} ${filesToAnalyze.length === 1 ? 'file' : 'files'}...`);
 
-					const analysisResults = await analyzeFilesInBatches(filesToAnalyze, model, 2);
+					const analysisResults = await analyzeFilesInBatches(filesToAnalyze, model, 3);
 
 					// Update attachments with results
 					filesToAnalyze.forEach((file) => {
@@ -197,7 +202,7 @@
 					}
 					contentForOllama = formattedParts.join('\n\n');
 				} else {
-					// No files need analysis, just format with content
+					// No files need analysis, format with content
 					const parts: string[] = [content];
 					for (const a of attachments) {
 						if (a.textContent) {
@@ -362,10 +367,16 @@
 
 							// Generate a smarter title in the background (don't await)
 							generateSmartTitle(conversationId, content, node.message.content);
+
+							// Update URL now that streaming is complete
+							replaceState(`/chat/${conversationId}`, {});
 						}
 					},
 					onError: (error) => {
 						console.error('Streaming error:', error);
+						// Show error to user instead of leaving "Processing..."
+						const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+						chatState.setStreamContent(`⚠️ Error: ${errorMsg}`);
 						chatState.finishStreaming();
 						streamingMetricsState.endStream();
 					}
@@ -373,6 +384,9 @@
 			);
 		} catch (error) {
 			console.error('Failed to send message:', error);
+			// Show error to user
+			const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+			chatState.setStreamContent(`⚠️ Error: ${errorMsg}`);
 			chatState.finishStreaming();
 			streamingMetricsState.endStream();
 		}

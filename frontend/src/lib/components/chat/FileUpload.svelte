@@ -52,6 +52,9 @@
 	let errorMessage = $state<string | null>(null);
 	let fileInputRef: HTMLInputElement | null = $state(null);
 
+	// Constants
+	const MAX_ATTACHMENTS = 5;
+
 	// Derived states
 	const hasAttachments = $derived(attachments.length > 0);
 	const hasImages = $derived(images.length > 0);
@@ -111,7 +114,15 @@
 		}
 
 		if (newAttachments.length > 0) {
-			onAttachmentsChange([...attachments, ...newAttachments]);
+			const combined = [...attachments, ...newAttachments];
+			if (combined.length > MAX_ATTACHMENTS) {
+				const kept = combined.slice(0, MAX_ATTACHMENTS);
+				const dropped = combined.length - MAX_ATTACHMENTS;
+				onAttachmentsChange(kept);
+				errors.push(`Maximum ${MAX_ATTACHMENTS} files allowed. ${dropped} file(s) not added.`);
+			} else {
+				onAttachmentsChange(combined);
+			}
 		}
 
 		if (errors.length > 0) {

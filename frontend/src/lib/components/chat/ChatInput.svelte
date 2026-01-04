@@ -278,8 +278,13 @@
 			}
 		}
 
-		// Process other files
+		// Process other files (limit to 5 total attachments)
+		const MAX_ATTACHMENTS = 5;
 		for (const file of otherFiles) {
+			if (pendingAttachments.length >= MAX_ATTACHMENTS) {
+				console.warn(`Maximum ${MAX_ATTACHMENTS} files reached, skipping remaining files`);
+				break;
+			}
 			const result = await processFile(file);
 			if (result.success) {
 				pendingAttachments = [...pendingAttachments, result.attachment];

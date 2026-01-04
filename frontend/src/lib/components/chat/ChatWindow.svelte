@@ -12,6 +12,7 @@
 	import { addMessage as addStoredMessage, updateConversation, createConversation as createStoredConversation, saveAttachments } from '$lib/storage';
 	import type { FileAttachment } from '$lib/types/attachment.js';
 	import { fileAnalyzer, analyzeFilesInBatches, formatAnalyzedAttachment, type AnalysisResult } from '$lib/services/fileAnalyzer.js';
+	import { attachmentService } from '$lib/services/attachmentService.js';
 	import {
 		contextManager,
 		generateSummary,
@@ -223,13 +224,38 @@
 	/**
 	 * Convert chat state messages to Ollama API format
 	 * Uses messagesForContext to exclude summarized originals but include summaries
+	 * Now includes attachment content loaded from IndexedDB
 	 */
-	function getMessagesForApi(): OllamaMessage[] {
-		return chatState.messagesForContext.map((node) => ({
-			role: node.message.role as OllamaMessage['role'],
-			content: node.message.content,
-			images: node.message.images
-		}));
+	async function getMessagesForApi(): Promise<OllamaMessage[]> {
+		const messages: OllamaMessage[] = [];
+
+		for (const node of chatState.messagesForContext) {
+			let content = node.message.content;
+			let images = node.message.images;
+
+			// Load attachment content if present
+			if (node.message.attachmentIds && node.message.attachmentIds.length > 0) {
+				// Load text content from attachments
+				const attachmentContent = await attachmentService.buildOllamaContent(node.message.attachmentIds);
+				if (attachmentContent) {
+					content = content + '\n\n' + attachmentContent;
+				}
+
+				// Load image base64 from attachments
+				const attachmentImages = await attachmentService.buildOllamaImages(node.message.attachmentIds);
+				if (attachmentImages.length > 0) {
+					images = [...(images || []), ...attachmentImages];
+				}
+			}
+
+			messages.push({
+				role: node.message.role as OllamaMessage['role'],
+				content,
+				images
+			});
+		}
+
+		return messages;
 	}
 
 	/**
@@ -495,13 +521,17 @@
 
 			try {
 				// Check if any files need actual LLM analysis
-				const filesToAnalyze = attachments.filter(a => fileAnalyzer.shouldAnalyze(a));
+				// Force analysis when >3 files to prevent context overflow (max 5 files allowed)
+				const forceAnalysis = attachments.length > 3;
+				const filesToAnalyze = forceAnalysis
+					? attachments.filter(a => a.textContent && a.textContent.length > 2000)
+					: attachments.filter(a => fileAnalyzer.shouldAnalyze(a));
 
 				if (filesToAnalyze.length > 0) {
 					// Update indicator to show analysis
 					chatState.setStreamContent(`Analyzing ${filesToAnalyze.length} ${filesToAnalyze.length === 1 ? 'file' : 'files'}...`);
 
-					const analysisResults = await analyzeFilesInBatches(filesToAnalyze, selectedModel, 2);
+					const analysisResults = await analyzeFilesInBatches(filesToAnalyze, selectedModel, 3);
 
 					// Update attachments with results
 					filesToAnalyze.forEach((file) => {
@@ -527,7 +557,7 @@
 
 					contentForOllama = formattedParts.join('\n\n');
 				} else {
-					// No files need analysis, just format with content
+					// No files need analysis, format with content
 					const parts: string[] = [content];
 					for (const a of attachments) {
 						if (a.textContent) {
@@ -587,7 +617,7 @@
 		let pendingToolCalls: OllamaToolCall[] | null = null;
 
 		try {
-			let messages = getMessagesForApi();
+			let messages = await getMessagesForApi();
 			const tools = getToolsForApi();
 
 			// If we have a content override (formatted attachments), replace the last user message content
@@ -743,6 +773,9 @@
 					},
 					onError: (error) => {
 						console.error('Streaming error:', error);
+						// Show error to user instead of leaving "Processing..."
+						const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+						chatState.setStreamContent(`⚠️ Error: ${errorMsg}`);
 						chatState.finishStreaming();
 						streamingMetricsState.endStream();
 						abortController = null;
@@ -751,6 +784,10 @@
 				abortController.signal
 			);
 		} catch (error) {
+			console.error('Failed to send message:', error);
+			// Show error to user
+			const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+			chatState.setStreamContent(`⚠️ Error: ${errorMsg}`);
 			toastState.error('Failed to send message. Please try again.');
 			chatState.finishStreaming();
 			streamingMetricsState.endStream();
@@ -899,7 +936,7 @@
 
 		try {
 			// Get messages for API - excludes the current empty assistant message being streamed
-			const messages = getMessagesForApi().filter(m => m.content !== '');
+			const messages = (await getMessagesForApi()).filter(m => m.content !== '');
 			const tools = getToolsForApi();
 
 			// Use function model for tool routing if enabled and tools are present
@@ -956,6 +993,8 @@
 					},
 					onError: (error) => {
 						console.error('Regenerate error:', error);
+						const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+						chatState.setStreamContent(`⚠️ Error: ${errorMsg}`);
 						chatState.finishStreaming();
 						streamingMetricsState.endStream();
 						abortController = null;
@@ -964,6 +1003,9 @@
 				abortController.signal
 			);
 		} catch (error) {
+			console.error('Failed to regenerate:', error);
+			const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+			chatState.setStreamContent(`⚠️ Error: ${errorMsg}`);
 			toastState.error('Failed to regenerate. Please try again.');
 			chatState.finishStreaming();
 			streamingMetricsState.endStream();
