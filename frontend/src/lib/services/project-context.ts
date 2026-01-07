@@ -15,7 +15,7 @@ import {
 import type { ProjectLink } from '$lib/storage/projects.js';
 import { getProjectLinks } from '$lib/storage/projects.js';
 import { listDocuments, getDocumentChunks } from '$lib/memory/vector-store.js';
-import { searchChatHistory } from './chat-indexer.js';
+import { searchChatHistory, searchProjectChatHistory } from './chat-indexer.js';
 
 // ============================================================================
 // Types
@@ -162,20 +162,19 @@ export async function buildProjectContext(
  * Search across project chat history using embeddings
  * Returns relevant snippets from other conversations in the project
  */
-export async function searchProjectChatHistory(
+export async function searchProjectChatHistoryLocal(
 	projectId: string,
 	query: string,
 	excludeConversationId?: string,
 	topK: number = 10,
 	threshold: number = 0.2
 ): Promise<ChatHistoryResult[]> {
-	const results = await searchChatHistory(
+	const results = await searchChatHistory(query, {
 		projectId,
-		query,
 		excludeConversationId,
 		topK,
 		threshold
-	);
+	});
 
 	return results.map((r) => ({
 		conversationId: r.conversationId,

@@ -43,10 +43,11 @@ export interface ChatSearchResult {
 /**
  * Index messages from a conversation for RAG search
  * Generates embeddings for each message and stores them for similarity search
+ * @param projectId - Project ID or null for global conversations
  */
 export async function indexConversationMessages(
 	conversationId: string,
-	projectId: string,
+	projectId: string | null,
 	messages: Message[],
 	options: IndexingOptions = {}
 ): Promise<number> {
@@ -193,25 +194,53 @@ export async function removeProjectFromIndex(projectId: string): Promise<void> {
 }
 
 // ============================================================================
-// Search Functions (Placeholder)
+// Search Functions
 // ============================================================================
 
+export interface SearchChatOptions {
+	/** Project ID to search within, null for global search */
+	projectId?: string | null;
+	/** Conversation ID to exclude from results */
+	excludeConversationId?: string;
+	/** Maximum number of results */
+	topK?: number;
+	/** Minimum similarity threshold */
+	threshold?: number;
+	/** Embedding model to use */
+	embeddingModel?: string;
+}
+
 /**
- * Search indexed chat history within a project using embedding similarity
+ * Search indexed chat history using embedding similarity
+ * Can search within a project, globally, or both
  */
 export async function searchChatHistory(
-	projectId: string,
 	query: string,
-	excludeConversationId?: string,
-	topK: number = 5,
-	threshold: number = 0.3,
-	embeddingModel: string = DEFAULT_EMBEDDING_MODEL
+	options: SearchChatOptions = {}
 ): Promise<ChatSearchResult[]> {
-	// Get all chunks for this project
-	const chunks = await db.chatChunks
-		.where('projectId')
-		.equals(projectId)
-		.toArray();
+	const {
+		projectId,
+		excludeConversationId,
+		topK = 10,
+		threshold = 0.2,
+		embeddingModel = DEFAULT_EMBEDDING_MODEL
+	} = options;
+
+	// Get chunks based on scope
+	let chunks: StoredChatChunk[];
+	if (projectId !== undefined) {
+		// Project-scoped search (projectId can be string or null)
+		if (projectId === null) {
+			// Search only global (non-project) conversations
+			chunks = await db.chatChunks.filter((c) => c.projectId === null).toArray();
+		} else {
+			// Search within specific project
+			chunks = await db.chatChunks.where('projectId').equals(projectId).toArray();
+		}
+	} else {
+		// Global search - all chunks
+		chunks = await db.chatChunks.toArray();
+	}
 
 	// Filter out excluded conversation and chunks without embeddings
 	const relevantChunks = chunks.filter((c) => {
@@ -221,21 +250,23 @@ export async function searchChatHistory(
 	});
 
 	if (relevantChunks.length === 0) {
-		console.log('[ChatIndexer] No indexed chunks found for project:', projectId);
 		return [];
 	}
-
-	console.log(`[ChatIndexer] Searching ${relevantChunks.length} chunks for query: "${query.slice(0, 50)}..."`);
 
 	try {
 		// Generate embedding for query
 		const queryEmbedding = await generateEmbedding(query, embeddingModel);
 
+		// Validate embedding was generated successfully
+		if (!queryEmbedding || !Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+			console.warn('[ChatIndexer] Failed to generate query embedding - is the embedding model available?');
+			return [];
+		}
+
 		// Find similar chunks
 		const similar = findSimilar(queryEmbedding, relevantChunks, topK, threshold);
 
 		if (similar.length === 0) {
-			console.log('[ChatIndexer] No similar chunks found above threshold:', threshold);
 			return [];
 		}
 
@@ -247,20 +278,51 @@ export async function searchChatHistory(
 		);
 
 		// Format results
-		const results: ChatSearchResult[] = similar.map((chunk) => ({
+		return similar.map((chunk) => ({
 			conversationId: chunk.conversationId,
 			conversationTitle: titleMap.get(chunk.conversationId) || 'Unknown',
 			messageId: chunk.messageId,
 			content: chunk.content,
 			similarity: chunk.similarity
 		}));
-
-		console.log(`[ChatIndexer] Found ${results.length} relevant chunks`);
-		return results;
 	} catch (error) {
 		console.error('[ChatIndexer] Search failed:', error);
 		return [];
 	}
+}
+
+/**
+ * Search chat history within a specific project (legacy API)
+ */
+export async function searchProjectChatHistory(
+	projectId: string,
+	query: string,
+	excludeConversationId?: string,
+	topK: number = 10,
+	threshold: number = 0.2
+): Promise<ChatSearchResult[]> {
+	return searchChatHistory(query, {
+		projectId,
+		excludeConversationId,
+		topK,
+		threshold
+	});
+}
+
+/**
+ * Search all indexed chat history globally
+ */
+export async function searchAllChatHistory(
+	query: string,
+	excludeConversationId?: string,
+	topK: number = 20,
+	threshold: number = 0.2
+): Promise<ChatSearchResult[]> {
+	return searchChatHistory(query, {
+		excludeConversationId,
+		topK,
+		threshold
+	});
 }
 
 // ============================================================================

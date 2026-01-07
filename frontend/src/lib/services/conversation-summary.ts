@@ -158,9 +158,10 @@ Summary:`;
 }
 
 /**
- * Trigger summary update and chat indexing when user leaves a conversation
+ * Trigger chat indexing and optional summary when user leaves a conversation
  * Runs in background to not block navigation
- * Only processes conversations that belong to a project
+ * Indexes ALL conversations for global RAG search
+ * Only generates summaries for project conversations
  */
 export async function updateSummaryOnLeave(
 	conversationId: string,
@@ -168,36 +169,36 @@ export async function updateSummaryOnLeave(
 	model: string,
 	baseUrl?: string
 ): Promise<void> {
-	// Get conversation to check if it's in a project
+	// Get conversation to check project membership
 	const conversation = await db.conversations.get(conversationId);
-	if (!conversation || !conversation.projectId) {
-		return; // Only process project conversations
+	if (!conversation) {
+		return;
 	}
 
-	const projectId = conversation.projectId;
+	const projectId = conversation.projectId || null;
 
 	// Run indexing and summary generation in background
 	setTimeout(async () => {
-		// Always index messages for RAG (incremental - only new messages)
+		// Always index messages for RAG (all conversations, for global search)
 		try {
-			console.log('[ChatIndexer] Indexing conversation:', conversationId);
 			const indexed = await indexConversationMessages(conversationId, projectId, messages);
 			if (indexed > 0) {
-				console.log(`[ChatIndexer] Indexed ${indexed} new messages`);
+				console.log(`[ChatIndexer] Indexed ${indexed} chunks for conversation`);
 			}
 		} catch (error) {
 			console.error('[ChatIndexer] Indexing failed:', error);
 		}
 
-		// Generate summary if needed (4+ messages and enough time passed)
-		const needsUpdate = await needsSummaryUpdate(conversationId, messages.length);
-		if (needsUpdate) {
-			try {
-				console.log('[Summary] Generating summary for:', conversationId);
-				await generateAndSaveSummary(conversationId, messages, { model, baseUrl });
-				console.log('[Summary] Summary completed');
-			} catch (error) {
-				console.error('[Summary] Summary generation failed:', error);
+		// Generate summary only for project conversations (4+ messages and enough time passed)
+		if (projectId) {
+			const needsUpdate = await needsSummaryUpdate(conversationId, messages.length);
+			if (needsUpdate) {
+				try {
+					await generateAndSaveSummary(conversationId, messages, { model, baseUrl });
+					console.log('[Summary] Summary completed');
+				} catch (error) {
+					console.error('[Summary] Summary generation failed:', error);
+				}
 			}
 		}
 	}, 100);

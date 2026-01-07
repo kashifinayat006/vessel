@@ -19,6 +19,7 @@
 	} from '$lib/memory';
 	import type { StoredDocument } from '$lib/storage/db';
 	import ProjectModal from '$lib/components/projects/ProjectModal.svelte';
+	import { searchProjectChatHistory, type ChatSearchResult } from '$lib/services/chat-indexer.js';
 
 	// Get project ID from URL
 	const projectId = $derived($page.params.id);
@@ -46,15 +47,84 @@
 	let activeTab = $state<'chats' | 'files' | 'links'>('chats');
 	let fileInput: HTMLInputElement;
 	let dragOver = $state(false);
+	let isSearching = $state(false);
+	let searchResults = $state<ChatSearchResult[]>([]);
+	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-	// Filtered conversations based on search
+	// Map of conversationId -> best matching snippet from search
+	const searchSnippetMap = $derived.by(() => {
+		const map = new Map<string, { content: string; similarity: number }>();
+		for (const result of searchResults) {
+			const existing = map.get(result.conversationId);
+			// Keep the result with highest similarity
+			if (!existing || result.similarity > existing.similarity) {
+				map.set(result.conversationId, {
+					content: result.content.slice(0, 200) + (result.content.length > 200 ? '...' : ''),
+					similarity: result.similarity
+				});
+			}
+		}
+		return map;
+	});
+
+	// Get unique conversation IDs from search results, ordered by best match
+	const searchConversationIds = $derived.by(() => {
+		const idScores = new Map<string, number>();
+		for (const result of searchResults) {
+			const existing = idScores.get(result.conversationId) ?? 0;
+			if (result.similarity > existing) {
+				idScores.set(result.conversationId, result.similarity);
+			}
+		}
+		// Sort by score descending
+		return [...idScores.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.map(([id]) => id);
+	});
+
+	// Filtered conversations based on search (semantic search when query present)
 	const filteredConversations = $derived.by(() => {
 		if (!searchQuery.trim()) return projectConversations;
+		// If we have semantic search results, filter and order by them
+		if (searchResults.length > 0) {
+			return searchConversationIds
+				.map(id => projectConversations.find(c => c.id === id))
+				.filter((c): c is NonNullable<typeof c> => c !== undefined);
+		}
+		// Fallback to title search while waiting for semantic results
 		const query = searchQuery.toLowerCase();
 		return projectConversations.filter(c =>
 			c.title.toLowerCase().includes(query)
 		);
 	});
+
+	// Debounced semantic search
+	async function handleSearch() {
+		if (searchDebounceTimer) {
+			clearTimeout(searchDebounceTimer);
+		}
+
+		if (!searchQuery.trim() || !projectId) {
+			searchResults = [];
+			isSearching = false;
+			return;
+		}
+
+		isSearching = true;
+		const currentProjectId = projectId; // Capture for async closure
+
+		searchDebounceTimer = setTimeout(async () => {
+			try {
+				const results = await searchProjectChatHistory(currentProjectId, searchQuery, undefined, 20, 0.15);
+				searchResults = results;
+			} catch (error) {
+				console.error('[ProjectSearch] Semantic search failed:', error);
+				searchResults = [];
+			} finally {
+				isSearching = false;
+			}
+		}, 300);
+	}
 
 	// Track if component is mounted
 	let isMounted = false;
@@ -415,9 +485,16 @@
 							<input
 								type="text"
 								bind:value={searchQuery}
-								placeholder="Search chats in project..."
-								class="w-full rounded-lg border border-theme bg-theme-tertiary py-2 pl-10 pr-4 text-sm text-theme-primary placeholder-theme-muted focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+								oninput={handleSearch}
+								placeholder="Search chats in project (semantic search)..."
+								class="w-full rounded-lg border border-theme bg-theme-secondary py-2 pl-10 pr-10 text-sm text-theme-primary placeholder-theme-muted focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
 							/>
+							{#if isSearching}
+								<svg class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-theme-muted" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+								</svg>
+							{/if}
 						</div>
 					</div>
 
@@ -437,6 +514,7 @@
 					{:else}
 						<div class="space-y-2">
 							{#each filteredConversations as conversation (conversation.id)}
+								{@const matchSnippet = searchSnippetMap.get(conversation.id)}
 								<a
 									href="/chat/{conversation.id}"
 									class="block rounded-lg border border-theme bg-theme-secondary p-4 transition-colors hover:bg-theme-tertiary"
@@ -446,7 +524,20 @@
 											<h3 class="truncate font-medium text-theme-primary">
 												{conversation.title || 'Untitled'}
 											</h3>
-											{#if conversation.summary}
+											{#if matchSnippet}
+												<!-- Show matching content from semantic search -->
+												<div class="mt-2 rounded-md bg-emerald-500/10 px-3 py-2">
+													<div class="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase text-emerald-400">
+														<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+															<path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+														</svg>
+														Match ({Math.round(matchSnippet.similarity * 100)}%)
+													</div>
+													<p class="line-clamp-2 text-sm text-theme-secondary">
+														{matchSnippet.content}
+													</p>
+												</div>
+											{:else if conversation.summary}
 												<p class="mt-1 line-clamp-2 text-sm text-theme-muted">
 													{conversation.summary}
 												</p>

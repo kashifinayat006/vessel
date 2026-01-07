@@ -14,6 +14,7 @@ import {
 	AUTO_COMPACT_RANGES
 } from '$lib/types/settings';
 import type { ModelDefaults } from './models.svelte';
+import { DEFAULT_EMBEDDING_MODEL } from '$lib/memory/embeddings';
 
 const STORAGE_KEY = 'vessel-settings';
 
@@ -37,6 +38,9 @@ export class SettingsState {
 	autoCompactEnabled = $state(DEFAULT_AUTO_COMPACT_SETTINGS.enabled);
 	autoCompactThreshold = $state(DEFAULT_AUTO_COMPACT_SETTINGS.threshold);
 	autoCompactPreserveCount = $state(DEFAULT_AUTO_COMPACT_SETTINGS.preserveCount);
+
+	// Embedding model for semantic search
+	embeddingModel = $state(DEFAULT_EMBEDDING_MODEL);
 
 	// Derived: Current model parameters object
 	modelParameters = $derived.by((): ModelParameters => ({
@@ -176,6 +180,14 @@ export class SettingsState {
 	}
 
 	/**
+	 * Update embedding model for semantic search
+	 */
+	updateEmbeddingModel(model: string): void {
+		this.embeddingModel = model;
+		this.saveToStorage();
+	}
+
+	/**
 	 * Load settings from localStorage
 	 */
 	private loadFromStorage(): void {
@@ -196,6 +208,9 @@ export class SettingsState {
 			this.autoCompactEnabled = settings.autoCompact?.enabled ?? DEFAULT_AUTO_COMPACT_SETTINGS.enabled;
 			this.autoCompactThreshold = settings.autoCompact?.threshold ?? DEFAULT_AUTO_COMPACT_SETTINGS.threshold;
 			this.autoCompactPreserveCount = settings.autoCompact?.preserveCount ?? DEFAULT_AUTO_COMPACT_SETTINGS.preserveCount;
+
+			// Embedding model
+			this.embeddingModel = settings.embeddingModel ?? DEFAULT_EMBEDDING_MODEL;
 		} catch (error) {
 			console.warn('[Settings] Failed to load from localStorage:', error);
 		}
@@ -213,7 +228,8 @@ export class SettingsState {
 					enabled: this.autoCompactEnabled,
 					threshold: this.autoCompactThreshold,
 					preserveCount: this.autoCompactPreserveCount
-				}
+				},
+				embeddingModel: this.embeddingModel
 			};
 
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));

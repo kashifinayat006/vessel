@@ -10,6 +10,7 @@
 	import { modelInfoService, type ModelInfo } from '$lib/services/model-info-service.js';
 	import { getPrimaryModifierDisplay } from '$lib/utils';
 	import { PARAMETER_RANGES, PARAMETER_LABELS, PARAMETER_DESCRIPTIONS, AUTO_COMPACT_RANGES } from '$lib/types/settings';
+	import { EMBEDDING_MODELS } from '$lib/memory/embeddings';
 
 	const modifierKey = getPrimaryModifierDisplay();
 
@@ -36,11 +37,15 @@
 
 	// Handle prompt selection for a model
 	async function handleModelPromptChange(modelName: string, promptId: string | null): Promise<void> {
-		await modelPromptMappingsState.setMapping(modelName, promptId);
+		if (promptId === null) {
+			await modelPromptMappingsState.removeMapping(modelName);
+		} else {
+			await modelPromptMappingsState.setMapping(modelName, promptId);
+		}
 	}
 
 	// Get the currently mapped prompt ID for a model
-	function getMappedPromptId(modelName: string): string | null {
+	function getMappedPromptId(modelName: string): string | undefined {
 		return modelPromptMappingsState.getMapping(modelName);
 	}
 
@@ -354,6 +359,25 @@
 			</h2>
 
 			<div class="rounded-lg border border-theme bg-theme-secondary p-4 space-y-4">
+				<!-- Embedding Model Selector -->
+				<div class="pb-4 border-b border-theme">
+					<label for="embedding-model" class="text-sm font-medium text-theme-secondary">Embedding Model</label>
+					<p class="text-xs text-theme-muted mb-2">Model used for semantic search and conversation indexing</p>
+					<select
+						id="embedding-model"
+						value={settingsState.embeddingModel}
+						onchange={(e) => settingsState.updateEmbeddingModel(e.currentTarget.value)}
+						class="w-full rounded-lg border border-theme-subtle bg-theme-tertiary px-3 py-2 text-theme-secondary focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+					>
+						{#each EMBEDDING_MODELS as model}
+							<option value={model}>{model}</option>
+						{/each}
+					</select>
+					<p class="mt-2 text-xs text-theme-muted">
+						Note: The model must be installed in Ollama. Run <code class="bg-theme-tertiary px-1 rounded">ollama pull {settingsState.embeddingModel}</code> if not installed.
+					</p>
+				</div>
+
 				<!-- Auto-Compact Toggle -->
 				<div class="flex items-center justify-between pb-4 border-b border-theme">
 					<div>

@@ -44,6 +44,9 @@ export async function generateEmbedding(
 
 		// Ollama returns an array of embeddings (one per input)
 		// We're only passing one input, so take the first
+		if (!response.embeddings || response.embeddings.length === 0) {
+			throw new Error(`No embeddings returned from model "${model}". Is the model available?`);
+		}
 		return response.embeddings[0];
 	} catch (error) {
 		if (error instanceof Error && error.name === 'AbortError') {

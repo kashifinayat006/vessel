@@ -11,10 +11,11 @@
 	import { getAllConversations } from '$lib/storage';
 	import { syncManager } from '$lib/backend';
 	import { keyboardShortcuts, getShortcuts } from '$lib/utils';
+	import { scheduleMigration } from '$lib/services/chat-index-migration.js';
 	import Sidenav from '$lib/components/layout/Sidenav.svelte';
 	import TopNav from '$lib/components/layout/TopNav.svelte';
 	import ModelSelect from '$lib/components/layout/ModelSelect.svelte';
-	import { ToastContainer, ShortcutsModal, SearchModal } from '$lib/components/shared';
+	import { ToastContainer, ShortcutsModal } from '$lib/components/shared';
 	import UpdateBanner from '$lib/components/shared/UpdateBanner.svelte';
 
 	import type { LayoutData } from './$types';
@@ -29,9 +30,6 @@
 
 	// Sidenav width constant
 	const SIDENAV_WIDTH = 280;
-
-	// Search modal state
-	let showSearchModal = $state(false);
 
 	// Shortcuts modal state
 	let showShortcutsModal = $state(false);
@@ -69,6 +67,9 @@
 		// Load projects from IndexedDB
 		projectsState.load();
 
+		// Schedule background migration for chat indexing (runs after 5 seconds)
+		scheduleMigration(5000);
+
 		return () => {
 			uiState.destroy();
 			syncManager.destroy();
@@ -93,12 +94,12 @@
 			}
 		});
 
-		// Search (Cmd/Ctrl + K) - opens global search modal
+		// Search (Cmd/Ctrl + K) - navigates to search page
 		keyboardShortcuts.register({
 			...SHORTCUTS.SEARCH,
 			preventDefault: true,
 			handler: () => {
-				showSearchModal = true;
+				goto('/search');
 			}
 		});
 
@@ -185,6 +186,3 @@
 
 <!-- Keyboard shortcuts help -->
 <ShortcutsModal isOpen={showShortcutsModal} onClose={() => (showShortcutsModal = false)} />
-
-<!-- Global search modal -->
-<SearchModal isOpen={showSearchModal} onClose={() => (showSearchModal = false)} />

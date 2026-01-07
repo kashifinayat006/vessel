@@ -120,6 +120,9 @@ export interface ChatSettings {
 
 	/** Auto-compact settings for context management */
 	autoCompact?: AutoCompactSettings;
+
+	/** Embedding model for semantic search (e.g., 'nomic-embed-text') */
+	embeddingModel?: string;
 }
 
 /**

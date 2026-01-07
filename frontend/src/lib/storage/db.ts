@@ -252,13 +252,13 @@ export interface StoredProjectLink {
 
 /**
  * Chat message chunk with embedding for cross-chat RAG
- * Enables searching across conversation history within a project
+ * Enables searching across conversation history (project-scoped or global)
  */
 export interface StoredChatChunk {
 	id: string;
 	conversationId: string;
-	/** Denormalized for efficient project-scoped queries */
-	projectId: string;
+	/** Project ID for project-scoped queries, null for global conversations */
+	projectId: string | null;
 	messageId: string;
 	role: 'user' | 'assistant';
 	content: string;

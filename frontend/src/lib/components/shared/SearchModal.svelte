@@ -1,12 +1,13 @@
 <script lang="ts">
 	/**
 	 * SearchModal - Global search modal for conversations and messages
-	 * Supports searching both conversation titles and message content
+	 * Supports searching conversation titles, message content, and semantic search
 	 */
 	import { goto } from '$app/navigation';
 	import { searchConversations, searchMessages, type MessageSearchResult } from '$lib/storage';
 	import { conversationsState } from '$lib/stores';
 	import type { Conversation } from '$lib/types/conversation';
+	import { searchAllChatHistory, type ChatSearchResult } from '$lib/services/chat-indexer.js';
 
 	interface Props {
 		isOpen: boolean;
@@ -17,12 +18,13 @@
 
 	// Search state
 	let searchQuery = $state('');
-	let activeTab = $state<'titles' | 'messages'>('titles');
+	let activeTab = $state<'titles' | 'messages' | 'semantic'>('titles');
 	let isSearching = $state(false);
 
 	// Results
 	let titleResults = $state<Conversation[]>([]);
 	let messageResults = $state<MessageSearchResult[]>([]);
+	let semanticResults = $state<ChatSearchResult[]>([]);
 
 	// Debounce timer
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -41,6 +43,7 @@
 		if (!searchQuery.trim()) {
 			titleResults = [];
 			messageResults = [];
+			semanticResults = [];
 			return;
 		}
 
@@ -48,10 +51,11 @@
 			isSearching = true;
 
 			try {
-				// Search both in parallel
-				const [titlesResult, messagesResult] = await Promise.all([
+				// Search all three in parallel
+				const [titlesResult, messagesResult, semanticSearchResults] = await Promise.all([
 					searchConversations(searchQuery),
-					searchMessages(searchQuery, { limit: 30 })
+					searchMessages(searchQuery, { limit: 30 }),
+					searchAllChatHistory(searchQuery, undefined, 30, 0.15)
 				]);
 
 				if (titlesResult.success) {
@@ -61,6 +65,10 @@
 				if (messagesResult.success) {
 					messageResults = messagesResult.data;
 				}
+
+				semanticResults = semanticSearchResults;
+			} catch (error) {
+				console.error('[SearchModal] Search error:', error);
 			} finally {
 				isSearching = false;
 			}
@@ -125,6 +133,7 @@
 		searchQuery = '';
 		titleResults = [];
 		messageResults = [];
+		semanticResults = [];
 		activeTab = 'titles';
 		onClose();
 	}
@@ -142,6 +151,7 @@
 			searchQuery = '';
 			titleResults = [];
 			messageResults = [];
+			semanticResults = [];
 		}
 	});
 </script>
@@ -255,6 +265,20 @@
 						>
 					{/if}
 				</button>
+				<button
+					type="button"
+					onclick={() => (activeTab = 'semantic')}
+					class="flex-1 px-4 py-2 text-sm font-medium transition-colors {activeTab === 'semantic'
+						? 'border-b-2 border-emerald-500 text-emerald-400'
+						: 'text-theme-muted hover:text-theme-secondary'}"
+				>
+					Semantic
+					{#if semanticResults.length > 0}
+						<span class="ml-1.5 rounded-full bg-theme-secondary px-1.5 py-0.5 text-xs"
+							>{semanticResults.length}</span
+						>
+					{/if}
+				</button>
 			</div>
 
 			<!-- Results -->
@@ -312,7 +336,7 @@
 							{/each}
 						</div>
 					{/if}
-				{:else}
+				{:else if activeTab === 'messages'}
 					{#if messageResults.length === 0 && !isSearching}
 						<div class="py-8 text-center text-sm text-theme-muted">
 							No messages found matching "{searchQuery}"
@@ -340,6 +364,35 @@
 									</div>
 									<p class="line-clamp-2 text-sm text-theme-secondary">
 										{getSnippet(result.content, result.matchIndex, searchQuery)}
+									</p>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				{:else if activeTab === 'semantic'}
+					{#if semanticResults.length === 0 && !isSearching}
+						<div class="py-8 text-center text-sm text-theme-muted">
+							<p>No semantic matches found for "{searchQuery}"</p>
+							<p class="mt-1 text-xs">Semantic search uses AI embeddings to find similar content</p>
+						</div>
+					{:else}
+						<div class="divide-y divide-theme-secondary">
+							{#each semanticResults as result}
+								<button
+									type="button"
+									onclick={() => navigateToConversation(result.conversationId)}
+									class="flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-theme-secondary"
+								>
+									<div class="flex items-center gap-2">
+										<span class="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+											{Math.round(result.similarity * 100)}% match
+										</span>
+										<span class="truncate text-xs text-theme-muted">
+											{result.conversationTitle}
+										</span>
+									</div>
+									<p class="line-clamp-2 text-sm text-theme-secondary">
+										{result.content.slice(0, 200)}{result.content.length > 200 ? '...' : ''}
 									</p>
 								</button>
 							{/each}

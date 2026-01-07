@@ -1,19 +1,30 @@
 <script lang="ts">
 	/**
-	 * SidenavSearch.svelte - Search input for filtering conversations
-	 * Uses local conversationsState for instant client-side filtering
+	 * SidenavSearch.svelte - Search input that navigates to search page
 	 */
+	import { goto } from '$app/navigation';
 	import { conversationsState } from '$lib/stores';
 
-	// Handle input change - directly updates store for instant filtering
+	let searchValue = $state('');
+
+	// Handle input change - only filter locally, navigate on Enter
 	function handleInput(e: Event) {
 		const value = (e.target as HTMLInputElement).value;
-		conversationsState.searchQuery = value;
+		searchValue = value;
+		conversationsState.searchQuery = value; // Local filtering in sidebar
 	}
 
 	// Handle clear button
 	function handleClear() {
+		searchValue = '';
 		conversationsState.clearSearch();
+	}
+
+	// Handle Enter key to navigate to search page
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && searchValue.trim()) {
+			goto(`/search?query=${encodeURIComponent(searchValue)}`);
+		}
 	}
 </script>
 
@@ -38,15 +49,16 @@
 		<!-- Search input -->
 		<input
 			type="text"
-			value={conversationsState.searchQuery}
+			bind:value={searchValue}
 			oninput={handleInput}
+			onkeydown={handleKeydown}
 			placeholder="Search conversations..."
 			data-search-input
-			class="w-full rounded-lg border border-theme-subtle bg-theme-tertiary/50 py-2 pl-10 pr-9 text-sm text-theme-primary placeholder-theme-placeholder transition-colors focus:border-violet-500/50 focus:bg-theme-tertiary focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+			class="w-full rounded-lg border border-theme bg-slate-800 py-2 pl-10 pr-9 text-sm text-white placeholder-slate-400 transition-colors focus:border-violet-500/50 focus:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
 		/>
 
 		<!-- Clear button (visible when there's text) -->
-		{#if conversationsState.searchQuery}
+		{#if searchValue}
 			<button
 				type="button"
 				onclick={handleClear}
