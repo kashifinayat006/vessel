@@ -151,12 +151,12 @@
 	</div>
 
 	<!-- Action buttons (always visible on mobile, hover on desktop) -->
-	<div class="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 transition-opacity {uiState.isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}">
+	<div class="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-md bg-theme-secondary/90 px-1 py-0.5 shadow-sm transition-opacity {uiState.isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}">
 		<!-- Pin/Unpin button -->
 		<button
 			type="button"
 			onclick={handlePin}
-			class="rounded p-1 transition-colors hover:bg-theme-tertiary {conversation.isPinned ? 'text-emerald-500 hover:text-emerald-400' : 'text-theme-muted hover:text-theme-primary'}"
+			class="rounded p-1 transition-colors hover:bg-theme-tertiary {conversation.isPinned ? 'text-emerald-500 hover:text-emerald-400' : 'text-theme-secondary hover:text-theme-primary'}"
 			aria-label={conversation.isPinned ? 'Unpin conversation' : 'Pin conversation'}
 			title={conversation.isPinned ? 'Unpin' : 'Pin'}
 		>
@@ -180,7 +180,7 @@
 		<button
 			type="button"
 			onclick={handleMove}
-			class="rounded p-1 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
+			class="rounded p-1 text-theme-secondary transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
 			aria-label="Move to project"
 			title="Move to project"
 		>
@@ -204,7 +204,7 @@
 		<button
 			type="button"
 			onclick={handleExport}
-			class="rounded p-1 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
+			class="rounded p-1 text-theme-secondary transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
 			aria-label="Export conversation"
 			title="Export"
 		>
@@ -228,7 +228,7 @@
 		<button
 			type="button"
 			onclick={handleDelete}
-			class="rounded p-1 text-theme-muted transition-colors hover:bg-red-900/50 hover:text-red-400"
+			class="rounded p-1 text-theme-secondary transition-colors hover:bg-red-900/50 hover:text-red-400"
 			aria-label="Delete conversation"
 			title="Delete"
 		>

@@ -98,7 +98,7 @@
 		<button
 			type="button"
 			onclick={handleSettings}
-			class="shrink-0 rounded p-0.5 text-theme-muted opacity-0 transition-opacity hover:bg-theme-tertiary hover:text-theme-primary group-hover:opacity-100"
+			class="shrink-0 rounded p-1 text-theme-secondary opacity-0 transition-opacity hover:bg-theme-tertiary hover:text-theme-primary group-hover:opacity-100"
 			aria-label="Project settings"
 			title="Settings"
 		>
