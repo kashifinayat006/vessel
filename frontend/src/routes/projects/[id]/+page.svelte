@@ -73,14 +73,14 @@
 			links = linksResult.data;
 		}
 
-		// Load documents (filter by projectId when we implement that)
-		// For now, load all documents - TODO: filter by projectId
+		// Load documents filtered by projectId
 		isLoadingDocs = true;
 		try {
 			const allDocs = await listDocuments();
-			// Filter documents by projectId (once we add that field)
-			documents = allDocs.filter(d => (d as any).projectId === projectId);
-		} catch {
+			// Filter documents by projectId - strict equality
+			documents = allDocs.filter(d => d.projectId === projectId);
+		} catch (err) {
+			console.error('Failed to load documents:', err);
 			documents = [];
 		} finally {
 			isLoadingDocs = false;
@@ -181,6 +181,11 @@
 	}
 
 	async function processFiles(files: File[]) {
+		if (!projectId) {
+			toastState.error('Project ID not available');
+			return;
+		}
+
 		isUploading = true;
 
 		for (const file of files) {
@@ -194,17 +199,22 @@
 				// Add document with projectId
 				await addDocument(file.name, content, file.type || 'text/plain', {
 					embeddingModel: DEFAULT_EMBEDDING_MODEL,
-					projectId
+					projectId: projectId
 				});
 
 				toastState.success(`Added "${file.name}" to project`);
 			} catch (error) {
 				console.error(`Failed to process ${file.name}:`, error);
-				toastState.error(`Failed to add "${file.name}"`);
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				toastState.error(`Failed to add "${file.name}": ${message}`);
 			}
 		}
 
-		await loadProjectData();
+		try {
+			await loadProjectData();
+		} catch (err) {
+			console.error('Failed to reload project data:', err);
+		}
 		isUploading = false;
 	}
 
