@@ -10,11 +10,13 @@
 		implementation: ToolImplementation;
 		code: string;
 		parameters: JSONSchema;
+		endpoint?: string;
+		httpMethod?: 'GET' | 'POST';
 		isOpen?: boolean;
 		onclose?: () => void;
 	}
 
-	const { implementation, code, parameters, isOpen = false, onclose }: Props = $props();
+	const { implementation, code, parameters, endpoint = '', httpMethod = 'POST', isOpen = false, onclose }: Props = $props();
 
 	let testInput = $state('{}');
 	let testResult = $state<{ success: boolean; result?: unknown; error?: string } | null>(null);
@@ -116,8 +118,54 @@
 						error: error instanceof Error ? error.message : String(error)
 					};
 				}
+			} else if (implementation === 'http') {
+				// HTTP endpoint execution
+				if (!endpoint.trim()) {
+					testResult = { success: false, error: 'HTTP endpoint URL is required' };
+					isRunning = false;
+					return;
+				}
+
+				try {
+					const url = new URL(endpoint);
+					const options: RequestInit = {
+						method: httpMethod,
+						headers: {
+							'Content-Type': 'application/json'
+						}
+					};
+
+					if (httpMethod === 'GET') {
+						// Add args as query parameters
+						for (const [key, value] of Object.entries(args)) {
+							url.searchParams.set(key, String(value));
+						}
+					} else {
+						options.body = JSON.stringify(args);
+					}
+
+					const response = await fetch(url.toString(), options);
+
+					if (!response.ok) {
+						testResult = {
+							success: false,
+							error: `HTTP ${response.status}: ${response.statusText}`
+						};
+					} else {
+						const contentType = response.headers.get('content-type');
+						const result = contentType?.includes('application/json')
+							? await response.json()
+							: await response.text();
+						testResult = { success: true, result };
+					}
+				} catch (error) {
+					testResult = {
+						success: false,
+						error: error instanceof Error ? error.message : String(error)
+					};
+				}
 			} else {
-				testResult = { success: false, error: 'HTTP tools cannot be tested in the editor' };
+				testResult = { success: false, error: 'Unknown implementation type' };
 			}
 		} finally {
 			isRunning = false;
@@ -169,7 +217,7 @@
 			<button
 				type="button"
 				onclick={runTest}
-				disabled={isRunning || !code.trim()}
+				disabled={isRunning || (implementation === 'http' ? !endpoint.trim() : !code.trim())}
 				class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
 			>
 				{#if isRunning}
