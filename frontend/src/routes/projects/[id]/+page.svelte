@@ -57,8 +57,10 @@
 
 	// Load project data on mount
 	onMount(async () => {
+		console.log('[ProjectPage] onMount - project:', project?.name, 'projectId:', projectId);
 		if (!project) {
 			// Project not found, redirect to home
+			console.log('[ProjectPage] No project found, redirecting home');
 			goto('/');
 			return;
 		}
@@ -66,6 +68,7 @@
 	});
 
 	async function loadProjectData() {
+		console.log('[ProjectPage] loadProjectData called');
 		if (!projectId) return;
 
 		// Load links
@@ -182,6 +185,7 @@
 	}
 
 	async function processFiles(files: File[]) {
+		console.log('[ProjectPage] processFiles called with', files.length, 'files');
 		if (!projectId) {
 			toastState.error('Project ID not available');
 			return;
@@ -200,10 +204,12 @@
 					embeddingModel: selectedEmbeddingModel,
 					projectId: projectId,
 					onComplete: (doc) => {
+						console.log('[ProjectPage] onComplete callback for:', doc.name);
 						toastState.success(`Embeddings ready for "${doc.name}"`);
 						loadProjectData(); // Refresh to show updated status
 					},
 					onError: (error) => {
+						console.log('[ProjectPage] onError callback:', error.message);
 						toastState.error(`Embedding failed for "${file.name}": ${error.message}`);
 						loadProjectData(); // Refresh to show failed status
 					}
