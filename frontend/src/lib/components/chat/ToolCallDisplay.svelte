@@ -12,8 +12,8 @@
 
 	let { toolCalls }: Props = $props();
 
-	// Tool metadata for icons and colors
-	const toolMeta: Record<string, { icon: string; color: string; label: string }> = {
+	// Tool metadata for built-in tools (exact matches)
+	const builtinToolMeta: Record<string, { icon: string; color: string; label: string }> = {
 		get_location: {
 			icon: '📍',
 			color: 'from-rose-500 to-pink-600',
@@ -41,11 +41,102 @@
 		}
 	};
 
+	// Pattern-based styling for custom tools (checked in order, first match wins)
+	const toolPatterns: Array<{ patterns: string[]; icon: string; color: string; label: string }> = [
+		// Agentic Tools (check first for specific naming)
+		{ patterns: ['task_manager', 'task-manager', 'taskmanager'], icon: '📋', color: 'from-indigo-500 to-purple-600', label: 'Tasks' },
+		{ patterns: ['memory_store', 'memory-store', 'memorystore', 'scratchpad'], icon: '🧠', color: 'from-violet-500 to-purple-600', label: 'Memory' },
+		{ patterns: ['think_step', 'structured_thinking', 'reasoning'], icon: '💭', color: 'from-cyan-500 to-blue-600', label: 'Thinking' },
+		{ patterns: ['decision_matrix', 'decision-matrix', 'evaluate'], icon: '⚖️', color: 'from-amber-500 to-orange-600', label: 'Decision' },
+		{ patterns: ['project_planner', 'project-planner', 'breakdown'], icon: '📊', color: 'from-emerald-500 to-teal-600', label: 'Planning' },
+		// Design & UI
+		{ patterns: ['design', 'brief', 'ui', 'ux', 'layout', 'wireframe'], icon: '🎨', color: 'from-pink-500 to-rose-600', label: 'Design' },
+		{ patterns: ['color', 'palette', 'theme', 'style'], icon: '🎨', color: 'from-fuchsia-500 to-pink-600', label: 'Color' },
+		// Search & Discovery
+		{ patterns: ['search', 'find', 'lookup', 'query'], icon: '🔍', color: 'from-blue-500 to-cyan-600', label: 'Search' },
+		// Web & API
+		{ patterns: ['fetch', 'http', 'api', 'request', 'webhook'], icon: '🌐', color: 'from-violet-500 to-purple-600', label: 'API' },
+		{ patterns: ['url', 'link', 'web', 'scrape'], icon: '🔗', color: 'from-indigo-500 to-violet-600', label: 'Web' },
+		// Data & Analysis
+		{ patterns: ['data', 'analyze', 'stats', 'chart', 'graph', 'metric'], icon: '📊', color: 'from-cyan-500 to-blue-600', label: 'Analysis' },
+		{ patterns: ['json', 'transform', 'parse', 'convert', 'format'], icon: '🔄', color: 'from-sky-500 to-cyan-600', label: 'Transform' },
+		// Math & Calculation
+		{ patterns: ['calc', 'math', 'compute', 'formula', 'number'], icon: '🧮', color: 'from-emerald-500 to-teal-600', label: 'Calculate' },
+		// Time & Date
+		{ patterns: ['time', 'date', 'clock', 'schedule', 'calendar'], icon: '🕐', color: 'from-amber-500 to-orange-600', label: 'Time' },
+		// Location & Maps
+		{ patterns: ['location', 'geo', 'place', 'address', 'map', 'coord'], icon: '📍', color: 'from-rose-500 to-pink-600', label: 'Location' },
+		// Text & String
+		{ patterns: ['text', 'string', 'word', 'sentence', 'paragraph'], icon: '📝', color: 'from-slate-500 to-gray-600', label: 'Text' },
+		// Files & Storage
+		{ patterns: ['file', 'read', 'write', 'save', 'load', 'export', 'import'], icon: '📁', color: 'from-yellow-500 to-amber-600', label: 'File' },
+		// Communication
+		{ patterns: ['email', 'mail', 'send', 'message', 'notify', 'alert'], icon: '📧', color: 'from-red-500 to-rose-600', label: 'Message' },
+		// User & Auth
+		{ patterns: ['user', 'auth', 'login', 'account', 'profile', 'session'], icon: '👤', color: 'from-blue-500 to-indigo-600', label: 'User' },
+		// Database
+		{ patterns: ['database', 'db', 'sql', 'table', 'record', 'store'], icon: '🗄️', color: 'from-orange-500 to-red-600', label: 'Database' },
+		// Code & Execution
+		{ patterns: ['code', 'script', 'execute', 'run', 'shell', 'command'], icon: '💻', color: 'from-green-500 to-emerald-600', label: 'Code' },
+		// Images & Media
+		{ patterns: ['image', 'photo', 'picture', 'screenshot', 'media', 'video'], icon: '🖼️', color: 'from-purple-500 to-fuchsia-600', label: 'Media' },
+		// Weather
+		{ patterns: ['weather', 'forecast', 'temperature', 'climate'], icon: '🌤️', color: 'from-sky-400 to-blue-500', label: 'Weather' },
+		// Translation & Language
+		{ patterns: ['translate', 'language', 'i18n', 'locale'], icon: '🌍', color: 'from-teal-500 to-cyan-600', label: 'Translate' },
+		// Security & Encryption
+		{ patterns: ['encrypt', 'decrypt', 'hash', 'encode', 'decode', 'secure', 'password'], icon: '🔐', color: 'from-red-600 to-orange-600', label: 'Security' },
+		// Random & Generation
+		{ patterns: ['random', 'generate', 'uuid', 'create', 'make'], icon: '🎲', color: 'from-violet-500 to-purple-600', label: 'Generate' },
+		// Lists & Collections
+		{ patterns: ['list', 'array', 'collection', 'filter', 'sort'], icon: '📋', color: 'from-blue-400 to-indigo-500', label: 'List' },
+		// Validation & Check
+		{ patterns: ['valid', 'check', 'verify', 'test', 'assert'], icon: '✅', color: 'from-green-500 to-teal-600', label: 'Validate' }
+	];
+
 	const defaultMeta = {
 		icon: '⚙️',
-		color: 'from-gray-500 to-gray-600',
+		color: 'from-slate-500 to-slate-600',
 		label: 'Tool'
 	};
+
+	/**
+	 * Get tool metadata - checks builtin tools first, then pattern matches, then default
+	 */
+	function getToolMeta(toolName: string): { icon: string; color: string; label: string } {
+		// Check builtin tools first (exact match)
+		if (builtinToolMeta[toolName]) {
+			return builtinToolMeta[toolName];
+		}
+
+		// Pattern match for custom tools
+		const lowerName = toolName.toLowerCase();
+		for (const pattern of toolPatterns) {
+			if (pattern.patterns.some((p) => lowerName.includes(p))) {
+				return pattern;
+			}
+		}
+
+		// Default fallback
+		return defaultMeta;
+	}
+
+	/**
+	 * Convert tool name to human-readable label
+	 */
+	function formatToolLabel(toolName: string, detectedLabel: string): string {
+		// If it's a known builtin or detected pattern, use that label
+		if (detectedLabel !== 'Tool') {
+			return detectedLabel;
+		}
+		// Otherwise, humanize the tool name
+		return toolName
+			.replace(/_/g, ' ')
+			.replace(/([a-z])([A-Z])/g, '$1 $2')
+			.split(' ')
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+			.join(' ');
+	}
 
 	/**
 	 * Parse arguments to display-friendly format
@@ -200,7 +291,8 @@
 
 <div class="my-3 space-y-2">
 	{#each toolCalls as call (call.id)}
-		{@const meta = toolMeta[call.name] || defaultMeta}
+		{@const meta = getToolMeta(call.name)}
+		{@const displayLabel = formatToolLabel(call.name, meta.label)}
 		{@const args = parseArgs(call.arguments)}
 		{@const argEntries = Object.entries(args).filter(([_, v]) => v !== undefined && v !== null)}
 		{@const isExpanded = expandedCalls.has(call.id)}
@@ -216,12 +308,12 @@
 					class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50"
 				>
 					<!-- Icon -->
-					<span class="text-xl" role="img" aria-label={meta.label}>{meta.icon}</span>
+					<span class="text-xl" role="img" aria-label={displayLabel}>{meta.icon}</span>
 
 					<!-- Tool name and summary -->
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-2">
-							<span class="font-medium text-slate-800 dark:text-slate-100">{meta.label}</span>
+							<span class="font-medium text-slate-800 dark:text-slate-100">{displayLabel}</span>
 							<span class="font-mono text-xs text-slate-500 dark:text-slate-400">{call.name}</span>
 						</div>
 

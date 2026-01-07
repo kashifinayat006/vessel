@@ -8,7 +8,7 @@ export interface ToolTemplate {
 	id: string;
 	name: string;
 	description: string;
-	category: 'api' | 'data' | 'utility' | 'integration';
+	category: 'api' | 'data' | 'utility' | 'integration' | 'agentic';
 	language: ToolImplementation;
 	code: string;
 	parameters: JSONSchema;
@@ -513,6 +513,531 @@ print(json.dumps(result))`,
 				operation: { type: 'string', description: 'Operation: md5, sha256, sha512, base64_encode, base64_decode' }
 			},
 			required: ['text', 'operation']
+		}
+	},
+
+	// Agentic Templates
+	{
+		id: 'js-task-manager',
+		name: 'Task Manager',
+		description: 'Create, update, list, and complete tasks with persistent storage',
+		category: 'agentic',
+		language: 'javascript',
+		code: `// Task Manager with localStorage persistence
+const STORAGE_KEY = 'vessel_agent_tasks';
+
+const loadTasks = () => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch { return []; }
+};
+
+const saveTasks = (tasks) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+};
+
+const action = args.action;
+let tasks = loadTasks();
+
+switch (action) {
+  case 'create': {
+    const task = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      title: args.title,
+      description: args.description || '',
+      priority: args.priority || 'medium',
+      status: 'pending',
+      created: new Date().toISOString(),
+      due: args.due || null,
+      tags: args.tags || []
+    };
+    tasks.push(task);
+    saveTasks(tasks);
+    return { success: true, task, message: 'Task created' };
+  }
+
+  case 'list': {
+    let filtered = tasks;
+    if (args.status) filtered = filtered.filter(t => t.status === args.status);
+    if (args.priority) filtered = filtered.filter(t => t.priority === args.priority);
+    if (args.tag) filtered = filtered.filter(t => t.tags?.includes(args.tag));
+    return {
+      tasks: filtered,
+      total: tasks.length,
+      pending: tasks.filter(t => t.status === 'pending').length,
+      completed: tasks.filter(t => t.status === 'completed').length
+    };
+  }
+
+  case 'update': {
+    const idx = tasks.findIndex(t => t.id === args.id);
+    if (idx === -1) return { error: 'Task not found' };
+    if (args.title) tasks[idx].title = args.title;
+    if (args.description !== undefined) tasks[idx].description = args.description;
+    if (args.priority) tasks[idx].priority = args.priority;
+    if (args.status) tasks[idx].status = args.status;
+    if (args.due !== undefined) tasks[idx].due = args.due;
+    if (args.tags) tasks[idx].tags = args.tags;
+    tasks[idx].updated = new Date().toISOString();
+    saveTasks(tasks);
+    return { success: true, task: tasks[idx], message: 'Task updated' };
+  }
+
+  case 'complete': {
+    const idx = tasks.findIndex(t => t.id === args.id);
+    if (idx === -1) return { error: 'Task not found' };
+    tasks[idx].status = 'completed';
+    tasks[idx].completedAt = new Date().toISOString();
+    saveTasks(tasks);
+    return { success: true, task: tasks[idx], message: 'Task completed' };
+  }
+
+  case 'delete': {
+    const idx = tasks.findIndex(t => t.id === args.id);
+    if (idx === -1) return { error: 'Task not found' };
+    const deleted = tasks.splice(idx, 1)[0];
+    saveTasks(tasks);
+    return { success: true, deleted, message: 'Task deleted' };
+  }
+
+  case 'clear_completed': {
+    const before = tasks.length;
+    tasks = tasks.filter(t => t.status !== 'completed');
+    saveTasks(tasks);
+    return { success: true, removed: before - tasks.length, remaining: tasks.length };
+  }
+
+  default:
+    return { error: 'Unknown action. Use: create, list, update, complete, delete, clear_completed' };
+}`,
+		parameters: {
+			type: 'object',
+			properties: {
+				action: {
+					type: 'string',
+					description: 'Action: create, list, update, complete, delete, clear_completed'
+				},
+				id: { type: 'string', description: 'Task ID (for update/complete/delete)' },
+				title: { type: 'string', description: 'Task title (for create/update)' },
+				description: { type: 'string', description: 'Task description' },
+				priority: { type: 'string', description: 'Priority: low, medium, high, urgent' },
+				status: { type: 'string', description: 'Filter/set status: pending, in_progress, completed' },
+				due: { type: 'string', description: 'Due date (ISO format)' },
+				tags: { type: 'array', description: 'Tags for categorization' },
+				tag: { type: 'string', description: 'Filter by tag (for list)' }
+			},
+			required: ['action']
+		}
+	},
+	{
+		id: 'js-memory-store',
+		name: 'Memory Store',
+		description: 'Store and recall information across conversation turns',
+		category: 'agentic',
+		language: 'javascript',
+		code: `// Memory Store - persistent key-value storage for agent context
+const STORAGE_KEY = 'vessel_agent_memory';
+
+const loadMemory = () => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch { return {}; }
+};
+
+const saveMemory = (mem) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(mem));
+};
+
+const action = args.action;
+let memory = loadMemory();
+
+switch (action) {
+  case 'store': {
+    const key = args.key;
+    const value = args.value;
+    const category = args.category || 'general';
+
+    if (!memory[category]) memory[category] = {};
+    memory[category][key] = {
+      value,
+      stored: new Date().toISOString(),
+      accessCount: 0
+    };
+    saveMemory(memory);
+    return { success: true, key, category, message: 'Memory stored' };
+  }
+
+  case 'recall': {
+    const key = args.key;
+    const category = args.category;
+
+    if (category && key) {
+      const item = memory[category]?.[key];
+      if (!item) return { found: false, key, category };
+      item.accessCount++;
+      item.lastAccess = new Date().toISOString();
+      saveMemory(memory);
+      return { found: true, key, category, value: item.value, stored: item.stored };
+    }
+
+    if (category) {
+      return { category, items: memory[category] || {} };
+    }
+
+    if (key) {
+      // Search across all categories
+      for (const cat in memory) {
+        if (memory[cat][key]) {
+          memory[cat][key].accessCount++;
+          saveMemory(memory);
+          return { found: true, key, category: cat, value: memory[cat][key].value };
+        }
+      }
+      return { found: false, key };
+    }
+
+    return { error: 'Provide key and/or category' };
+  }
+
+  case 'list': {
+    const category = args.category;
+    if (category) {
+      return {
+        category,
+        keys: Object.keys(memory[category] || {}),
+        count: Object.keys(memory[category] || {}).length
+      };
+    }
+    const summary = {};
+    for (const cat in memory) {
+      summary[cat] = Object.keys(memory[cat]).length;
+    }
+    return { categories: summary, totalCategories: Object.keys(memory).length };
+  }
+
+  case 'forget': {
+    const key = args.key;
+    const category = args.category;
+
+    if (category && key) {
+      if (memory[category]?.[key]) {
+        delete memory[category][key];
+        if (Object.keys(memory[category]).length === 0) delete memory[category];
+        saveMemory(memory);
+        return { success: true, forgotten: key, category };
+      }
+      return { error: 'Memory not found' };
+    }
+
+    if (category) {
+      delete memory[category];
+      saveMemory(memory);
+      return { success: true, forgotten: category, type: 'category' };
+    }
+
+    return { error: 'Provide key and/or category to forget' };
+  }
+
+  case 'clear': {
+    const before = Object.keys(memory).length;
+    memory = {};
+    saveMemory(memory);
+    return { success: true, cleared: before, message: 'All memory cleared' };
+  }
+
+  default:
+    return { error: 'Unknown action. Use: store, recall, list, forget, clear' };
+}`,
+		parameters: {
+			type: 'object',
+			properties: {
+				action: {
+					type: 'string',
+					description: 'Action: store, recall, list, forget, clear'
+				},
+				key: { type: 'string', description: 'Memory key/identifier' },
+				value: { type: 'string', description: 'Value to store (for store action)' },
+				category: { type: 'string', description: 'Category for organizing memories (facts, preferences, context, etc.)' }
+			},
+			required: ['action']
+		}
+	},
+	{
+		id: 'js-think-step-by-step',
+		name: 'Structured Thinking',
+		description: 'Break down problems into explicit reasoning steps',
+		category: 'agentic',
+		language: 'javascript',
+		code: `// Structured Thinking - explicit step-by-step reasoning
+const problem = args.problem;
+const steps = args.steps || [];
+const conclusion = args.conclusion;
+const confidence = args.confidence || 'medium';
+
+const analysis = {
+  problem: problem,
+  reasoning: {
+    steps: steps.map((step, i) => ({
+      step: i + 1,
+      thought: step,
+      type: step.toLowerCase().includes('assume') ? 'assumption' :
+            step.toLowerCase().includes('if') ? 'conditional' :
+            step.toLowerCase().includes('because') ? 'justification' :
+            step.toLowerCase().includes('therefore') ? 'inference' :
+            'observation'
+    })),
+    stepCount: steps.length
+  },
+  conclusion: conclusion,
+  confidence: confidence,
+  confidenceScore: confidence === 'high' ? 0.9 :
+                   confidence === 'medium' ? 0.7 :
+                   confidence === 'low' ? 0.4 : 0.5,
+  metadata: {
+    hasAssumptions: steps.some(s => s.toLowerCase().includes('assume')),
+    hasConditionals: steps.some(s => s.toLowerCase().includes('if')),
+    timestamp: new Date().toISOString()
+  }
+};
+
+// Add quality indicators
+analysis.quality = {
+  hasMultipleSteps: steps.length >= 3,
+  hasConclusion: !!conclusion,
+  isWellStructured: steps.length >= 2 && !!conclusion,
+  suggestions: []
+};
+
+if (steps.length < 2) {
+  analysis.quality.suggestions.push('Consider breaking down into more steps');
+}
+if (!conclusion) {
+  analysis.quality.suggestions.push('Add a clear conclusion');
+}
+if (confidence === 'low') {
+  analysis.quality.suggestions.push('Identify what additional information would increase confidence');
+}
+
+return analysis;`,
+		parameters: {
+			type: 'object',
+			properties: {
+				problem: {
+					type: 'string',
+					description: 'The problem or question to reason about'
+				},
+				steps: {
+					type: 'array',
+					description: 'Array of reasoning steps, each a string explaining one step of thought'
+				},
+				conclusion: {
+					type: 'string',
+					description: 'The final conclusion reached'
+				},
+				confidence: {
+					type: 'string',
+					description: 'Confidence level: low, medium, high'
+				}
+			},
+			required: ['problem', 'steps']
+		}
+	},
+	{
+		id: 'js-decision-matrix',
+		name: 'Decision Matrix',
+		description: 'Evaluate options against weighted criteria for better decisions',
+		category: 'agentic',
+		language: 'javascript',
+		code: `// Decision Matrix - weighted multi-criteria decision analysis
+const options = args.options || [];
+const criteria = args.criteria || [];
+const scores = args.scores || {};
+
+if (options.length === 0) {
+  return { error: 'Provide at least one option' };
+}
+if (criteria.length === 0) {
+  return { error: 'Provide at least one criterion with name and weight' };
+}
+
+// Normalize weights
+const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 1), 0);
+const normalizedCriteria = criteria.map(c => ({
+  name: c.name,
+  weight: (c.weight || 1) / totalWeight,
+  originalWeight: c.weight || 1
+}));
+
+// Calculate weighted scores for each option
+const results = options.map(option => {
+  let totalScore = 0;
+  const breakdown = [];
+
+  for (const criterion of normalizedCriteria) {
+    const score = scores[option]?.[criterion.name] ?? 5; // Default to 5/10
+    const weighted = score * criterion.weight;
+    totalScore += weighted;
+    breakdown.push({
+      criterion: criterion.name,
+      rawScore: score,
+      weight: Math.round(criterion.weight * 100) + '%',
+      weightedScore: Math.round(weighted * 100) / 100
+    });
+  }
+
+  return {
+    option,
+    totalScore: Math.round(totalScore * 100) / 100,
+    maxPossible: 10,
+    percentage: Math.round(totalScore * 10) + '%',
+    breakdown
+  };
+});
+
+// Sort by score
+results.sort((a, b) => b.totalScore - a.totalScore);
+
+// Identify winner and insights
+const winner = results[0];
+const runnerUp = results[1];
+const margin = runnerUp ? Math.round((winner.totalScore - runnerUp.totalScore) * 100) / 100 : null;
+
+return {
+  recommendation: winner.option,
+  confidence: margin > 1.5 ? 'high' : margin > 0.5 ? 'medium' : 'low',
+  margin: margin,
+  rankings: results,
+  criteria: normalizedCriteria.map(c => ({
+    name: c.name,
+    weight: Math.round(c.weight * 100) + '%'
+  })),
+  insight: margin && margin < 0.5 ?
+    'Options are very close - consider additional criteria or qualitative factors' :
+    margin && margin > 2 ?
+    \`\${winner.option} is a clear winner with significant margin\` :
+    'Decision is reasonably clear but review the breakdown for nuance'
+};`,
+		parameters: {
+			type: 'object',
+			properties: {
+				options: {
+					type: 'array',
+					description: 'Array of option names to evaluate (e.g., ["Option A", "Option B"])'
+				},
+				criteria: {
+					type: 'array',
+					description: 'Array of criteria objects with name and weight (e.g., [{"name": "Cost", "weight": 3}, {"name": "Quality", "weight": 2}])'
+				},
+				scores: {
+					type: 'object',
+					description: 'Scores object: { "Option A": { "Cost": 8, "Quality": 7 }, "Option B": { "Cost": 6, "Quality": 9 } }'
+				}
+			},
+			required: ['options', 'criteria', 'scores']
+		}
+	},
+	{
+		id: 'js-project-planner',
+		name: 'Project Planner',
+		description: 'Break down projects into phases, tasks, and dependencies',
+		category: 'agentic',
+		language: 'javascript',
+		code: `// Project Planner - decompose projects into actionable plans
+const projectName = args.project_name;
+const goal = args.goal;
+const phases = args.phases || [];
+const constraints = args.constraints || [];
+
+if (!projectName || !goal) {
+  return { error: 'Provide project_name and goal' };
+}
+
+const plan = {
+  project: projectName,
+  goal: goal,
+  created: new Date().toISOString(),
+  constraints: constraints,
+  phases: phases.map((phase, phaseIdx) => ({
+    id: \`phase-\${phaseIdx + 1}\`,
+    name: phase.name,
+    description: phase.description || '',
+    order: phaseIdx + 1,
+    tasks: (phase.tasks || []).map((task, taskIdx) => ({
+      id: \`\${phaseIdx + 1}.\${taskIdx + 1}\`,
+      title: task.title || task,
+      description: task.description || '',
+      dependencies: task.dependencies || [],
+      status: 'pending',
+      priority: task.priority || 'medium'
+    })),
+    deliverables: phase.deliverables || []
+  })),
+  summary: {
+    totalPhases: phases.length,
+    totalTasks: phases.reduce((sum, p) => sum + (p.tasks?.length || 0), 0),
+    hasConstraints: constraints.length > 0
+  }
+};
+
+// Identify critical path (tasks with most dependents)
+const allTasks = plan.phases.flatMap(p => p.tasks);
+const dependencyCounts = {};
+allTasks.forEach(t => {
+  t.dependencies.forEach(dep => {
+    dependencyCounts[dep] = (dependencyCounts[dep] || 0) + 1;
+  });
+});
+
+plan.criticalTasks = Object.entries(dependencyCounts)
+  .filter(([_, count]) => count > 1)
+  .map(([id, count]) => ({ taskId: id, dependentCount: count }))
+  .sort((a, b) => b.dependentCount - a.dependentCount);
+
+// Generate next actions (tasks with no pending dependencies)
+const completedTasks = new Set();
+plan.nextActions = allTasks
+  .filter(t => t.dependencies.every(d => completedTasks.has(d)))
+  .slice(0, 5)
+  .map(t => ({ id: t.id, title: t.title, phase: t.id.split('.')[0] }));
+
+// Validation
+plan.validation = {
+  isValid: phases.length > 0 && plan.summary.totalTasks > 0,
+  warnings: []
+};
+
+if (phases.length === 0) {
+  plan.validation.warnings.push('No phases defined');
+}
+if (plan.summary.totalTasks === 0) {
+  plan.validation.warnings.push('No tasks defined');
+}
+if (constraints.length === 0) {
+  plan.validation.warnings.push('Consider adding constraints (time, budget, resources)');
+}
+
+return plan;`,
+		parameters: {
+			type: 'object',
+			properties: {
+				project_name: {
+					type: 'string',
+					description: 'Name of the project'
+				},
+				goal: {
+					type: 'string',
+					description: 'The main goal or outcome of the project'
+				},
+				phases: {
+					type: 'array',
+					description: 'Array of phase objects: [{ name, description, tasks: [{ title, dependencies, priority }], deliverables }]'
+				},
+				constraints: {
+					type: 'array',
+					description: 'Array of constraints (e.g., ["Budget: $10k", "Timeline: 2 weeks"])'
+				}
+			},
+			required: ['project_name', 'goal']
 		}
 	}
 ];

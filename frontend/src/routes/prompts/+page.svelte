@@ -616,6 +616,18 @@
 					creates a copy in your library that you can customize. Templates with capability tags
 					will auto-match with compatible models.
 				</p>
+				<p class="mt-3 text-xs text-theme-muted">
+					Inspired by prompts from the
+					<a
+						href="https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-purple-400 hover:text-purple-300 hover:underline"
+					>
+						system-prompts-and-models-of-ai-tools
+					</a>
+					collection.
+				</p>
 			</section>
 		{/if}
 	</div>
