@@ -23,7 +23,7 @@
 		formatResultsAsContext,
 		getKnowledgeBaseStats
 	} from '$lib/memory';
-	import { runToolCalls, formatToolResultsForChat, getFunctionModel, USE_FUNCTION_MODEL } from '$lib/tools';
+	import { runToolCalls, formatToolResultsForChat, getFunctionModel, USE_FUNCTION_MODEL, parseTextToolCalls } from '$lib/tools';
 	import type { OllamaMessage, OllamaToolCall, OllamaToolDefinition } from '$lib/ollama';
 	import type { Conversation } from '$lib/types/conversation';
 	import VirtualMessageList from './VirtualMessageList.svelte';
@@ -742,7 +742,7 @@
 						streamingMetricsState.endStream();
 						abortController = null;
 
-						// Handle tool calls if received
+						// Handle native tool calls if received
 						if (pendingToolCalls && pendingToolCalls.length > 0) {
 							await executeToolsAndContinue(
 								model,
@@ -753,13 +753,41 @@
 							return; // Tool continuation handles persistence
 						}
 
+						// Check for text-based tool calls (models without native tool calling)
+						const node = chatState.messageTree.get(assistantMessageId);
+						if (node && toolsState.toolsEnabled) {
+							const { toolCalls: textToolCalls, cleanContent } = parseTextToolCalls(node.message.content);
+							if (textToolCalls.length > 0) {
+								// Convert to OllamaToolCall format
+								const convertedCalls: OllamaToolCall[] = textToolCalls.map(tc => ({
+									function: {
+										name: tc.name,
+										arguments: tc.arguments
+									}
+								}));
+
+								// Update message content to remove the raw tool call text
+								if (cleanContent !== node.message.content) {
+									node.message.content = cleanContent || 'Using tool...';
+								}
+
+								await executeToolsAndContinue(
+									model,
+									assistantMessageId,
+									convertedCalls,
+									conversationId
+								);
+								return; // Tool continuation handles persistence
+							}
+						}
+
 						// Persist assistant message to IndexedDB with the SAME ID as chatState
 						if (conversationId) {
-							const node = chatState.messageTree.get(assistantMessageId);
-							if (node) {
+							const nodeForPersist = chatState.messageTree.get(assistantMessageId);
+							if (nodeForPersist) {
 								await addStoredMessage(
 									conversationId,
-									{ role: 'assistant', content: node.message.content },
+									{ role: 'assistant', content: nodeForPersist.message.content },
 									parentMessageId,
 									assistantMessageId
 								);
@@ -964,7 +992,7 @@
 						streamingMetricsState.endStream();
 						abortController = null;
 
-						// Handle tool calls if received
+						// Handle native tool calls if received
 						if (pendingToolCalls && pendingToolCalls.length > 0) {
 							await executeToolsAndContinue(
 								selectedModel,
@@ -975,13 +1003,41 @@
 							return;
 						}
 
+						// Check for text-based tool calls (models without native tool calling)
+						const node = chatState.messageTree.get(newMessageId);
+						if (node && toolsState.toolsEnabled) {
+							const { toolCalls: textToolCalls, cleanContent } = parseTextToolCalls(node.message.content);
+							if (textToolCalls.length > 0) {
+								// Convert to OllamaToolCall format
+								const convertedCalls: OllamaToolCall[] = textToolCalls.map(tc => ({
+									function: {
+										name: tc.name,
+										arguments: tc.arguments
+									}
+								}));
+
+								// Update message content to remove the raw tool call text
+								if (cleanContent !== node.message.content) {
+									node.message.content = cleanContent || 'Using tool...';
+								}
+
+								await executeToolsAndContinue(
+									selectedModel,
+									newMessageId,
+									convertedCalls,
+									conversationId
+								);
+								return;
+							}
+						}
+
 						// Persist regenerated assistant message to IndexedDB with the SAME ID
 						if (conversationId && parentUserMessageId) {
-							const node = chatState.messageTree.get(newMessageId);
-							if (node) {
+							const nodeForPersist = chatState.messageTree.get(newMessageId);
+							if (nodeForPersist) {
 								await addStoredMessage(
 									conversationId,
-									{ role: 'assistant', content: node.message.content },
+									{ role: 'assistant', content: nodeForPersist.message.content },
 									parentUserMessageId,
 									newMessageId
 								);

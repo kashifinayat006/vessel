@@ -8,11 +8,13 @@ export {
 	toolRegistry,
 	executeCustomTool,
 	parseToolCall,
+	parseTextToolCalls,
 	runToolCall,
 	runToolCalls,
 	formatToolResultsForChat,
 	createToolCallState,
-	updateToolCallState
+	updateToolCallState,
+	type TextToolCallParseResult
 } from './executor.js';
 export {
 	PREFERRED_FUNCTION_MODEL,

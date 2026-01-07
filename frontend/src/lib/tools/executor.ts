@@ -370,3 +370,94 @@ export function updateToolCallState(
 		endTime: Date.now()
 	};
 }
+
+/**
+ * Result of parsing text-based tool calls from content
+ */
+export interface TextToolCallParseResult {
+	/** Any tool calls found in the content */
+	toolCalls: Array<{ name: string; arguments: Record<string, unknown> }>;
+	/** Content with tool calls removed (for display) */
+	cleanContent: string;
+}
+
+/**
+ * Parse text-based tool calls from model output
+ *
+ * Models without native function calling may output tool calls as plain text
+ * in formats like:
+ * - tool_name[ARGS]{json}
+ * - <tool_call>{"name": "...", "arguments": {...}}</tool_call>
+ *
+ * This function detects and parses these formats.
+ */
+export function parseTextToolCalls(content: string): TextToolCallParseResult {
+	const toolCalls: Array<{ name: string; arguments: Record<string, unknown> }> = [];
+	let cleanContent = content;
+
+	// Pattern 1: tool_name[ARGS]{json} or tool_name[ARGS]{"key": "value"}
+	const argsPattern = /(\w+)\[ARGS\]\s*(\{[\s\S]*?\})/g;
+	const argsMatches = [...content.matchAll(argsPattern)];
+
+	for (const match of argsMatches) {
+		const [fullMatch, toolName, argsJson] = match;
+		try {
+			const args = JSON.parse(argsJson);
+			toolCalls.push({ name: toolName, arguments: args });
+			cleanContent = cleanContent.replace(fullMatch, '').trim();
+		} catch {
+			// JSON parse failed, skip this match
+			console.warn(`Failed to parse tool call arguments: ${argsJson}`);
+		}
+	}
+
+	// Pattern 2: <tool_call>{"name": "tool_name", "arguments": {...}}</tool_call>
+	const xmlPattern = /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
+	const xmlMatches = [...content.matchAll(xmlPattern)];
+
+	for (const match of xmlMatches) {
+		const [fullMatch, json] = match;
+		try {
+			const parsed = JSON.parse(json);
+			if (parsed.name && parsed.arguments) {
+				toolCalls.push({
+					name: parsed.name,
+					arguments: typeof parsed.arguments === 'string'
+						? JSON.parse(parsed.arguments)
+						: parsed.arguments
+				});
+				cleanContent = cleanContent.replace(fullMatch, '').trim();
+			}
+		} catch {
+			console.warn(`Failed to parse XML tool call: ${json}`);
+		}
+	}
+
+	// Pattern 3: {"tool_calls": [{"function": {"name": "...", "arguments": {...}}}]}
+	const jsonBlobPattern = /\{[\s\S]*?"tool_calls"\s*:\s*\[[\s\S]*?\]\s*\}/g;
+	const jsonMatches = [...content.matchAll(jsonBlobPattern)];
+
+	for (const match of jsonMatches) {
+		const [fullMatch] = match;
+		try {
+			const parsed = JSON.parse(fullMatch);
+			if (Array.isArray(parsed.tool_calls)) {
+				for (const tc of parsed.tool_calls) {
+					if (tc.function?.name) {
+						toolCalls.push({
+							name: tc.function.name,
+							arguments: typeof tc.function.arguments === 'string'
+								? JSON.parse(tc.function.arguments)
+								: tc.function.arguments || {}
+						});
+					}
+				}
+				cleanContent = cleanContent.replace(fullMatch, '').trim();
+			}
+		} catch {
+			// Not valid JSON, skip
+		}
+	}
+
+	return { toolCalls, cleanContent };
+}
