@@ -57,10 +57,24 @@
 
 	// Load project data on mount
 	onMount(async () => {
-		console.log('[ProjectPage] onMount - project:', project?.name, 'projectId:', projectId);
-		if (!project) {
+		// Wait for projects to load before checking if project exists
+		// projectsState.isLoading will be true until load completes
+		if (projectsState.isLoading) {
+			// Projects still loading, wait for them
+			await new Promise<void>((resolve) => {
+				const checkLoaded = setInterval(() => {
+					if (!projectsState.isLoading) {
+						clearInterval(checkLoaded);
+						resolve();
+					}
+				}, 50);
+			});
+		}
+
+		// Now check if project exists
+		const foundProject = projectsState.projects.find(p => p.id === projectId);
+		if (!foundProject) {
 			// Project not found, redirect to home
-			console.log('[ProjectPage] No project found, redirecting home');
 			goto('/');
 			return;
 		}
@@ -68,7 +82,6 @@
 	});
 
 	async function loadProjectData() {
-		console.log('[ProjectPage] loadProjectData called');
 		if (!projectId) return;
 
 		// Load links
@@ -185,7 +198,6 @@
 	}
 
 	async function processFiles(files: File[]) {
-		console.log('[ProjectPage] processFiles called with', files.length, 'files');
 		if (!projectId) {
 			toastState.error('Project ID not available');
 			return;
@@ -204,12 +216,10 @@
 					embeddingModel: selectedEmbeddingModel,
 					projectId: projectId,
 					onComplete: (doc) => {
-						console.log('[ProjectPage] onComplete callback for:', doc.name);
 						toastState.success(`Embeddings ready for "${doc.name}"`);
 						loadProjectData(); // Refresh to show updated status
 					},
 					onError: (error) => {
-						console.log('[ProjectPage] onError callback:', error.message);
 						toastState.error(`Embedding failed for "${file.name}": ${error.message}`);
 						loadProjectData(); // Refresh to show failed status
 					}
