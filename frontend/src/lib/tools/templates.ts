@@ -166,6 +166,184 @@ return {
 		}
 	},
 
+	{
+		id: 'js-design-brief',
+		name: 'Design Brief Generator',
+		description: 'Generate structured design briefs from project requirements',
+		category: 'utility',
+		language: 'javascript',
+		code: `// Generate a structured design brief from requirements
+const projectType = args.project_type || 'website';
+const style = args.style_preferences || 'modern, clean';
+const features = args.key_features || '';
+const audience = args.target_audience || 'general users';
+const brand = args.brand_keywords || '';
+
+const brief = {
+  project_type: projectType,
+  design_direction: {
+    style: style,
+    mood: style.includes('playful') ? 'energetic and fun' :
+          style.includes('corporate') ? 'professional and trustworthy' :
+          style.includes('minimal') ? 'clean and focused' :
+          'balanced and approachable',
+    inspiration_keywords: [
+      ...style.split(',').map(s => s.trim()),
+      projectType,
+      ...(brand ? brand.split(',').map(s => s.trim()) : [])
+    ].filter(Boolean)
+  },
+  target_audience: audience,
+  key_sections: features ? features.split(',').map(f => f.trim()) : [
+    'Hero section with clear value proposition',
+    'Features/Benefits overview',
+    'Social proof or testimonials',
+    'Call to action'
+  ],
+  ui_recommendations: {
+    typography: style.includes('modern') ? 'Sans-serif (Inter, Geist, or similar)' :
+                style.includes('elegant') ? 'Serif accents with sans-serif body' :
+                'Clean sans-serif for readability',
+    color_approach: style.includes('minimal') ? 'Monochromatic with single accent' :
+                    style.includes('bold') ? 'High contrast with vibrant accents' :
+                    'Balanced palette with primary and secondary colors',
+    spacing: 'Generous whitespace for visual breathing room',
+    imagery: style.includes('corporate') ? 'Professional photography or abstract graphics' :
+             style.includes('playful') ? 'Illustrations or playful iconography' :
+             'High-quality, contextual imagery'
+  },
+  accessibility_notes: [
+    'Ensure 4.5:1 contrast ratio for text',
+    'Include focus states for keyboard navigation',
+    'Use semantic HTML structure',
+    'Provide alt text for all images'
+  ]
+};
+
+return brief;`,
+		parameters: {
+			type: 'object',
+			properties: {
+				project_type: {
+					type: 'string',
+					description: 'Type of project (landing page, dashboard, mobile app, e-commerce, portfolio, etc.)'
+				},
+				style_preferences: {
+					type: 'string',
+					description: 'Preferred style keywords (modern, minimal, playful, corporate, elegant, bold, etc.)'
+				},
+				key_features: {
+					type: 'string',
+					description: 'Comma-separated list of main features or sections needed'
+				},
+				target_audience: {
+					type: 'string',
+					description: 'Description of target users (developers, enterprise, consumers, etc.)'
+				},
+				brand_keywords: {
+					type: 'string',
+					description: 'Keywords that describe the brand personality'
+				}
+			},
+			required: ['project_type']
+		}
+	},
+	{
+		id: 'js-color-palette',
+		name: 'Color Palette Generator',
+		description: 'Generate harmonious color palettes from a base color',
+		category: 'utility',
+		language: 'javascript',
+		code: `// Generate color palette from base color
+const hexToHsl = (hex) => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+};
+
+const hslToHex = (h, s, l) => {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return '#' + f(0) + f(8) + f(4);
+};
+
+const baseColor = args.base_color || '#3b82f6';
+const harmony = args.harmony || 'complementary';
+
+const base = hexToHsl(baseColor);
+const colors = { primary: baseColor };
+
+switch (harmony) {
+  case 'complementary':
+    colors.secondary = hslToHex((base.h + 180) % 360, base.s, base.l);
+    colors.accent = hslToHex((base.h + 30) % 360, base.s, base.l);
+    break;
+  case 'analogous':
+    colors.secondary = hslToHex((base.h + 30) % 360, base.s, base.l);
+    colors.accent = hslToHex((base.h - 30 + 360) % 360, base.s, base.l);
+    break;
+  case 'triadic':
+    colors.secondary = hslToHex((base.h + 120) % 360, base.s, base.l);
+    colors.accent = hslToHex((base.h + 240) % 360, base.s, base.l);
+    break;
+  case 'split-complementary':
+    colors.secondary = hslToHex((base.h + 150) % 360, base.s, base.l);
+    colors.accent = hslToHex((base.h + 210) % 360, base.s, base.l);
+    break;
+}
+
+// Add neutrals
+colors.background = hslToHex(base.h, 10, 98);
+colors.surface = hslToHex(base.h, 10, 95);
+colors.text = hslToHex(base.h, 10, 15);
+colors.muted = hslToHex(base.h, 10, 45);
+
+// Add primary shades
+colors.primary_light = hslToHex(base.h, base.s, Math.min(base.l + 20, 95));
+colors.primary_dark = hslToHex(base.h, base.s, Math.max(base.l - 20, 15));
+
+return {
+  harmony,
+  palette: colors,
+  css_variables: Object.entries(colors).map(([k, v]) => \`--color-\${k.replace('_', '-')}: \${v};\`).join('\\n')
+};`,
+		parameters: {
+			type: 'object',
+			properties: {
+				base_color: {
+					type: 'string',
+					description: 'Base color in hex format (e.g., #3b82f6)'
+				},
+				harmony: {
+					type: 'string',
+					description: 'Color harmony: complementary, analogous, triadic, split-complementary'
+				}
+			},
+			required: ['base_color']
+		}
+	},
+
 	// Python Templates
 	{
 		id: 'py-api-fetch',
