@@ -5,11 +5,13 @@
 	import { toolsState } from '$lib/stores';
 	import type { ToolDefinition, CustomTool } from '$lib/tools';
 	import { ToolEditor } from '$lib/components/tools';
+	import { ConfirmDialog } from '$lib/components/shared';
 
 	let showEditor = $state(false);
 	let editingTool = $state<CustomTool | null>(null);
 	let searchQuery = $state('');
 	let expandedDescriptions = $state<Set<string>>(new Set());
+	let deleteConfirm = $state<{ show: boolean; tool: CustomTool | null }>({ show: false, tool: null });
 
 	function openCreateEditor(): void {
 		editingTool = null;
@@ -32,9 +34,14 @@
 	}
 
 	function handleDeleteTool(tool: CustomTool): void {
-		if (confirm(`Delete "${tool.name}"? This cannot be undone.`)) {
-			toolsState.removeCustomTool(tool.id);
+		deleteConfirm = { show: true, tool };
+	}
+
+	function confirmDeleteTool(): void {
+		if (deleteConfirm.tool) {
+			toolsState.removeCustomTool(deleteConfirm.tool.id);
 		}
+		deleteConfirm = { show: false, tool: null };
 	}
 
 	const allTools = $derived(toolsState.getAllToolsWithState());
@@ -508,4 +515,14 @@
 	editingTool={editingTool}
 	onClose={() => { showEditor = false; editingTool = null; }}
 	onSave={handleSaveTool}
+/>
+
+<ConfirmDialog
+	isOpen={deleteConfirm.show}
+	title="Delete Tool"
+	message={`Delete "${deleteConfirm.tool?.name}"? This cannot be undone.`}
+	confirmText="Delete"
+	variant="danger"
+	onConfirm={confirmDeleteTool}
+	onCancel={() => (deleteConfirm = { show: false, tool: null })}
 />

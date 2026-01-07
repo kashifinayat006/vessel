@@ -5,6 +5,7 @@
 	import { projectsState, toastState } from '$lib/stores';
 	import type { Project } from '$lib/stores/projects.svelte.js';
 	import { addProjectLink, deleteProjectLink, getProjectLinks, type ProjectLink } from '$lib/storage/projects.js';
+	import { ConfirmDialog } from '$lib/components/shared';
 
 	interface Props {
 		isOpen: boolean;
@@ -26,6 +27,7 @@
 	let newLinkDescription = $state('');
 	let isLoading = $state(false);
 	let activeTab = $state<'settings' | 'instructions' | 'links'>('settings');
+	let showDeleteConfirm = $state(false);
 
 	// Predefined colors for quick selection
 	const presetColors = [
@@ -121,13 +123,14 @@
 		}
 	}
 
-	async function handleDelete() {
+	function handleDeleteClick() {
 		if (!projectId) return;
+		showDeleteConfirm = true;
+	}
 
-		if (!confirm('Delete this project? Conversations will be unlinked but not deleted.')) {
-			return;
-		}
-
+	async function handleDeleteConfirm() {
+		if (!projectId) return;
+		showDeleteConfirm = false;
 		isLoading = true;
 
 		try {
@@ -429,7 +432,7 @@
 					{#if projectId}
 						<button
 							type="button"
-							onclick={handleDelete}
+							onclick={handleDeleteClick}
 							disabled={isLoading}
 							class="rounded-lg px-4 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-900/30 disabled:opacity-50"
 						>
@@ -458,3 +461,13 @@
 		</div>
 	</div>
 {/if}
+
+<ConfirmDialog
+	isOpen={showDeleteConfirm}
+	title="Delete Project"
+	message="Delete this project? Conversations will be unlinked but not deleted."
+	confirmText="Delete"
+	variant="danger"
+	onConfirm={handleDeleteConfirm}
+	onCancel={() => (showDeleteConfirm = false)}
+/>

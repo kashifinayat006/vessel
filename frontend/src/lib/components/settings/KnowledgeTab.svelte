@@ -14,6 +14,7 @@
 	} from '$lib/memory';
 	import type { StoredDocument } from '$lib/storage/db';
 	import { toastState, modelsState } from '$lib/stores';
+	import { ConfirmDialog } from '$lib/components/shared';
 
 	let documents = $state<StoredDocument[]>([]);
 	let stats = $state({ documentCount: 0, chunkCount: 0, totalTokens: 0 });
@@ -22,6 +23,7 @@
 	let uploadProgress = $state({ current: 0, total: 0 });
 	let selectedModel = $state(DEFAULT_EMBEDDING_MODEL);
 	let dragOver = $state(false);
+	let deleteConfirm = $state<{ show: boolean; doc: StoredDocument | null }>({ show: false, doc: null });
 
 	let fileInput: HTMLInputElement;
 
@@ -90,10 +92,14 @@
 		uploadProgress = { current: 0, total: 0 };
 	}
 
-	async function handleDelete(doc: StoredDocument) {
-		if (!confirm(`Delete "${doc.name}"? This cannot be undone.`)) {
-			return;
-		}
+	function handleDeleteClick(doc: StoredDocument) {
+		deleteConfirm = { show: true, doc };
+	}
+
+	async function confirmDelete() {
+		if (!deleteConfirm.doc) return;
+		const doc = deleteConfirm.doc;
+		deleteConfirm = { show: false, doc: null };
 
 		try {
 			await deleteDocument(doc.id);
@@ -232,7 +238,7 @@
 
 						<button
 							type="button"
-							onclick={() => handleDelete(doc)}
+							onclick={() => handleDeleteClick(doc)}
 							class="rounded p-2 text-theme-muted transition-colors hover:bg-red-900/30 hover:text-red-400"
 							aria-label="Delete document"
 						>
@@ -273,3 +279,13 @@
 		{/if}
 	</section>
 </div>
+
+<ConfirmDialog
+	isOpen={deleteConfirm.show}
+	title="Delete Document"
+	message={`Delete "${deleteConfirm.doc?.name}"? This cannot be undone.`}
+	confirmText="Delete"
+	variant="danger"
+	onConfirm={confirmDelete}
+	onCancel={() => (deleteConfirm = { show: false, doc: null })}
+/>

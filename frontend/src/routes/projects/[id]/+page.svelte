@@ -20,6 +20,7 @@
 	import type { StoredDocument } from '$lib/storage/db';
 	import ProjectModal from '$lib/components/projects/ProjectModal.svelte';
 	import { searchProjectChatHistory, type ChatSearchResult } from '$lib/services/chat-indexer.js';
+	import { ConfirmDialog } from '$lib/components/shared';
 
 	// Get project ID from URL
 	const projectId = $derived($page.params.id);
@@ -50,6 +51,7 @@
 	let isSearching = $state(false);
 	let searchResults = $state<ChatSearchResult[]>([]);
 	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let deleteDocConfirm = $state<{ show: boolean; doc: StoredDocument | null }>({ show: false, doc: null });
 
 	// Map of conversationId -> best matching snippet from search
 	const searchSnippetMap = $derived.by(() => {
@@ -323,8 +325,14 @@
 		await loadProjectData();
 	}
 
-	async function handleDeleteDocument(doc: StoredDocument) {
-		if (!confirm(`Delete "${doc.name}"? This cannot be undone.`)) return;
+	function handleDeleteDocumentClick(doc: StoredDocument) {
+		deleteDocConfirm = { show: true, doc };
+	}
+
+	async function confirmDeleteDocument() {
+		if (!deleteDocConfirm.doc) return;
+		const doc = deleteDocConfirm.doc;
+		deleteDocConfirm = { show: false, doc: null };
 
 		try {
 			await deleteDocument(doc.id);
@@ -632,7 +640,7 @@
 									</div>
 									<button
 										type="button"
-										onclick={() => handleDeleteDocument(doc)}
+										onclick={() => handleDeleteDocumentClick(doc)}
 										class="rounded p-1.5 text-theme-muted transition-colors hover:bg-red-900/30 hover:text-red-400"
 									>
 										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -704,4 +712,15 @@
 	onClose={() => showProjectModal = false}
 	{projectId}
 	onUpdate={() => loadProjectData()}
+/>
+
+<!-- Delete Document Confirm -->
+<ConfirmDialog
+	isOpen={deleteDocConfirm.show}
+	title="Delete Document"
+	message={`Delete "${deleteDocConfirm.doc?.name}"? This cannot be undone.`}
+	confirmText="Delete"
+	variant="danger"
+	onConfirm={confirmDeleteDocument}
+	onCancel={() => (deleteDocConfirm = { show: false, doc: null })}
 />

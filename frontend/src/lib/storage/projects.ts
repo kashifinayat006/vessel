@@ -175,7 +175,7 @@ export async function updateProject(
  */
 export async function deleteProject(id: string): Promise<StorageResult<void>> {
 	return withErrorHandling(async () => {
-		await db.transaction('rw', [db.projects, db.projectLinks, db.conversations, db.documents, db.chatChunks], async () => {
+		await db.transaction('rw', [db.projects, db.projectLinks, db.conversations, db.documents, db.chunks, db.chatChunks], async () => {
 			// Unlink all conversations from this project
 			const conversations = await db.conversations.where('projectId').equals(id).toArray();
 			for (const conv of conversations) {
