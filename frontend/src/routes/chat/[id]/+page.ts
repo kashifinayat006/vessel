@@ -6,7 +6,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ params }) => {
+export const load: PageLoad = async ({ params, url }) => {
 	const { id } = params;
 
 	// Validate that ID looks like a UUID
@@ -18,10 +18,11 @@ export const load: PageLoad = async ({ params }) => {
 		});
 	}
 
-	// TODO: In the future, load conversation from IndexedDB here
-	// For now, just return the ID and let the page component handle state
+	// Extract firstMessage query param (for new chats from project page)
+	const firstMessage = url.searchParams.get('firstMessage') || null;
 
 	return {
-		conversationId: id
+		conversationId: id,
+		firstMessage
 	};
 };

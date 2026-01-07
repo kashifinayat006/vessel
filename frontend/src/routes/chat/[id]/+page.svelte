@@ -4,7 +4,8 @@
 	 * Displays an existing conversation with chat window
 	 */
 
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { chatState, conversationsState, modelsState } from '$lib/stores';
 	import { getConversationFull } from '$lib/storage';
 	import ChatWindow from '$lib/components/chat/ChatWindow.svelte';
@@ -19,6 +20,17 @@
 	// Track current conversation ID for URL changes
 	let currentConversationId = $state<string | null>(null);
 	let isLoading = $state(false);
+
+	// Extract first message from data and clear from URL
+	let initialMessage = $state<string | null>(data.firstMessage);
+	$effect(() => {
+		// Clear firstMessage from URL to keep it clean
+		if (data.firstMessage && $page.url.searchParams.has('firstMessage')) {
+			const url = new URL($page.url);
+			url.searchParams.delete('firstMessage');
+			replaceState(url, {});
+		}
+	});
 
 	/**
 	 * Load conversation into chat state when URL changes
@@ -135,6 +147,6 @@
 		</div>
 	{:else}
 		<!-- Chat window in conversation mode -->
-		<ChatWindow mode="conversation" {conversation} />
+		<ChatWindow mode="conversation" {conversation} {initialMessage} />
 	{/if}
 </div>

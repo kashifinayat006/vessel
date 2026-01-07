@@ -43,6 +43,7 @@
 	 * - mode: 'new' for new chat page, 'conversation' for existing conversations
 	 * - onFirstMessage: callback for when first message is sent in 'new' mode
 	 * - conversation: conversation metadata when in 'conversation' mode
+	 * - initialMessage: auto-send this message when conversation loads (for new project chats)
 	 */
 	interface Props {
 		mode?: 'new' | 'conversation';
@@ -50,13 +51,16 @@
 		conversation?: Conversation | null;
 		/** Bindable prop for thinking mode - synced with parent in 'new' mode */
 		thinkingEnabled?: boolean;
+		/** Initial message to auto-send when conversation loads */
+		initialMessage?: string | null;
 	}
 
 	let {
 		mode = 'new',
 		onFirstMessage,
 		conversation,
-		thinkingEnabled = $bindable(true)
+		thinkingEnabled = $bindable(true),
+		initialMessage = null
 	}: Props = $props();
 
 	// Local state for abort controller
@@ -124,6 +128,26 @@
 				// Full state is handled by the modal, no toast needed
 			}
 			previousContextState = currentState;
+		}
+	});
+
+	// Track if initial message has been sent to prevent re-sending
+	let initialMessageSent = $state(false);
+
+	// Auto-send initial message when conversation is ready
+	$effect(() => {
+		if (
+			mode === 'conversation' &&
+			initialMessage &&
+			!initialMessageSent &&
+			chatState.conversationId === conversation?.id &&
+			!chatState.isStreaming
+		) {
+			initialMessageSent = true;
+			// Small delay to ensure UI is ready
+			setTimeout(() => {
+				handleSendMessage(initialMessage);
+			}, 100);
 		}
 	});
 

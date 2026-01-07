@@ -24,6 +24,8 @@ export interface AddDocumentOptions {
 	embeddingModel?: string;
 	/** Callback for progress updates */
 	onProgress?: (current: number, total: number) => void;
+	/** Project ID if document belongs to a project */
+	projectId?: string;
 }
 
 /**
@@ -39,7 +41,8 @@ export async function addDocument(
 	const {
 		chunkOptions,
 		embeddingModel = DEFAULT_EMBEDDING_MODEL,
-		onProgress
+		onProgress,
+		projectId
 	} = options;
 
 	const documentId = crypto.randomUUID();
@@ -88,7 +91,8 @@ export async function addDocument(
 		createdAt: now,
 		updatedAt: now,
 		chunkCount: storedChunks.length,
-		embeddingModel
+		embeddingModel,
+		projectId: projectId ?? null
 	};
 
 	// Store in database

@@ -7,6 +7,7 @@
 	import type { Conversation } from '$lib/types/conversation.js';
 	import { projectsState, chatState } from '$lib/stores';
 	import ConversationItem from './ConversationItem.svelte';
+	import { goto } from '$app/navigation';
 
 	interface Props {
 		project: Project;
@@ -26,6 +27,13 @@
 		await projectsState.toggleCollapse(project.id);
 	}
 
+	/** Navigate to project page */
+	function handleOpenProject(e: MouseEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		goto(`/projects/${project.id}`);
+	}
+
 	/** Handle project settings click */
 	function handleSettings(e: MouseEvent) {
 		e.preventDefault();
@@ -35,42 +43,53 @@
 </script>
 
 <div class="mb-1">
-	<!-- Project header - use div with role="button" to avoid nested buttons -->
-	<div
-		role="button"
-		tabindex="0"
-		onclick={handleToggle}
-		onkeydown={(e) => e.key === 'Enter' && handleToggle(e as unknown as MouseEvent)}
-		class="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-theme-secondary/60"
-	>
-		<!-- Collapse indicator -->
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-3 w-3 shrink-0 text-theme-muted transition-transform {isExpanded ? 'rotate-90' : ''}"
-			viewBox="0 0 20 20"
-			fill="currentColor"
+	<!-- Project header -->
+	<div class="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-theme-secondary/60">
+		<!-- Collapse indicator (clickable) -->
+		<button
+			type="button"
+			onclick={handleToggle}
+			class="shrink-0 rounded p-0.5 text-theme-muted transition-colors hover:text-theme-primary"
+			aria-label={isExpanded ? 'Collapse project' : 'Expand project'}
 		>
-			<path
-				fill-rule="evenodd"
-				d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-				clip-rule="evenodd"
-			/>
-		</svg>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-3 w-3 transition-transform {isExpanded ? 'rotate-90' : ''}"
+				viewBox="0 0 20 20"
+				fill="currentColor"
+			>
+				<path
+					fill-rule="evenodd"
+					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+					clip-rule="evenodd"
+				/>
+			</svg>
+		</button>
 
-		<!-- Folder icon with project color -->
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-4 w-4 shrink-0"
-			viewBox="0 0 20 20"
-			fill={project.color || '#10b981'}
+		<!-- Project link (folder icon + name) - navigates to project page -->
+		<a
+			href="/projects/{project.id}"
+			onclick={handleOpenProject}
+			class="flex flex-1 items-center gap-2 truncate"
+			title="Open project"
 		>
-			<path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-		</svg>
+			<!-- Folder icon with project color -->
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-4 w-4 shrink-0"
+				viewBox="0 0 20 20"
+				fill={project.color || '#10b981'}
+			>
+				<path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+			</svg>
 
-		<!-- Project name and count -->
-		<span class="flex-1 truncate text-sm font-medium text-theme-secondary">
-			{project.name}
-		</span>
+			<!-- Project name -->
+			<span class="flex-1 truncate text-sm font-medium text-theme-secondary hover:text-theme-primary">
+				{project.name}
+			</span>
+		</a>
+
+		<!-- Conversation count -->
 		<span class="shrink-0 text-xs text-theme-muted">
 			{conversations.length}
 		</span>
