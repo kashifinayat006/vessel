@@ -520,7 +520,8 @@ print(json.dumps(result))`,
 	{
 		id: 'js-task-manager',
 		name: 'Task Manager',
-		description: 'Create, update, list, and complete tasks with persistent storage',
+		description:
+			'TASK TRACKING: Use when the user mentions tasks, todos, or things to do. Actions: add (create task), complete (mark done), list (show all), remove (delete). Persists across conversations. Use for any "add to my list", "what tasks", "mark as done" requests.',
 		category: 'agentic',
 		language: 'javascript',
 		code: `// Task Manager with localStorage persistence
@@ -632,7 +633,8 @@ switch (action) {
 	{
 		id: 'js-memory-store',
 		name: 'Memory Store',
-		description: 'Store and recall information across conversation turns',
+		description:
+			'PERSISTENT MEMORY: Use this tool whenever the user asks you to remember something, recall memories, list what you remember, or forget something. Actions: store (save new memory), recall (retrieve memories), list (show all memories), forget (delete memory), clear (delete all). This gives you persistent memory across conversations.',
 		category: 'agentic',
 		language: 'javascript',
 		code: `// Memory Store - persistent key-value storage for agent context
@@ -796,11 +798,12 @@ switch (action) {
 			properties: {
 				action: {
 					type: 'string',
-					description: 'Action: store, recall, list, forget, clear'
+					description:
+						'Required. Use "list" or "recall" to show memories, "store" to save new memory, "forget" to delete, "clear" to erase all'
 				},
-				key: { type: 'string', description: 'Memory key/identifier' },
-				value: { type: 'string', description: 'Value to store (for store action)' },
-				category: { type: 'string', description: 'Category for organizing memories (facts, preferences, context, etc.)' }
+				key: { type: 'string', description: 'Unique identifier for the memory (e.g., "user_name", "favorite_color")' },
+				value: { type: 'string', description: 'The information to remember (required for store action)' },
+				category: { type: 'string', description: 'Optional grouping (e.g., "preferences", "facts", "context"). Defaults to "general"' }
 			},
 			required: ['action']
 		}
@@ -808,7 +811,8 @@ switch (action) {
 	{
 		id: 'js-think-step-by-step',
 		name: 'Structured Thinking',
-		description: 'Break down problems into explicit reasoning steps',
+		description:
+			'REASONING: Use for complex questions requiring step-by-step analysis. Helps you think through problems systematically before answering. Use when facing multi-part questions, logical puzzles, or decisions requiring careful thought.',
 		category: 'agentic',
 		language: 'javascript',
 		code: `// Structured Thinking - explicit step-by-step reasoning
@@ -888,7 +892,8 @@ return analysis;`,
 	{
 		id: 'js-decision-matrix',
 		name: 'Decision Matrix',
-		description: 'Evaluate options against weighted criteria for better decisions',
+		description:
+			'DECISION HELPER: Use when comparing multiple options, recommending choices, or evaluating trade-offs. Scores options against weighted criteria. Perfect for "which should I choose", "compare X vs Y", or recommendation requests.',
 		category: 'agentic',
 		language: 'javascript',
 		code: `// Decision Matrix - weighted multi-criteria decision analysis
@@ -982,7 +987,8 @@ return {
 	{
 		id: 'js-project-planner',
 		name: 'Project Planner',
-		description: 'Break down projects into phases, tasks, and dependencies',
+		description:
+			'PROJECT BREAKDOWN: Use when planning projects, creating roadmaps, or breaking work into phases. Helps structure complex initiatives with tasks, dependencies, and milestones. Use for "help me plan", "break this down", or project planning requests.',
 		category: 'agentic',
 		language: 'javascript',
 		code: `// Project Planner - decompose projects into actionable plans
