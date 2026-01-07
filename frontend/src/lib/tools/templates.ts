@@ -657,6 +657,10 @@ switch (action) {
     const value = args.value;
     const category = args.category || 'general';
 
+    // Validate required fields
+    if (!key) return { error: 'Key is required for store action' };
+    if (value === undefined || value === null) return { error: 'Value is required for store action' };
+
     if (!memory[category]) memory[category] = {};
     memory[category][key] = {
       value,
@@ -664,7 +668,7 @@ switch (action) {
       accessCount: 0
     };
     saveMemory(memory);
-    return { success: true, key, category, message: 'Memory stored' };
+    return { success: true, key, category, value, message: 'Memory stored' };
   }
 
   case 'recall': {
@@ -681,7 +685,14 @@ switch (action) {
     }
 
     if (category) {
-      return { category, items: memory[category] || {} };
+      // Return formatted entries for category (consistent with list)
+      const items = memory[category] || {};
+      const entries = Object.entries(items).map(([k, data]) => ({
+        key: k,
+        value: data.value,
+        stored: data.stored
+      }));
+      return { found: entries.length > 0, category, entries, count: entries.length };
     }
 
     if (key) {
@@ -741,13 +752,17 @@ switch (action) {
         saveMemory(memory);
         return { success: true, forgotten: key, category };
       }
-      return { error: 'Memory not found' };
+      return { error: 'Memory not found', key, category };
     }
 
     if (category) {
+      if (!memory[category]) {
+        return { error: 'Category not found', category };
+      }
+      const count = Object.keys(memory[category]).length;
       delete memory[category];
       saveMemory(memory);
-      return { success: true, forgotten: category, type: 'category' };
+      return { success: true, forgotten: category, type: 'category', entriesRemoved: count };
     }
 
     return { error: 'Provide key and/or category to forget' };
