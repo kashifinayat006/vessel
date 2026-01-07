@@ -702,17 +702,32 @@ switch (action) {
   case 'list': {
     const category = args.category;
     if (category) {
+      const items = memory[category] || {};
+      const entries = Object.entries(items).map(([key, data]) => ({
+        key,
+        value: data.value,
+        stored: data.stored
+      }));
       return {
         category,
-        keys: Object.keys(memory[category] || {}),
-        count: Object.keys(memory[category] || {}).length
+        entries,
+        count: entries.length
       };
     }
-    const summary = {};
+    // List all categories with their entries
+    const allMemories = {};
     for (const cat in memory) {
-      summary[cat] = Object.keys(memory[cat]).length;
+      allMemories[cat] = Object.entries(memory[cat]).map(([key, data]) => ({
+        key,
+        value: data.value,
+        stored: data.stored
+      }));
     }
-    return { categories: summary, totalCategories: Object.keys(memory).length };
+    return {
+      memories: allMemories,
+      totalCategories: Object.keys(memory).length,
+      totalEntries: Object.values(memory).reduce((sum, cat) => sum + Object.keys(cat).length, 0)
+    };
   }
 
   case 'forget': {
