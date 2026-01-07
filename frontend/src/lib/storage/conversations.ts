@@ -21,7 +21,10 @@ function toDomainConversation(stored: StoredConversation): Conversation {
 		isPinned: stored.isPinned,
 		isArchived: stored.isArchived,
 		messageCount: stored.messageCount,
-		systemPromptId: stored.systemPromptId ?? null
+		systemPromptId: stored.systemPromptId ?? null,
+		projectId: stored.projectId ?? null,
+		summary: stored.summary ?? null,
+		summaryUpdatedAt: stored.summaryUpdatedAt ? new Date(stored.summaryUpdatedAt) : null
 	};
 }
 
@@ -126,7 +129,7 @@ export async function getConversationFull(id: string): Promise<StorageResult<Con
  * Create a new conversation
  */
 export async function createConversation(
-	data: Omit<Conversation, 'id' | 'createdAt' | 'updatedAt' | 'messageCount'>
+	data: Omit<Conversation, 'id' | 'createdAt' | 'updatedAt' | 'messageCount' | 'summary' | 'summaryUpdatedAt'>
 ): Promise<StorageResult<Conversation>> {
 	return withErrorHandling(async () => {
 		const id = generateId();
@@ -142,7 +145,8 @@ export async function createConversation(
 			isArchived: data.isArchived ?? false,
 			messageCount: 0,
 			syncVersion: 1,
-			systemPromptId: data.systemPromptId ?? null
+			systemPromptId: data.systemPromptId ?? null,
+			projectId: data.projectId ?? null
 		};
 
 		await db.conversations.add(stored);
@@ -309,5 +313,130 @@ export async function searchConversations(query: string): Promise<StorageResult<
 			});
 
 		return matching.map(toDomainConversation);
+	});
+}
+
+// ============================================================================
+// Project-related operations
+// ============================================================================
+
+/**
+ * Get all conversations for a specific project
+ */
+export async function getConversationsForProject(
+	projectId: string
+): Promise<StorageResult<Conversation[]>> {
+	return withErrorHandling(async () => {
+		const conversations = await db.conversations
+			.where('projectId')
+			.equals(projectId)
+			.toArray();
+
+		const sorted = conversations
+			.filter((c) => !c.isArchived)
+			.sort((a, b) => {
+				if (a.isPinned && !b.isPinned) return -1;
+				if (!a.isPinned && b.isPinned) return 1;
+				return b.updatedAt - a.updatedAt;
+			});
+
+		return sorted.map(toDomainConversation);
+	});
+}
+
+/**
+ * Get all conversations without a project (ungrouped)
+ */
+export async function getConversationsWithoutProject(): Promise<StorageResult<Conversation[]>> {
+	return withErrorHandling(async () => {
+		const all = await db.conversations.toArray();
+
+		const ungrouped = all
+			.filter((c) => !c.isArchived && (!c.projectId || c.projectId === null))
+			.sort((a, b) => {
+				if (a.isPinned && !b.isPinned) return -1;
+				if (!a.isPinned && b.isPinned) return 1;
+				return b.updatedAt - a.updatedAt;
+			});
+
+		return ungrouped.map(toDomainConversation);
+	});
+}
+
+/**
+ * Move a conversation to a project (or remove from project if null)
+ */
+export async function moveConversationToProject(
+	conversationId: string,
+	projectId: string | null
+): Promise<StorageResult<Conversation>> {
+	return withErrorHandling(async () => {
+		const existing = await db.conversations.get(conversationId);
+		if (!existing) {
+			throw new Error(`Conversation not found: ${conversationId}`);
+		}
+
+		const updated: StoredConversation = {
+			...existing,
+			projectId: projectId,
+			updatedAt: Date.now(),
+			syncVersion: (existing.syncVersion ?? 0) + 1
+		};
+
+		await db.conversations.put(updated);
+		await markForSync('conversation', conversationId, 'update');
+
+		return toDomainConversation(updated);
+	});
+}
+
+/**
+ * Update conversation summary (for cross-chat context)
+ */
+export async function updateConversationSummary(
+	conversationId: string,
+	summary: string
+): Promise<StorageResult<Conversation>> {
+	return withErrorHandling(async () => {
+		const existing = await db.conversations.get(conversationId);
+		if (!existing) {
+			throw new Error(`Conversation not found: ${conversationId}`);
+		}
+
+		const updated: StoredConversation = {
+			...existing,
+			summary,
+			summaryUpdatedAt: Date.now(),
+			updatedAt: Date.now(),
+			syncVersion: (existing.syncVersion ?? 0) + 1
+		};
+
+		await db.conversations.put(updated);
+		return toDomainConversation(updated);
+	});
+}
+
+/**
+ * Get conversation summaries for all conversations in a project (excluding current)
+ */
+export async function getProjectConversationSummaries(
+	projectId: string,
+	excludeConversationId?: string
+): Promise<StorageResult<Array<{ id: string; title: string; summary: string; updatedAt: Date }>>> {
+	return withErrorHandling(async () => {
+		const conversations = await db.conversations
+			.where('projectId')
+			.equals(projectId)
+			.toArray();
+
+		return conversations
+			.filter((c) => !c.isArchived && c.summary && c.id !== excludeConversationId)
+			.sort((a, b) => b.updatedAt - a.updatedAt)
+			.map((c) => ({
+				id: c.id,
+				title: c.title,
+				summary: c.summary!,
+				updatedAt: new Date(c.summaryUpdatedAt ?? c.updatedAt)
+			}));
 	});
 }

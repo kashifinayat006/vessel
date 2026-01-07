@@ -7,7 +7,7 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { chatState, conversationsState, modelsState, uiState, promptsState, versionState } from '$lib/stores';
+	import { chatState, conversationsState, modelsState, uiState, promptsState, versionState, projectsState } from '$lib/stores';
 	import { getAllConversations } from '$lib/storage';
 	import { syncManager } from '$lib/backend';
 	import { keyboardShortcuts, getShortcuts } from '$lib/utils';
@@ -65,6 +65,9 @@
 
 		// Load conversations from IndexedDB
 		loadConversations();
+
+		// Load projects from IndexedDB
+		projectsState.load();
 
 		return () => {
 			uiState.destroy();

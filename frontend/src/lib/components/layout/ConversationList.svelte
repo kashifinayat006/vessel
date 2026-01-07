@@ -1,17 +1,34 @@
 <script lang="ts">
 	/**
-	 * ConversationList.svelte - Chat history list grouped by date
-	 * Uses local conversationsState for immediate updates (offline-first)
+	 * ConversationList.svelte - Chat history list with projects and date groups
+	 * Shows projects as folders at the top, then ungrouped conversations by date
 	 */
-	import { conversationsState, chatState } from '$lib/stores';
+	import { conversationsState, chatState, projectsState } from '$lib/stores';
 	import ConversationItem from './ConversationItem.svelte';
+	import ProjectFolder from './ProjectFolder.svelte';
+
+	interface Props {
+		onEditProject?: (projectId: string) => void;
+	}
+
+	let { onEditProject }: Props = $props();
 
 	// State for showing archived conversations
 	let showArchived = $state(false);
+
+	// Derived: Conversations without a project, grouped by date
+	const ungroupedConversations = $derived.by(() => {
+		return conversationsState.withoutProject();
+	});
+
+	// Derived: Check if there are any project folders or ungrouped conversations
+	const hasAnyContent = $derived.by(() => {
+		return projectsState.projects.length > 0 || ungroupedConversations.length > 0;
+	});
 </script>
 
 <div class="flex flex-col px-2 py-1">
-	{#if conversationsState.grouped.length === 0}
+	{#if !hasAnyContent && conversationsState.grouped.length === 0}
 		<!-- Empty state -->
 		<div class="flex flex-col items-center justify-center px-4 py-8 text-center">
 			<svg
@@ -43,24 +60,45 @@
 			{/if}
 		</div>
 	{:else}
-		<!-- Grouped conversations -->
-		{#each conversationsState.grouped as { group, conversations } (group)}
-			<div class="mb-2">
-				<!-- Group header -->
+		<!-- Projects section -->
+		{#if projectsState.sortedProjects.length > 0}
+			<div class="mb-3">
 				<h3 class="sticky top-0 z-10 bg-theme-primary px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-theme-muted">
-					{group}
+					Projects
 				</h3>
-
-				<!-- Conversations in this group -->
 				<div class="flex flex-col gap-0.5">
-					{#each conversations as conversation (conversation.id)}
-						<ConversationItem
-							{conversation}
-							isSelected={chatState.conversationId === conversation.id}
+					{#each projectsState.sortedProjects as project (project.id)}
+						<ProjectFolder
+							{project}
+							conversations={conversationsState.forProject(project.id)}
+							{onEditProject}
 						/>
 					{/each}
 				</div>
 			</div>
+		{/if}
+
+		<!-- Ungrouped conversations (by date) -->
+		{#each conversationsState.grouped as { group, conversations } (group)}
+			{@const ungroupedInGroup = conversations.filter(c => !c.projectId)}
+			{#if ungroupedInGroup.length > 0}
+				<div class="mb-2">
+					<!-- Group header -->
+					<h3 class="sticky top-0 z-10 bg-theme-primary px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-theme-muted">
+						{group}
+					</h3>
+
+					<!-- Conversations in this group (without project) -->
+					<div class="flex flex-col gap-0.5">
+						{#each ungroupedInGroup as conversation (conversation.id)}
+							<ConversationItem
+								{conversation}
+								isSelected={chatState.conversationId === conversation.id}
+							/>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		{/each}
 
 		<!-- Archived section -->

@@ -1,16 +1,36 @@
 <script lang="ts">
 	/**
 	 * Sidenav.svelte - Collapsible sidebar for the Ollama chat UI
-	 * Contains navigation header, search, and conversation list
+	 * Contains navigation header, search, projects, and conversation list
 	 */
 	import { page } from '$app/stores';
-	import { uiState } from '$lib/stores';
+	import { uiState, projectsState } from '$lib/stores';
 	import SidenavHeader from './SidenavHeader.svelte';
 	import SidenavSearch from './SidenavSearch.svelte';
 	import ConversationList from './ConversationList.svelte';
+	import ProjectModal from '$lib/components/projects/ProjectModal.svelte';
 
 	// Check if a path is active
 	const isActive = (path: string) => $page.url.pathname === path;
+
+	// Project modal state
+	let showProjectModal = $state(false);
+	let editingProjectId = $state<string | null>(null);
+
+	function handleCreateProject() {
+		editingProjectId = null;
+		showProjectModal = true;
+	}
+
+	function handleEditProject(projectId: string) {
+		editingProjectId = projectId;
+		showProjectModal = true;
+	}
+
+	function handleCloseProjectModal() {
+		showProjectModal = false;
+		editingProjectId = null;
+	}
 </script>
 
 <!-- Overlay for mobile (closes sidenav when clicking outside) -->
@@ -38,9 +58,34 @@
 		<!-- Search bar -->
 		<SidenavSearch />
 
+		<!-- Create Project button -->
+		<div class="px-3 pb-2">
+			<button
+				type="button"
+				onclick={handleCreateProject}
+				class="flex w-full items-center gap-2 rounded-lg border border-dashed border-theme px-3 py-2 text-sm text-theme-muted transition-colors hover:border-emerald-500/50 hover:bg-theme-secondary/50 hover:text-emerald-500"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M12 4.5v15m7.5-7.5h-15"
+					/>
+				</svg>
+				<span>New Project</span>
+			</button>
+		</div>
+
 		<!-- Conversation list (scrollable) -->
 		<div class="flex-1 overflow-y-auto overflow-x-hidden">
-			<ConversationList />
+			<ConversationList onEditProject={handleEditProject} />
 		</div>
 
 		<!-- Footer / Navigation links -->
@@ -158,3 +203,10 @@
 		</div>
 	</div>
 </aside>
+
+<!-- Project Modal -->
+<ProjectModal
+	isOpen={showProjectModal}
+	onClose={handleCloseProjectModal}
+	projectId={editingProjectId}
+/>

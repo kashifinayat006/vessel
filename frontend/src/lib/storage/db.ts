@@ -21,6 +21,12 @@ export interface StoredConversation {
 	syncVersion?: number;
 	/** Optional system prompt ID for this conversation */
 	systemPromptId?: string | null;
+	/** Optional project ID this conversation belongs to */
+	projectId?: string | null;
+	/** Auto-generated conversation summary for cross-chat context */
+	summary?: string | null;
+	/** Timestamp when summary was last updated */
+	summaryUpdatedAt?: number | null;
 }
 
 /**
@@ -38,6 +44,12 @@ export interface ConversationRecord {
 	syncVersion?: number;
 	/** Optional system prompt ID for this conversation */
 	systemPromptId?: string | null;
+	/** Optional project ID this conversation belongs to */
+	projectId?: string | null;
+	/** Auto-generated conversation summary for cross-chat context */
+	summary?: string | null;
+	/** Timestamp when summary was last updated */
+	summaryUpdatedAt?: Date | null;
 }
 
 /**
@@ -143,6 +155,8 @@ export interface StoredDocument {
 	updatedAt: number;
 	chunkCount: number;
 	embeddingModel: string;
+	/** Optional project ID - if set, document is project-scoped */
+	projectId?: string | null;
 }
 
 /**
@@ -201,6 +215,55 @@ export interface StoredModelPromptMapping {
 	updatedAt: number;
 }
 
+// ============================================================================
+// Project-related interfaces (v6)
+// ============================================================================
+
+/**
+ * Project for organizing conversations with shared context
+ */
+export interface StoredProject {
+	id: string;
+	name: string;
+	description: string;
+	/** Instructions injected into system prompt for all project chats */
+	instructions: string;
+	/** Hex color for UI display */
+	color: string;
+	/** Whether folder is collapsed in sidebar */
+	isCollapsed: boolean;
+	createdAt: number;
+	updatedAt: number;
+}
+
+/**
+ * Reference link attached to a project
+ */
+export interface StoredProjectLink {
+	id: string;
+	projectId: string;
+	url: string;
+	title: string;
+	description: string;
+	createdAt: number;
+}
+
+/**
+ * Chat message chunk with embedding for cross-chat RAG
+ * Enables searching across conversation history within a project
+ */
+export interface StoredChatChunk {
+	id: string;
+	conversationId: string;
+	/** Denormalized for efficient project-scoped queries */
+	projectId: string;
+	messageId: string;
+	role: 'user' | 'assistant';
+	content: string;
+	embedding: number[];
+	createdAt: number;
+}
+
 /**
  * Ollama WebUI database class
  * Manages all local storage tables
@@ -215,6 +278,10 @@ class OllamaDatabase extends Dexie {
 	prompts!: Table<StoredPrompt>;
 	modelSystemPrompts!: Table<StoredModelSystemPrompt>;
 	modelPromptMappings!: Table<StoredModelPromptMapping>;
+	// Project-related tables (v6)
+	projects!: Table<StoredProject>;
+	projectLinks!: Table<StoredProjectLink>;
+	chatChunks!: Table<StoredChatChunk>;
 
 	constructor() {
 		super('vessel');
@@ -282,6 +349,28 @@ class OllamaDatabase extends Dexie {
 			modelSystemPrompts: 'modelName',
 			// User-configured model-to-prompt mappings
 			modelPromptMappings: 'id, modelName, promptId'
+		});
+
+		// Version 6: Projects with cross-chat context sharing
+		// Adds: projects, project links, chat chunks for RAG, projectId on conversations/documents
+		this.version(6).stores({
+			// Add projectId index for filtering conversations by project
+			conversations: 'id, updatedAt, isPinned, isArchived, systemPromptId, projectId',
+			messages: 'id, conversationId, parentId, createdAt',
+			attachments: 'id, messageId',
+			syncQueue: 'id, entityType, createdAt',
+			// Add projectId index for project-scoped document RAG
+			documents: 'id, name, createdAt, updatedAt, projectId',
+			chunks: 'id, documentId',
+			prompts: 'id, name, isDefault, updatedAt',
+			modelSystemPrompts: 'modelName',
+			modelPromptMappings: 'id, modelName, promptId',
+			// Projects for organizing conversations
+			projects: 'id, name, createdAt, updatedAt',
+			// Reference links attached to projects
+			projectLinks: 'id, projectId, createdAt',
+			// Chat message chunks for cross-conversation RAG within projects
+			chatChunks: 'id, conversationId, projectId, createdAt'
 		});
 	}
 }

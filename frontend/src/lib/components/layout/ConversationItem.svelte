@@ -1,13 +1,14 @@
 <script lang="ts">
 	/**
 	 * ConversationItem.svelte - Single conversation row in the sidebar
-	 * Shows title, model, and hover actions (pin, export, delete)
+	 * Shows title, model, and hover actions (pin, move, export, delete)
 	 */
 	import type { Conversation } from '$lib/types/conversation.js';
 	import { goto } from '$app/navigation';
 	import { conversationsState, uiState, chatState, toastState } from '$lib/stores';
 	import { deleteConversation } from '$lib/storage';
 	import { ExportDialog } from '$lib/components/shared';
+	import MoveToProjectModal from '$lib/components/projects/MoveToProjectModal.svelte';
 
 	interface Props {
 		conversation: Conversation;
@@ -18,6 +19,9 @@
 
 	// Export dialog state
 	let showExportDialog = $state(false);
+
+	// Move to project dialog state
+	let showMoveDialog = $state(false);
 
 	/** Format relative time for display */
 	function formatRelativeTime(date: Date): string {
@@ -46,6 +50,13 @@
 		e.preventDefault();
 		e.stopPropagation();
 		showExportDialog = true;
+	}
+
+	/** Handle move to project */
+	function handleMove(e: MouseEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		showMoveDialog = true;
 	}
 
 	/** Handle delete */
@@ -174,6 +185,30 @@
 			{/if}
 		</button>
 
+		<!-- Move to project button -->
+		<button
+			type="button"
+			onclick={handleMove}
+			class="rounded p-1 text-theme-muted transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
+			aria-label="Move to project"
+			title="Move to project"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-4 w-4"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"
+				/>
+			</svg>
+		</button>
+
 		<!-- Export button -->
 		<button
 			type="button"
@@ -229,4 +264,11 @@
 	conversationId={conversation.id}
 	isOpen={showExportDialog}
 	onClose={() => (showExportDialog = false)}
+/>
+
+<!-- Move to Project Modal -->
+<MoveToProjectModal
+	conversationId={conversation.id}
+	isOpen={showMoveDialog}
+	onClose={() => (showMoveDialog = false)}
 />

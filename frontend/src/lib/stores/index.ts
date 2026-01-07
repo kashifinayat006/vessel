@@ -12,6 +12,7 @@ export { promptsState } from './prompts.svelte.js';
 export { SettingsState, settingsState } from './settings.svelte.js';
 export type { Prompt } from './prompts.svelte.js';
 export { VersionState, versionState } from './version.svelte.js';
+export { ProjectsState, projectsState } from './projects.svelte.js';
 
 // Re-export types for convenience
 export type { GroupedConversations } from './conversations.svelte.js';

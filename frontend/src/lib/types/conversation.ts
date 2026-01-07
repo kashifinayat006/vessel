@@ -16,6 +16,12 @@ export interface Conversation {
 	messageCount: number;
 	/** Optional system prompt ID for this conversation (null = use global default) */
 	systemPromptId?: string | null;
+	/** Optional project ID this conversation belongs to */
+	projectId?: string | null;
+	/** Auto-generated conversation summary for cross-chat context */
+	summary?: string | null;
+	/** Timestamp when summary was last updated */
+	summaryUpdatedAt?: Date | null;
 }
 
 /** Full conversation including message tree and navigation state */

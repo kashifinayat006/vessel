@@ -204,6 +204,66 @@ export class ConversationsState {
 	setSystemPrompt(id: string, systemPromptId: string | null): void {
 		this.update(id, { systemPromptId });
 	}
+
+	// ========================================================================
+	// Project-related methods
+	// ========================================================================
+
+	/**
+	 * Get conversations for a specific project
+	 * @param projectId The project ID
+	 */
+	forProject(projectId: string): Conversation[] {
+		return this.items
+			.filter((c) => !c.isArchived && c.projectId === projectId)
+			.sort((a, b) => {
+				if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+				return b.updatedAt.getTime() - a.updatedAt.getTime();
+			});
+	}
+
+	/**
+	 * Get conversations without a project
+	 */
+	withoutProject(): Conversation[] {
+		return this.items
+			.filter((c) => !c.isArchived && (!c.projectId || c.projectId === null))
+			.sort((a, b) => {
+				if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+				return b.updatedAt.getTime() - a.updatedAt.getTime();
+			});
+	}
+
+	/**
+	 * Move a conversation to a project (or remove from project if null)
+	 * @param id The conversation ID
+	 * @param projectId The project ID (or null to remove from project)
+	 */
+	moveToProject(id: string, projectId: string | null): void {
+		this.update(id, { projectId });
+	}
+
+	/**
+	 * Update a conversation's summary
+	 * @param id The conversation ID
+	 * @param summary The summary text
+	 */
+	updateSummary(id: string, summary: string): void {
+		this.update(id, { summary, summaryUpdatedAt: new Date() });
+	}
+
+	/**
+	 * Get all project IDs that have conversations
+	 */
+	getProjectIdsWithConversations(): string[] {
+		const projectIds = new Set<string>();
+		for (const c of this.items) {
+			if (!c.isArchived && c.projectId) {
+				projectIds.add(c.projectId);
+			}
+		}
+		return Array.from(projectIds);
+	}
 }
 
 /** Singleton conversations state instance */

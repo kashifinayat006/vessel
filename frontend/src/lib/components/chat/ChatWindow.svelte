@@ -36,6 +36,7 @@
 	import SystemPromptSelector from './SystemPromptSelector.svelte';
 	import ModelParametersPanel from '$lib/components/settings/ModelParametersPanel.svelte';
 	import { settingsState } from '$lib/stores/settings.svelte';
+	import { buildProjectContext, formatProjectContextForPrompt, hasProjectContext } from '$lib/services/project-context.js';
 
 	/**
 	 * Props interface for ChatWindow
@@ -152,6 +153,27 @@
 			return context;
 		} catch (error) {
 			console.error('[RAG] Failed to retrieve context:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Retrieve project context (instructions, summaries, chat history)
+	 * Only applicable when the conversation belongs to a project
+	 */
+	async function retrieveProjectContext(query: string): Promise<string | null> {
+		const projectId = conversation?.projectId;
+		const conversationId = chatState.conversationId;
+
+		if (!projectId || !conversationId) return null;
+
+		try {
+			const context = await buildProjectContext(projectId, conversationId, query);
+			if (!hasProjectContext(context)) return null;
+
+			return formatProjectContextForPrompt(context);
+		} catch (error) {
+			console.error('[ProjectContext] Failed to retrieve context:', error);
 			return null;
 		}
 	}
@@ -653,8 +675,16 @@
 				systemParts.push(resolvedPrompt.content);
 			}
 
-			// RAG: Retrieve relevant context for the last user message
+			// Project context: Retrieve instructions, summaries, and chat history
 			const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+			if (lastUserMessage && conversation?.projectId) {
+				const projectContext = await retrieveProjectContext(lastUserMessage.content);
+				if (projectContext) {
+					systemParts.push(projectContext);
+				}
+			}
+
+			// RAG: Retrieve relevant context for the last user message
 			if (lastUserMessage && ragEnabled && hasKnowledgeBase) {
 				const ragContext = await retrieveRagContext(lastUserMessage.content);
 				if (ragContext) {
