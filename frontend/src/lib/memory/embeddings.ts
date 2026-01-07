@@ -32,14 +32,27 @@ export async function generateEmbedding(
 	text: string,
 	model: string = DEFAULT_EMBEDDING_MODEL
 ): Promise<number[]> {
-	const response = await ollamaClient.embed({
-		model,
-		input: text
-	});
+	const TIMEOUT_MS = 30000; // 30 second timeout
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-	// Ollama returns an array of embeddings (one per input)
-	// We're only passing one input, so take the first
-	return response.embeddings[0];
+	try {
+		const response = await ollamaClient.embed({
+			model,
+			input: text
+		}, controller.signal);
+
+		// Ollama returns an array of embeddings (one per input)
+		// We're only passing one input, so take the first
+		return response.embeddings[0];
+	} catch (error) {
+		if (error instanceof Error && error.name === 'AbortError') {
+			throw new Error(`Embedding generation timed out. Is the model "${model}" available?`);
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeoutId);
+	}
 }
 
 /**
@@ -53,13 +66,30 @@ export async function generateEmbeddings(
 	const BATCH_SIZE = 10;
 	const results: number[][] = [];
 
+	// Create abort controller with timeout
+	const TIMEOUT_MS = 30000; // 30 second timeout per batch
+
 	for (let i = 0; i < texts.length; i += BATCH_SIZE) {
 		const batch = texts.slice(i, i + BATCH_SIZE);
-		const response = await ollamaClient.embed({
-			model,
-			input: batch
-		});
-		results.push(...response.embeddings);
+
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+		try {
+			const response = await ollamaClient.embed({
+				model,
+				input: batch
+			}, controller.signal);
+			results.push(...response.embeddings);
+		} catch (error) {
+			clearTimeout(timeoutId);
+			if (error instanceof Error && error.name === 'AbortError') {
+				throw new Error(`Embedding generation timed out. Is the model "${model}" available?`);
+			}
+			throw error;
+		} finally {
+			clearTimeout(timeoutId);
+		}
 	}
 
 	return results;
