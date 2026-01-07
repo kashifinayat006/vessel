@@ -65,7 +65,9 @@
 	async function retrieveRagContext(query: string): Promise<string | null> {
 		if (!ragEnabled || !hasKnowledgeBase) return null;
 		try {
-			const results = await searchSimilar(query, 3, 0.5);
+			// Search global documents only (null projectId) for home page
+			// Lower threshold (0.3) to catch more relevant results
+			const results = await searchSimilar(query, { topK: 5, threshold: 0.3, projectId: null });
 			if (results.length === 0) return null;
 			return formatResultsAsContext(results);
 		} catch {

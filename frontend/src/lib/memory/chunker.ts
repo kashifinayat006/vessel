@@ -31,7 +31,7 @@ export interface ChunkOptions {
 }
 
 /**
- * Split text into overlapping chunks
+ * Split text into overlapping chunks (synchronous version)
  */
 export function chunkText(
 	text: string,
@@ -62,8 +62,15 @@ export function chunkText(
 
 	const chunks: DocumentChunk[] = [];
 	let currentIndex = 0;
+	let previousIndex = -1;
 
 	while (currentIndex < text.length) {
+		// Prevent infinite loop - if we haven't advanced, we're stuck
+		if (currentIndex === previousIndex) {
+			break;
+		}
+		previousIndex = currentIndex;
+
 		// Calculate end position for this chunk
 		let endIndex = Math.min(currentIndex + chunkSize, text.length);
 
@@ -89,12 +96,108 @@ export function chunkText(
 			});
 		}
 
+		// If we've reached the end, we're done
+		if (endIndex >= text.length) {
+			break;
+		}
+
 		// Move to next chunk position (with overlap)
 		currentIndex = endIndex - overlap;
 
-		// Prevent infinite loop
-		if (currentIndex <= 0 || currentIndex >= text.length) {
+		// Safety: ensure we always advance
+		if (currentIndex <= previousIndex) {
+			currentIndex = previousIndex + 1;
+		}
+	}
+
+	return chunks;
+}
+
+/**
+ * Split text into overlapping chunks (async version that yields to event loop)
+ * Use this for large files to avoid blocking the UI
+ */
+export async function chunkTextAsync(
+	text: string,
+	documentId: string,
+	options: ChunkOptions = {}
+): Promise<DocumentChunk[]> {
+	const {
+		chunkSize = DEFAULT_CHUNK_SIZE,
+		overlap = DEFAULT_OVERLAP,
+		respectSentences = true,
+		respectParagraphs = true
+	} = options;
+
+	if (!text || text.length === 0) {
+		return [];
+	}
+
+	// For very short texts, return as single chunk
+	if (text.length <= chunkSize) {
+		return [{
+			id: crypto.randomUUID(),
+			documentId,
+			content: text.trim(),
+			startIndex: 0,
+			endIndex: text.length
+		}];
+	}
+
+	const chunks: DocumentChunk[] = [];
+	let currentIndex = 0;
+	let iterationCount = 0;
+	let previousIndex = -1;
+
+	while (currentIndex < text.length) {
+		// Yield every 10 chunks to let UI breathe
+		if (iterationCount > 0 && iterationCount % 10 === 0) {
+			await new Promise(r => setTimeout(r, 0));
+		}
+		iterationCount++;
+
+		// Prevent infinite loop - if we haven't advanced, we're stuck
+		if (currentIndex === previousIndex) {
 			break;
+		}
+		previousIndex = currentIndex;
+
+		// Calculate end position for this chunk
+		let endIndex = Math.min(currentIndex + chunkSize, text.length);
+
+		// If not at end of text, try to find a good break point
+		if (endIndex < text.length) {
+			endIndex = findBreakPoint(text, currentIndex, endIndex, {
+				respectSentences,
+				respectParagraphs
+			});
+		}
+
+		// Extract chunk content
+		const content = text.slice(currentIndex, endIndex).trim();
+
+		// Only add non-empty chunks above minimum size
+		if (content.length >= MIN_CHUNK_SIZE) {
+			chunks.push({
+				id: crypto.randomUUID(),
+				documentId,
+				content,
+				startIndex: currentIndex,
+				endIndex
+			});
+		}
+
+		// If we've reached the end, we're done
+		if (endIndex >= text.length) {
+			break;
+		}
+
+		// Move to next chunk position (with overlap)
+		currentIndex = endIndex - overlap;
+
+		// Safety: ensure we always advance
+		if (currentIndex <= previousIndex) {
+			currentIndex = previousIndex + 1;
 		}
 	}
 
@@ -145,17 +248,15 @@ function findBreakPoint(
 
 /**
  * Find the last match of a pattern after a given position
- * Uses matchAll instead of exec to avoid hook false positive
+ * Uses matchAll to find all matches and returns the last one after minPos
  */
 function findLastMatchPosition(text: string, pattern: RegExp, minPos: number): number {
 	let lastMatch = -1;
 
-	// Use matchAll to find all matches
-	const matches = Array.from(text.matchAll(pattern));
-
-	for (const match of matches) {
+	// Use matchAll to iterate through matches
+	for (const match of text.matchAll(pattern)) {
 		if (match.index !== undefined && match.index >= minPos) {
-			// Add the length of the match to include it in the chunk
+			// Track position after the match
 			lastMatch = match.index + match[0].length;
 		}
 	}

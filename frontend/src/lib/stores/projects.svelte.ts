@@ -15,6 +15,7 @@ export class ProjectsState {
 	projects = $state<Project[]>([]);
 	activeProjectId = $state<string | null>(null);
 	isLoading = $state(false);
+	hasLoaded = $state(false); // True after first successful load
 	error = $state<string | null>(null);
 
 	// Derived: Active project
@@ -44,6 +45,7 @@ export class ProjectsState {
 			const result = await projectStorage.getAllProjects();
 			if (result.success) {
 				this.projects = result.data;
+				this.hasLoaded = true;
 			} else {
 				this.error = result.error;
 				console.error('[ProjectsState] Failed to load projects:', result.error);

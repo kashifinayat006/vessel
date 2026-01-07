@@ -6,6 +6,7 @@
 import { db } from '$lib/storage/db.js';
 import { updateConversationSummary } from '$lib/storage/conversations.js';
 import type { Message } from '$lib/types/chat.js';
+import { indexConversationMessages } from './chat-indexer.js';
 
 // ============================================================================
 // Types
@@ -154,4 +155,50 @@ Conversation:
 ${conversationText}
 
 Summary:`;
+}
+
+/**
+ * Trigger summary update and chat indexing when user leaves a conversation
+ * Runs in background to not block navigation
+ * Only processes conversations that belong to a project
+ */
+export async function updateSummaryOnLeave(
+	conversationId: string,
+	messages: Message[],
+	model: string,
+	baseUrl?: string
+): Promise<void> {
+	// Get conversation to check if it's in a project
+	const conversation = await db.conversations.get(conversationId);
+	if (!conversation || !conversation.projectId) {
+		return; // Only process project conversations
+	}
+
+	const projectId = conversation.projectId;
+
+	// Run indexing and summary generation in background
+	setTimeout(async () => {
+		// Always index messages for RAG (incremental - only new messages)
+		try {
+			console.log('[ChatIndexer] Indexing conversation:', conversationId);
+			const indexed = await indexConversationMessages(conversationId, projectId, messages);
+			if (indexed > 0) {
+				console.log(`[ChatIndexer] Indexed ${indexed} new messages`);
+			}
+		} catch (error) {
+			console.error('[ChatIndexer] Indexing failed:', error);
+		}
+
+		// Generate summary if needed (4+ messages and enough time passed)
+		const needsUpdate = await needsSummaryUpdate(conversationId, messages.length);
+		if (needsUpdate) {
+			try {
+				console.log('[Summary] Generating summary for:', conversationId);
+				await generateAndSaveSummary(conversationId, messages, { model, baseUrl });
+				console.log('[Summary] Summary completed');
+			} catch (error) {
+				console.error('[Summary] Summary generation failed:', error);
+			}
+		}
+	}, 100);
 }

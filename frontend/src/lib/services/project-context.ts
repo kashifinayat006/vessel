@@ -7,10 +7,15 @@
  * - Project reference links
  */
 
-import { db } from '$lib/storage/db.js';
-import { getProjectConversationSummaries } from '$lib/storage/conversations.js';
+import { db, type StoredDocument } from '$lib/storage/db.js';
+import {
+	getProjectConversationSummaries,
+	getConversationsForProject
+} from '$lib/storage/conversations.js';
 import type { ProjectLink } from '$lib/storage/projects.js';
 import { getProjectLinks } from '$lib/storage/projects.js';
+import { listDocuments, getDocumentChunks } from '$lib/memory/vector-store.js';
+import { searchChatHistory } from './chat-indexer.js';
 
 // ============================================================================
 // Types
@@ -23,6 +28,16 @@ export interface ConversationSummary {
 	updatedAt: Date;
 }
 
+/** Basic info about a project conversation */
+export interface ProjectConversation {
+	id: string;
+	title: string;
+	messageCount: number;
+	updatedAt: Date;
+	hasSummary: boolean;
+	summary?: string;
+}
+
 export interface ChatHistoryResult {
 	conversationId: string;
 	conversationTitle: string;
@@ -30,15 +45,27 @@ export interface ChatHistoryResult {
 	similarity: number;
 }
 
+/** Document info for context (simplified from StoredDocument) */
+export interface ProjectDocument {
+	id: string;
+	name: string;
+	chunkCount: number;
+	embeddingStatus: 'pending' | 'processing' | 'ready' | 'failed' | undefined;
+	/** Preview of the document content (first chunk, truncated) */
+	preview?: string;
+}
+
 export interface ProjectContext {
 	/** Project instructions to inject into system prompt */
 	instructions: string | null;
-	/** Summaries of other conversations in the project */
-	conversationSummaries: ConversationSummary[];
+	/** All other conversations in the project (with summary status) */
+	otherConversations: ProjectConversation[];
 	/** Relevant snippets from chat history RAG search */
 	relevantChatHistory: ChatHistoryResult[];
 	/** Reference links for the project */
 	links: ProjectLink[];
+	/** Documents in the project's knowledge base */
+	documents: ProjectDocument[];
 }
 
 // ============================================================================
@@ -58,26 +85,72 @@ export async function buildProjectContext(
 	userQuery: string
 ): Promise<ProjectContext> {
 	// Fetch project data in parallel
-	const [project, summariesResult, linksResult, chatHistory] = await Promise.all([
-		db.projects.get(projectId),
-		getProjectConversationSummaries(projectId, currentConversationId),
-		getProjectLinks(projectId),
-		searchProjectChatHistory(projectId, userQuery, currentConversationId, 3)
-	]);
+	const [project, conversationsResult, summariesResult, linksResult, chatHistory, allDocuments] =
+		await Promise.all([
+			db.projects.get(projectId),
+			getConversationsForProject(projectId),
+			getProjectConversationSummaries(projectId, currentConversationId),
+			getProjectLinks(projectId),
+			searchProjectChatHistory(projectId, userQuery, currentConversationId, 3),
+			listDocuments()
+		]);
 
+	const allConversations = conversationsResult.success ? conversationsResult.data : [];
 	const summaries = summariesResult.success ? summariesResult.data : [];
 	const links = linksResult.success ? linksResult.data : [];
 
+	// Create a map of summaries by conversation ID for quick lookup
+	const summaryMap = new Map(summaries.map((s) => [s.id, s.summary]));
+
+	// Build list of other conversations (excluding current)
+	const otherConversations: ProjectConversation[] = allConversations
+		.filter((c) => c.id !== currentConversationId)
+		.map((c) => ({
+			id: c.id,
+			title: c.title,
+			messageCount: c.messageCount,
+			updatedAt: c.updatedAt,
+			hasSummary: summaryMap.has(c.id),
+			summary: summaryMap.get(c.id)
+		}));
+
+
+	// Filter documents for this project that are ready
+	const readyDocs = allDocuments.filter(
+		(d) => d.projectId === projectId && d.embeddingStatus === 'ready'
+	);
+
+	// Fetch previews for each document (first chunk, truncated)
+	const projectDocuments: ProjectDocument[] = await Promise.all(
+		readyDocs.map(async (d) => {
+			let preview: string | undefined;
+			try {
+				const chunks = await getDocumentChunks(d.id);
+				if (chunks.length > 0) {
+					// Get first chunk, truncate to ~500 chars
+					const firstChunk = chunks[0].content;
+					preview =
+						firstChunk.length > 500 ? firstChunk.slice(0, 500) + '...' : firstChunk;
+				}
+			} catch {
+				// Ignore errors fetching chunks
+			}
+			return {
+				id: d.id,
+				name: d.name,
+				chunkCount: d.chunkCount,
+				embeddingStatus: d.embeddingStatus,
+				preview
+			};
+		})
+	);
+
 	return {
 		instructions: project?.instructions || null,
-		conversationSummaries: summaries.map((s) => ({
-			id: s.id,
-			title: s.title,
-			summary: s.summary,
-			updatedAt: s.updatedAt
-		})),
+		otherConversations,
 		relevantChatHistory: chatHistory,
-		links
+		links,
+		documents: projectDocuments
 	};
 }
 
@@ -93,28 +166,23 @@ export async function searchProjectChatHistory(
 	projectId: string,
 	query: string,
 	excludeConversationId?: string,
-	topK: number = 3,
-	threshold: number = 0.5
+	topK: number = 10,
+	threshold: number = 0.2
 ): Promise<ChatHistoryResult[]> {
-	// Get all chat chunks for this project
-	const chunks = await db.chatChunks
-		.where('projectId')
-		.equals(projectId)
-		.toArray();
+	const results = await searchChatHistory(
+		projectId,
+		query,
+		excludeConversationId,
+		topK,
+		threshold
+	);
 
-	// Filter out current conversation
-	const relevantChunks = excludeConversationId
-		? chunks.filter((c) => c.conversationId !== excludeConversationId)
-		: chunks;
-
-	if (relevantChunks.length === 0) {
-		return [];
-	}
-
-	// For now, return empty - embeddings require Ollama API
-	// This will be populated when chat-indexer.ts is implemented
-	// and conversations are indexed
-	return [];
+	return results.map((r) => ({
+		conversationId: r.conversationId,
+		conversationTitle: r.conversationTitle,
+		content: r.content,
+		similarity: r.similarity
+	}));
 }
 
 // ============================================================================
@@ -132,13 +200,37 @@ export function formatProjectContextForPrompt(context: ProjectContext): string {
 		parts.push(`## Project Instructions\n${context.instructions}`);
 	}
 
-	// Conversation summaries
-	if (context.conversationSummaries.length > 0) {
-		const summariesText = context.conversationSummaries
-			.slice(0, 5) // Limit to 5 most recent
-			.map((s) => `- **${s.title}**: ${s.summary}`)
+	// Project knowledge base documents with previews
+	if (context.documents.length > 0) {
+		const docsText = context.documents
+			.map((d) => {
+				let entry = `### ${d.name}\n`;
+				if (d.preview) {
+					entry += `${d.preview}\n`;
+				} else {
+					entry += `(${d.chunkCount} chunks available)\n`;
+				}
+				return entry;
+			})
 			.join('\n');
-		parts.push(`## Previous Discussions in This Project\n${summariesText}`);
+		parts.push(
+			`## Project Knowledge Base\nThe following documents are available. Use this content to answer questions about the project:\n\n${docsText}`
+		);
+	}
+
+	// Other conversations in this project
+	if (context.otherConversations.length > 0) {
+		const conversationsText = context.otherConversations
+			.slice(0, 10) // Limit to 10 most recent
+			.map((c) => {
+				if (c.hasSummary && c.summary) {
+					return `- **${c.title}**: ${c.summary}`;
+				} else {
+					return `- **${c.title}** (${c.messageCount} messages, no summary yet)`;
+				}
+			})
+			.join('\n');
+		parts.push(`## Other Chats in This Project\n${conversationsText}`);
 	}
 
 	// Relevant chat history (RAG results)
@@ -167,7 +259,8 @@ export function formatProjectContextForPrompt(context: ProjectContext): string {
 export function hasProjectContext(context: ProjectContext): boolean {
 	return (
 		(context.instructions && context.instructions.trim().length > 0) ||
-		context.conversationSummaries.length > 0 ||
+		context.documents.length > 0 ||
+		context.otherConversations.length > 0 ||
 		context.relevantChatHistory.length > 0 ||
 		context.links.length > 0
 	);

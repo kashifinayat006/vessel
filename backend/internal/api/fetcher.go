@@ -430,7 +430,7 @@ func (f *Fetcher) fetchWithCurl(ctx context.Context, url string, curlPath string
 		"--max-time", fmt.Sprintf("%d", int(opts.Timeout.Seconds())),
 		"-A", opts.UserAgent,           // User agent
 		"-w", "\n---CURL_INFO---\n%{content_type}\n%{url_effective}\n%{http_code}", // Output metadata
-		"--compressed",                 // Accept compressed responses
+		"--compressed",                 // Automatically decompress responses
 	}
 
 	// Add custom headers
@@ -439,9 +439,12 @@ func (f *Fetcher) fetchWithCurl(ctx context.Context, url string, curlPath string
 	}
 
 	// Add common headers for better compatibility
+	// Override Accept-Encoding to only include widely-supported formats
+	// This prevents errors when servers return zstd/br that curl may not support
 	args = append(args,
 		"-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
 		"-H", "Accept-Language: en-US,en;q=0.5",
+		"-H", "Accept-Encoding: gzip, deflate, identity",
 		"-H", "DNT: 1",
 		"-H", "Connection: keep-alive",
 		"-H", "Upgrade-Insecure-Requests: 1",

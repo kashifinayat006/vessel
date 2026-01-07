@@ -59,6 +59,7 @@ export {
 // Chunking
 export {
 	chunkText,
+	chunkTextAsync,
 	splitByParagraphs,
 	splitBySentences,
 	estimateChunkTokens,
@@ -77,7 +78,9 @@ export {
 	deleteDocument,
 	getKnowledgeBaseStats,
 	formatResultsAsContext,
+	resetStuckDocuments,
 	type SearchResult,
+	type SearchOptions,
 	type AddDocumentOptions,
 	type AddDocumentAsyncOptions
 } from './vector-store.js';

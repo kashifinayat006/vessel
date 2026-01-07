@@ -37,6 +37,7 @@
 	import ModelParametersPanel from '$lib/components/settings/ModelParametersPanel.svelte';
 	import { settingsState } from '$lib/stores/settings.svelte';
 	import { buildProjectContext, formatProjectContextForPrompt, hasProjectContext } from '$lib/services/project-context.js';
+	import { updateSummaryOnLeave } from '$lib/services/conversation-summary.js';
 
 	/**
 	 * Props interface for ChatWindow
@@ -165,12 +166,22 @@
 
 	/**
 	 * Retrieve relevant context from knowledge base for the query
+	 * @param query - The search query
+	 * @param projectId - If set, search only project docs; if null, search global docs; if undefined, search all
 	 */
-	async function retrieveRagContext(query: string): Promise<string | null> {
+	async function retrieveRagContext(
+		query: string,
+		projectId?: string | null
+	): Promise<string | null> {
 		if (!ragEnabled || !hasKnowledgeBase) return null;
 
 		try {
-			const results = await searchSimilar(query, 3, 0.5);
+			// Lower threshold (0.3) to catch more relevant results
+			const results = await searchSimilar(query, {
+				topK: 5,
+				threshold: 0.3,
+				projectId
+			});
 			if (results.length === 0) return null;
 
 			const context = formatResultsAsContext(results);
@@ -265,6 +276,36 @@
 			contextManager.flushPendingUpdate();
 			contextManager.updateMessages(chatState.visibleMessages, true);
 		}
+	});
+
+	// Track previous conversation for summary generation on switch
+	let previousConversationId: string | null = null;
+	let previousConversationMessages: typeof chatState.visibleMessages = [];
+
+	// Trigger summary generation when leaving a conversation
+	$effect(() => {
+		const currentId = conversation?.id || null;
+		const currentMessages = chatState.visibleMessages;
+		const currentModel = modelsState.selectedId;
+
+		// Store current messages for when we leave
+		if (currentId) {
+			previousConversationMessages = [...currentMessages];
+		}
+
+		// When conversation changes, summarize the previous one
+		if (previousConversationId && previousConversationId !== currentId && currentModel) {
+			// Need to copy values for the closure
+			const prevId = previousConversationId;
+			const prevMessages = previousConversationMessages.map((m) => ({
+				role: m.message.role,
+				content: m.message.content
+			}));
+
+			updateSummaryOnLeave(prevId, prevMessages, currentModel);
+		}
+
+		previousConversationId = currentId;
 	});
 
 	/**
@@ -709,8 +750,10 @@
 			}
 
 			// RAG: Retrieve relevant context for the last user message
+			// If in a project, search project documents; otherwise search global documents
 			if (lastUserMessage && ragEnabled && hasKnowledgeBase) {
-				const ragContext = await retrieveRagContext(lastUserMessage.content);
+				const ragProjectId = conversation?.projectId ?? null;
+				const ragContext = await retrieveRagContext(lastUserMessage.content, ragProjectId);
 				if (ragContext) {
 					lastRagContext = ragContext;
 					systemParts.push(`You have access to a knowledge base. Use the following relevant context to help answer the user's question. If the context isn't relevant, you can ignore it.\n\n${ragContext}`);

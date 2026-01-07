@@ -7,7 +7,7 @@
 
 import { db, type StoredDocument, type StoredChunk } from '$lib/storage/db.js';
 import { generateEmbedding, generateEmbeddings, cosineSimilarity, DEFAULT_EMBEDDING_MODEL } from './embeddings.js';
-import { chunkText, estimateChunkTokens, type ChunkOptions } from './chunker.js';
+import { chunkText, chunkTextAsync, estimateChunkTokens, type ChunkOptions } from './chunker.js';
 
 /** Result of a similarity search */
 export interface SearchResult {
@@ -135,14 +135,8 @@ export async function addDocumentAsync(
 	const documentId = crypto.randomUUID();
 	const now = Date.now();
 
-	// Chunk the content
-	const textChunks = chunkText(content, documentId, chunkOptions);
-
-	if (textChunks.length === 0) {
-		throw new Error('Document produced no chunks');
-	}
-
-	// Create document record immediately (without embeddings)
+	// Create document record immediately (without knowing chunk count yet)
+	// We'll update it after chunking in the background
 	const document: StoredDocument = {
 		id: documentId,
 		name,
@@ -150,7 +144,7 @@ export async function addDocumentAsync(
 		size: content.length,
 		createdAt: now,
 		updatedAt: now,
-		chunkCount: textChunks.length,
+		chunkCount: 0, // Will be updated after chunking
 		embeddingModel,
 		projectId: projectId ?? null,
 		embeddingStatus: 'pending'
@@ -159,18 +153,40 @@ export async function addDocumentAsync(
 	// Store document immediately
 	await db.documents.add(document);
 
-	// Generate embeddings in background (non-blocking)
+	// Process everything in background (non-blocking) - including chunking
 	setTimeout(async () => {
+		console.log('[Embedding] Starting for:', name, 'content length:', content.length);
 		try {
 			// Update status to processing
 			await db.documents.update(documentId, { embeddingStatus: 'processing' });
+			console.log('[Embedding] Status updated, starting chunking...');
+
+			// Chunk the content using async version (yields periodically)
+			let textChunks;
+			try {
+				textChunks = await chunkTextAsync(content, documentId, chunkOptions);
+			} catch (chunkError) {
+				console.error('[Embedding] Chunking failed:', chunkError);
+				throw chunkError;
+			}
+			console.log('[Embedding] Chunked into', textChunks.length, 'chunks');
+
+			if (textChunks.length === 0) {
+				throw new Error('Document produced no chunks');
+			}
+
+			// Update chunk count
+			await db.documents.update(documentId, { chunkCount: textChunks.length });
 
 			const chunkContents = textChunks.map(c => c.content);
 			const embeddings: number[][] = [];
 
-			// Process in batches with progress
+			// Process embeddings in batches with progress
 			const BATCH_SIZE = 5;
+			const totalBatches = Math.ceil(chunkContents.length / BATCH_SIZE);
 			for (let i = 0; i < chunkContents.length; i += BATCH_SIZE) {
+				const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+				console.log(`[Embedding] Batch ${batchNum}/${totalBatches}...`);
 				const batch = chunkContents.slice(i, i + BATCH_SIZE);
 				const batchEmbeddings = await generateEmbeddings(batch, embeddingModel);
 				embeddings.push(...batchEmbeddings);
@@ -200,12 +216,13 @@ export async function addDocumentAsync(
 				});
 			});
 
+			console.log('[Embedding] Complete for:', name);
 			const updatedDoc = await db.documents.get(documentId);
 			if (updatedDoc && onComplete) {
 				onComplete(updatedDoc);
 			}
 		} catch (error) {
-			console.error('Failed to generate embeddings:', error);
+			console.error('[Embedding] Failed:', error);
 			await db.documents.update(documentId, { embeddingStatus: 'failed' });
 			if (onError) {
 				onError(error instanceof Error ? error : new Error(String(error)));
@@ -216,15 +233,34 @@ export async function addDocumentAsync(
 	return document;
 }
 
+/** Options for similarity search */
+export interface SearchOptions {
+	/** Maximum number of results to return */
+	topK?: number;
+	/** Minimum similarity threshold (0-1) */
+	threshold?: number;
+	/** Embedding model to use */
+	embeddingModel?: string;
+	/** Filter to documents in this project only (null = global only, undefined = all) */
+	projectId?: string | null;
+}
+
 /**
- * Search for similar chunks across all documents
+ * Search for similar chunks across documents
+ * @param query - The search query
+ * @param options - Search options including projectId filter
  */
 export async function searchSimilar(
 	query: string,
-	topK: number = 5,
-	threshold: number = 0.5,
-	embeddingModel: string = DEFAULT_EMBEDDING_MODEL
+	options: SearchOptions = {}
 ): Promise<SearchResult[]> {
+	const {
+		topK = 5,
+		threshold = 0.5,
+		embeddingModel = DEFAULT_EMBEDDING_MODEL,
+		projectId
+	} = options;
+
 	// Generate embedding for query
 	const queryEmbedding = await generateEmbedding(query, embeddingModel);
 
@@ -236,31 +272,50 @@ export async function searchSimilar(
 		return [];
 	}
 
+	// Get document IDs that match the project filter
+	let allowedDocumentIds: Set<string> | null = null;
+	if (projectId !== undefined) {
+		const docs = await db.documents.toArray();
+		const filteredDocs = docs.filter((d) =>
+			projectId === null ? !d.projectId : d.projectId === projectId
+		);
+		allowedDocumentIds = new Set(filteredDocs.map((d) => d.id));
+	}
+
+	// Filter chunks by project and calculate similarities
+	const relevantChunks = allowedDocumentIds
+		? allChunks.filter((c) => allowedDocumentIds!.has(c.documentId))
+		: allChunks;
+
+	if (relevantChunks.length === 0) {
+		return [];
+	}
+
 	// Calculate similarities
-	const scored = allChunks.map(chunk => ({
+	const scored = relevantChunks.map((chunk) => ({
 		chunk,
 		similarity: cosineSimilarity(queryEmbedding, chunk.embedding)
 	}));
 
 	// Filter and sort
 	const filtered = scored
-		.filter(item => item.similarity >= threshold)
+		.filter((item) => item.similarity >= threshold)
 		.sort((a, b) => b.similarity - a.similarity)
 		.slice(0, topK);
 
 	// Fetch document info for results
-	const documentIds = [...new Set(filtered.map(r => r.chunk.documentId))];
+	const documentIds = [...new Set(filtered.map((r) => r.chunk.documentId))];
 	const documents = await db.documents.bulkGet(documentIds);
-	const documentMap = new Map(documents.filter(Boolean).map(d => [d!.id, d!]));
+	const documentMap = new Map(documents.filter(Boolean).map((d) => [d!.id, d!]));
 
 	// Build results
 	return filtered
-		.map(item => ({
+		.map((item) => ({
 			chunk: item.chunk,
 			document: documentMap.get(item.chunk.documentId)!,
 			similarity: item.similarity
 		}))
-		.filter(r => r.document !== undefined);
+		.filter((r) => r.document !== undefined);
 }
 
 /**
@@ -292,6 +347,59 @@ export async function deleteDocument(id: string): Promise<void> {
 		await db.chunks.where('documentId').equals(id).delete();
 		await db.documents.delete(id);
 	});
+}
+
+/**
+ * Retry embedding for a stuck document
+ * Useful when HMR or page refresh interrupts background processing
+ */
+export async function retryDocumentEmbedding(
+	documentId: string,
+	onComplete?: (doc: StoredDocument) => void,
+	onError?: (error: Error) => void
+): Promise<void> {
+	const doc = await db.documents.get(documentId);
+	if (!doc) {
+		throw new Error('Document not found');
+	}
+
+	// Only retry if stuck in pending or processing state
+	if (doc.embeddingStatus === 'ready') {
+		console.log('Document already has embeddings');
+		return;
+	}
+
+	// Delete any existing chunks for this document
+	await db.chunks.where('documentId').equals(documentId).delete();
+
+	// We need the original content, which we don't store
+	// So we need to mark it as failed - user will need to re-upload
+	// OR we could store the content temporarily...
+
+	// For now, just mark as failed so user knows to re-upload
+	await db.documents.update(documentId, { embeddingStatus: 'failed' });
+
+	if (onError) {
+		onError(new Error('Cannot retry - document content not cached. Please re-upload the file.'));
+	}
+}
+
+/**
+ * Reset stuck documents (pending/processing) to failed state
+ * Call this on app startup to clean up interrupted uploads
+ */
+export async function resetStuckDocuments(): Promise<number> {
+	// Get all documents and filter in memory (no index required)
+	const allDocs = await db.documents.toArray();
+	const stuckDocs = allDocs.filter(
+		doc => doc.embeddingStatus === 'pending' || doc.embeddingStatus === 'processing'
+	);
+
+	for (const doc of stuckDocs) {
+		await db.documents.update(doc.id, { embeddingStatus: 'failed' });
+	}
+
+	return stuckDocs.length;
 }
 
 /**

@@ -10,9 +10,10 @@
 		isOpen: boolean;
 		onClose: () => void;
 		projectId?: string | null;
+		onUpdate?: () => void; // Called when project data changes (links added/deleted, etc.)
 	}
 
-	let { isOpen, onClose, projectId = null }: Props = $props();
+	let { isOpen, onClose, projectId = null, onUpdate }: Props = $props();
 
 	// Form state
 	let name = $state('');
@@ -162,6 +163,7 @@
 				newLinkTitle = '';
 				newLinkDescription = '';
 				toastState.success('Link added');
+				onUpdate?.(); // Notify parent to refresh
 			} else {
 				toastState.error('Failed to add link');
 			}
@@ -176,6 +178,7 @@
 			if (result.success) {
 				links = links.filter(l => l.id !== linkId);
 				toastState.success('Link removed');
+				onUpdate?.(); // Notify parent to refresh
 			} else {
 				toastState.error('Failed to remove link');
 			}

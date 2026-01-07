@@ -13,6 +13,7 @@
 		listDocuments,
 		addDocumentAsync,
 		deleteDocument,
+		resetStuckDocuments,
 		DEFAULT_EMBEDDING_MODEL,
 		EMBEDDING_MODELS
 	} from '$lib/memory';
@@ -55,30 +56,38 @@
 		);
 	});
 
-	// Load project data on mount
-	onMount(async () => {
-		// Wait for projects to load before checking if project exists
-		// projectsState.isLoading will be true until load completes
-		if (projectsState.isLoading) {
-			// Projects still loading, wait for them
-			await new Promise<void>((resolve) => {
-				const checkLoaded = setInterval(() => {
-					if (!projectsState.isLoading) {
-						clearInterval(checkLoaded);
-						resolve();
-					}
-				}, 50);
-			});
-		}
+	// Track if component is mounted
+	let isMounted = false;
 
-		// Now check if project exists
-		const foundProject = projectsState.projects.find(p => p.id === projectId);
-		if (!foundProject) {
-			// Project not found, redirect to home
-			goto('/');
-			return;
-		}
-		await loadProjectData();
+	// Load project data on mount
+	onMount(() => {
+		isMounted = true;
+
+		// Use an async IIFE to handle the async logic
+		(async () => {
+			// Wait for projects to be loaded from IndexedDB
+			let attempts = 0;
+			while (!projectsState.hasLoaded && attempts < 50 && isMounted) {
+				await new Promise(r => setTimeout(r, 100));
+				attempts++;
+			}
+
+			if (!isMounted) return; // Component unmounted while waiting
+
+			// Now check if project exists
+			const foundProject = projectsState.projects.find(p => p.id === projectId);
+
+			if (!foundProject) {
+				goto('/');
+				return;
+			}
+
+			await loadProjectData();
+		})();
+
+		return () => {
+			isMounted = false;
+		};
 	});
 
 	async function loadProjectData() {
@@ -93,6 +102,12 @@
 		// Load documents filtered by projectId
 		isLoadingDocs = true;
 		try {
+			// Reset any stuck documents (interrupted by page refresh/HMR)
+			const resetCount = await resetStuckDocuments();
+			if (resetCount > 0) {
+				toastState.warning(`${resetCount} document(s) were interrupted - please re-upload`);
+			}
+
 			const allDocs = await listDocuments();
 			// Filter documents by projectId - strict equality
 			documents = allDocs.filter(d => d.projectId === projectId);
@@ -206,6 +221,7 @@
 		for (const file of files) {
 			try {
 				const content = await file.text();
+
 				if (!content.trim()) {
 					toastState.warning(`File "${file.name}" is empty, skipping`);
 					continue;
@@ -596,4 +612,5 @@
 	isOpen={showProjectModal}
 	onClose={() => showProjectModal = false}
 	{projectId}
+	onUpdate={() => loadProjectData()}
 />
